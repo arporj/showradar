@@ -22,7 +22,7 @@ Referência do plano completo: `C:\Users\andre\.claude\plans\quero-fazer-um-sist
 - [ ] Conta Stripe em modo teste — necessária na Fase 7
 - [x] Repositório remoto (GitHub) — `github.com/arporj/showradar`, primeiro commit real do projeto inteiro (só existia o commit inicial do `create-next-app`) + push de `main`
 - [x] Deploy (Vercel) — a primeira tentativa falhou com `Error: DATABASE_URL is not set` (build sem nenhuma env var configurada). Causa raiz descoberta depois: o import do GitHub tinha sido feito **duas vezes**, criando dois projetos Vercel distintos (`showradar` e `showradar-os9c`), ambos conectados ao mesmo repositório/branch `main` — as env vars corretas (todas as 16) tinham sido coladas no projeto errado (`showradar-os9c`), enquanto o projeto de nome limpo (`showradar`) ficou sem nenhuma e por isso sempre falhava. Corrigido apagando o projeto quebrado e renomeando o funcional para `showradar`; `NEXT_PUBLIC_APP_URL` ajustada para a URL real (`showradar.vercel.app` já pertencia a outra conta Vercel — ficou em `showradar-arporj-5977s-projects.vercel.app`); build de produção validado limpo (todas as rotas novas, incluindo `/forgot-password` e `/reset-password`, geradas sem erro)
-- [ ] Autorizar `https://showradar-arporj-5977s-projects.vercel.app/api/auth/callback/google` como redirect URI no Google Cloud Console (Credentials do OAuth client) — hoje só `localhost` está autorizado, então "Continuar com Google" ainda vai falhar em produção até isso ser feito manualmente lá
+- [x] Redirect URI de produção (`https://showradar-arporj-5977s-projects.vercel.app/api/auth/callback/google`) autorizado no Google Cloud Console — "Continuar com Google" liberado em produção
 
 ## Fase 1 — Scaffold, Auth e Schema
 
