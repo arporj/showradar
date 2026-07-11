@@ -1,13 +1,13 @@
 # ShowRadar — Status do Projeto
 
-_Atualizado em: 2026-07-09_
+_Atualizado em: 2026-07-11_
 
 Referência do plano completo: `C:\Users\andre\.claude\plans\quero-fazer-um-sistema-magical-kite.md`
 
 ## Visão geral
 
 - **Núcleo (Fases 0-4): concluído e testado contra TMDb/banco reais.**
-- **Fase 5: push concluído e testado; e-mail (Resend) pendente.**
+- **Fase 5: push concluído e testado; e-mail transacional (Brevo) em produção via recuperação de senha; envio de e-mail pelo cron de notificações ainda pendente.**
 - **Fase 6: não iniciado.**
 - **Expansão (Fases 7-13): não iniciada.**
 
@@ -18,22 +18,24 @@ Referência do plano completo: `C:\Users\andre\.claude\plans\quero-fazer-um-sist
 - [x] Projeto Supabase dedicado (`arrc`, região São Paulo/sa-east-1), schema `showradar`
 - [x] Credenciais TMDb (v4 Read Access Token)
 - [x] Credenciais OAuth do Google (Google Cloud Console)
-- [ ] Conta Resend (e-mail) — necessária na Fase 5
+- [x] Conta Brevo (e-mail transacional) — criada, remetente `showradar@andreric.com` ("ShowRadar") verificado; **trocado de Resend para Brevo** em relação à ideia original deste documento
 - [ ] Conta Stripe em modo teste — necessária na Fase 7
-- [ ] Repositório remoto (GitHub) e deploy (Vercel) — projeto só existe localmente até agora
+- [x] Repositório remoto (GitHub) — `github.com/arporj/showradar`, primeiro commit real do projeto inteiro (só existia o commit inicial do `create-next-app`) + push de `main`
+- [ ] Deploy (Vercel) — tentativa de deploy direto do GitHub falhou com `Error: DATABASE_URL is not set` durante o build (`Collecting page data` importa os route handlers, incluindo o cron, que importa `db`); causa é só falta de configuração — o projeto na Vercel ainda não tem nenhuma variável de ambiente definida (`.env.local` nunca foi commitado, de propósito). Falta: colar todas as env vars de `.env.example` em Settings → Environment Variables (Production/Preview), trocar `NEXT_PUBLIC_APP_URL` pela URL real, autorizar o redirect URI de produção no Google OAuth, e rodar redeploy
 
 ## Fase 1 — Scaffold, Auth e Schema
 
 - [x] Next.js 16 (TypeScript, App Router, Tailwind, shadcn/ui)
 - [x] Schema Drizzle completo do núcleo (`users`, `accounts`, `titles`, `seasons`, `episodes`, `user_library`, `user_episode_progress`, `push_subscriptions`, `notification_preferences`, `notification_log`, `password_reset_tokens`)
-- [x] Auth.js: login por e-mail/senha (Argon2id) + Google OAuth
+- [x] Auth.js: login por e-mail/senha (Argon2id) + Google OAuth, com logo colorido do Google no botão de ambas as telas (`components/icons/google-icon.tsx`)
 - [x] Cadastro com username, nome e avatar (padrão via DiceBear ou foto do Google)
 - [x] Onboarding obrigatório de username para quem entra pelo Google
 - [x] Sessão via JWT com `sessionVersion` (login por credenciais não permite sessão em banco no Auth.js) — "sair de todos os dispositivos" funcionando
 - [x] Proteção de rotas (proxy/middleware) separada em config "edge-safe" (sem banco) + config completa (com banco)
 - [x] Rota de recuperação de loop de redirecionamento (`/api/auth/invalidate`) para sessões inválidas/órfãs
-- [ ] Recuperação de senha ("esqueci minha senha") — tabela `password_reset_tokens` já existe, fluxo/e-mail ainda não construído (depende da Fase 5)
-- [ ] Upload de foto de perfil (hoje só existe o avatar padrão gerado; escolher/enviar uma foto própria ainda não foi implementado)
+- [x] Botão "Entrar" com indicador visual de carregamento (spinner + texto "Entrando...") enquanto aguarda o Auth.js — evitava parecer travado durante logins mais lentos
+- [x] Recuperação de senha ("esqueci minha senha") — `password_reset_tokens` (já existia no schema) agora usada de ponta a ponta: `/forgot-password` gera token aleatório (hash SHA-256 salvo, não o token bruto), envia link por e-mail via Brevo (`lib/email.ts`), nunca revela se o e-mail existe (mesma resposta genérica sempre, contra enumeração de contas); `/reset-password?token=...` valida o token (expira em 1h, uso único), troca a senha (Argon2id) e invalida sessões antigas (`sessionVersion + 1`, mesmo mecanismo de "sair de todos os dispositivos"). `/forgot-password` e `/reset-password` ficam acessíveis independente do usuário estar logado ou não em outro dispositivo (lista própria no `proxy.ts`, separada da lista que bloqueia `/login`/`/signup` para quem já está autenticado — sem essa distinção, clicar no link do e-mail estando logado em outra aba jogaria de volta pro dashboard)
+- [x] Upload de foto de perfil — nova seção "Foto de perfil" em `/settings` (`components/settings/avatar-upload.tsx`), upload para o bucket `avatars` do Supabase Storage (mesmo projeto Supabase já usado para o banco, sem novo serviço), chave fixa `${userId}/avatar` sobrescrita a cada troca (sem lixo acumulando no bucket), com cache-busting via query string; `avatarSource` passa a `"upload"` (valor que já existia no enum do schema, nunca usado até agora); sessão/JWT atualizados na hora (`updateSession`) para o avatar no cabeçalho já aparecer sem precisar deslogar
 
 ## Fase 2 — Busca TMDb + Biblioteca
 
@@ -50,7 +52,7 @@ Referência do plano completo: `C:\Users\andre\.claude\plans\quero-fazer-um-sist
 - [x] Estados de carregamento (esqueleto) nas páginas de detalhe e de pessoa
 - [x] Otimizações de performance (menos consultas redundantes, consultas paralelas, ação mais leve ao adicionar da própria tela de detalhe)
 - [ ] Estado de carregamento (esqueleto) na página de busca e na grade — ainda não adicionado
-- [ ] Atribuição obrigatória da TMDb (logo + texto legal no rodapé) — **pendente, é exigência dos termos de uso da TMDb, não só estética**
+- [x] Atribuição obrigatória da TMDb (logo + texto legal no rodapé) — logo oficial (`public/tmdb-logo.svg`, versão "short blue" do brand kit da TMDb) + texto "Este produto usa a API do TMDB, mas não é endossado ou certificado pelo TMDB." linkando para themoviedb.org, no rodapé de todas as páginas autenticadas (`(app)/layout.tsx`) e das telas de login/signup (`(auth)/layout.tsx`); mesmo estilo do link de atribuição da JustWatch já existente (`components/layout/tmdb-attribution.tsx`)
 - [x] "Onde assistir" na página de detalhe — logos dos serviços de streaming (assinatura/grátis/com anúncios) disponíveis no Brasil, via `append_to_response=watch/providers` da TMDb (dados da JustWatch), sincronizado junto com o resto do título e cacheado em `titles.watch_providers_br` (migração `0001_curvy_toad_men.sql`); link de atribuição à JustWatch incluído (exigência de uso desses dados, independente da atribuição geral da TMDb acima)
 
 ## Fase 3 — Marcação de Assistido
@@ -60,7 +62,7 @@ Referência do plano completo: `C:\Users\andre\.claude\plans\quero-fazer-um-sist
 - [x] "Marcar/desmarcar temporada inteira", afetando só episódios já exibidos (episódios sem data ou com data futura ficam de fora, tanto na contagem quanto na ação em massa) — disponível direto no cabeçalho da temporada, sem precisar expandi-la
 - [x] Barra de progresso por temporada e barra agregada da série inteira (episódios assistidos / total) — implementada como consulta agregada (`lib/progress.ts`, `getWatchedEpisodeCounts`), não como uma `VIEW` SQL literal como o plano original cogitava; o total usa `seasons.episode_count` (já cacheado na sincronização do título), então funciona mesmo com temporadas cujos episódios ainda não foram abertos/sincronizados
 - [x] Marcação por ícone animado (círculo → check preenchido, com "pop" e anel pulsante) no lugar de checkbox tradicional (`components/title/episode-watch-button.tsx`, reaproveitado tanto por episódio quanto pelo botão de temporada inteira)
-- [x] Celebração em tela cheia (confete via `canvas-confetti` + cartão animado) quando o usuário termina o último episódio pendente da série — dispara uma única vez por sessão ao cruzar 100%, não repete ao reabrir uma série já concluída nem ao desmarcar/remarcar o último episódio (`components/title/watch-progress.tsx`, `components/title/celebration-overlay.tsx`)
+- [x] Celebração em tela cheia (confete via `canvas-confetti` + cartão animado) quando o usuário termina o último episódio pendente da série **ou de uma temporada individual** — `CelebrationOverlay` generalizado para receber título/descrição (antes só tinha "Série concluída!" fixo); dispara uma única vez por transição incompleto→completo, não repete ao reabrir uma série já concluída nem ao desmarcar/remarcar o último episódio (`components/title/watch-progress.tsx`, `components/title/celebration-overlay.tsx`). O card "próximo episódio" do dashboard (`components/dashboard/next-episode-card.tsx`) também mostra essa celebração ao marcar o último episódio de uma temporada por ali — antes o episódio só sumia da lista sem nenhum feedback de conclusão; `toggleEpisodeWatched` agora retorna `{ seasonCompleted, seriesCompleted }` para viabilizar isso
 - [x] "Marcar episódios anteriores?" — ao marcar um episódio (ou usar "marcar temporada inteira") deixando episódios/temporadas anteriores pendentes, pergunta via `AlertDialog` se quer marcar todos os anteriores também (episódios antes deste na mesma temporada + todas as temporadas de número menor, sempre respeitando "só episódios já exibidos"); "Não" marca só o episódio/temporada clicado, "Sim" marca tudo antes (`lib/actions/episodes.ts::markEpisodesWatchedThrough`, lógica de confirmação em `components/title/season-list.tsx`)
 - [x] "Assistindo"/"Assistido" deixaram de ser botões manuais para séries — `syncLibraryStatusFromProgress` (`lib/actions/episodes.ts`) recalcula o status a cada ação de episódio (marcar/desmarcar, individual ou em massa): 1+ episódio assistido → `watching`; todos os episódios já exibidos assistidos → `completed`; zero assistidos → `plan_to_watch`. Se o título ainda não estava na grade, marcar um episódio já o adiciona. "Abandonei" é a exceção: fica travado (não é sobrescrito por atividade de episódio) até o usuário clicar manualmente em "Quero assistir" de novo. Em `LibraryStatusControl`, o botão "Quero assistir" só aparece quando o status atual é "Abandonei" (única via de volta); nos demais estados de série (`plan_to_watch`/`watching`/`completed`) mostra só "Abandonei" + "Remover" — nunca os dois botões de toggle ao mesmo tempo, e a posição de cada um é sempre a mesma. Filmes (sem sinal de episódio para derivar o status) mantêm os 4 botões manuais sempre visíveis, em ordem fixa
 
@@ -73,10 +75,12 @@ Referência do plano completo: `C:\Users\andre\.claude\plans\quero-fazer-um-sist
 - [x] Página de histórico (`/history`) — agrupada por título, não por episódio: cada série aparece uma vez com barra de progresso + contagem agregada (ex.: 7/13), filmes aparecem uma vez com badge "Filme"; ordenado pela atividade mais recente de cada título (episódios de `user_episode_progress` + filmes concluídos de `user_library.watched_at`)
 - [x] Componente `TitleCard` extraído (`components/library/title-card.tsx`) e reaproveitado por Biblioteca, Dashboard e Em Breve, eliminando a duplicação do cartão de pôster
 - [x] Seção "Não iniciado" no dashboard — séries com status `plan_to_watch` (adicionadas mas sem nenhum episódio assistido) ganham o mesmo tratamento acionável de "Continuar assistindo" (T1E1, com botão de marcar assistido ali mesmo), em vez de sumirem num pôster genérico; `getNextEpisodesToWatch` foi generalizada para aceitar `watching` ou `plan_to_watch` (mesmo cálculo de "próximo episódio" — como status `plan_to_watch` garante zero episódios assistidos, o "próximo" é sempre o primeiro). Marcar o episódio ali promove a série para `watching` automaticamente, e ela migra para "Continuar assistindo" no recarregamento. "Quero assistir" ficou restrito a filmes (que não têm conceito de episódio), evitando duplicar séries nas duas seções
+- [x] Todas as datas exibidas ao usuário padronizadas em pt-BR (`lib/format-date.ts::formatDate`) — corrigidas datas cruas em formato ISO que apareciam na lista de episódios (`season-list.tsx`) e em "Em breve" (`upcoming-row.tsx`); `history/page.tsx` migrado do `toLocaleDateString("pt-BR")` ad-hoc para o mesmo utilitário compartilhado
+- [x] "Membro desde {data}" na página pública de perfil (`user/[username]/page.tsx`), usando `users.createdAt`
 
 **Nota:** "pendências" do plano virou a seção "Quero assistir" no dashboard (mesmo rótulo já usado no filtro de status da Biblioteca) em vez de um termo novo — mantém o vocabulário do produto consistente.
 
-## Fase 5 — Notificações (push concluído; e-mail pendente — sem conta Resend ainda)
+## Fase 5 — Notificações (push concluído; e-mail transacional via Brevo pronto para recuperação de senha — cron de notificações por e-mail ainda pendente)
 
 - [x] Chaves VAPID geradas (`npx web-push generate-vapid-keys`) e em `.env.local`/`.env.example` (`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_SUBJECT`)
 - [x] Service Worker mínimo (`public/sw.js`) — só o necessário para push (evento `push` → `showNotification`, `notificationclick` → foca/abre a página do título); não é o Service Worker completo de PWA/offline da Fase 6, mas convive com ele depois sem conflito
@@ -86,7 +90,7 @@ Referência do plano completo: `C:\Users\andre\.claude\plans\quero-fazer-um-sist
 - [x] Deduplicação — `dedup_key` único em `notification_log` (`push:<userId>:<titleId>:<tipo>:<temporada-episódio ou data>`), checado antes de enviar e protegido por `onConflictDoNothing` como rede de segurança extra a nível de banco
 - [x] Assinaturas mortas (404/410) removidas automaticamente após tentativa de envio falhar (`lib/push.ts` classifica o erro; a rota do cron apaga a linha de `push_subscriptions`)
 - [x] Exclusão de talk shows/jornalismo dos alertas por episódio — gêneros TMDb "Talk" (10767) e "News" (10763) pulam notificação de tipo "novo episódio" (nova temporada e lançamento de filme não são afetados)
-- [ ] Envio de e-mail via Resend + templates (React Email) — não iniciado, aguardando o usuário criar a conta Resend
+- [ ] Envio de e-mail pelo cron de notificações (novo episódio/temporada) — a infra de e-mail em si **já existe e está testada** (Brevo, `lib/email.ts`, usada pela recuperação de senha da Fase 1), só falta reaproveitá-la aqui: hoje o cron só verifica `pushEnabled` e ignora o canal `"email"` do enum `notification_channel`. Não é mais um bloqueio de conta/infraestrutura, só de código
 - [ ] Quiet hours / fuso horário por usuário — colunas já existem em `notification_preferences`, ainda sem UI nem uso no cron (fora do escopo desta rodada)
 
 **Como testei:** rodei o dev server com as env vars novas (precisou reiniciar — variáveis só carregam na subida do processo), confirmei `GET /api/cron/check-new-releases` retorna 401 sem o bearer e com um bearer errado, e 200 com o correto (rodou contra os 12 títulos reais rastreados pelas contas de teste desta sessão, sem erros). Confirmei os toggles de preferência persistindo de verdade (desligar → recarregar página → continua desligado, lido do banco). **Limitação do ambiente de teste:** o Chromium headless usado para verificação sempre reporta `Notification.permission` como `"denied"`, mesmo concedendo a permissão via Playwright — não deu para simular o clique em "Ativar" ponta a ponta pedindo permissão de verdade; o fluxo de gravação em `push_subscriptions` (mesmo padrão de upsert usado em outras tabelas do app) e o tratamento de erro de envio (`lib/push.ts`, testado com uma subscription inválida — retorna erro estruturado em vez de derrubar a rota) foram verificados separadamente. Também não há como forçar de propósito um "episódio lançado hoje" real sem re-sincronizar de verdade com a TMDb (a rota sempre busca dado fresco antes de comparar), então o caminho completo "detectou lançamento → mandou push → gravou log" só será visto com dado real do dia a dia.
@@ -98,7 +102,7 @@ Referência do plano completo: `C:\Users\andre\.claude\plans\quero-fazer-um-sist
 - [ ] Alternância clara de modo escuro/claro (variáveis já existem via shadcn, falta o botão)
 - [ ] Responsividade revisada (mobile) em todas as telas
 - [ ] Auditoria completa de estados vazios/erro
-- [ ] Atribuição da TMDb (ver nota na Fase 2 — requisito legal)
+- [x] Atribuição da TMDb — feita, ver Fase 2
 
 ---
 
@@ -124,9 +128,13 @@ Referência do plano completo: `C:\Users\andre\.claude\plans\quero-fazer-um-sist
 - **Banco:** Supabase dedicado `arrc` (São Paulo) — migrado de um projeto inicial no Canadá após latência de ~300ms/consulta se mostrar perceptível; hoje ~50-115ms.
 - **Autenticação:** Auth.js próprio (Credentials + Google), não Supabase Auth — por isso sessão é via JWT (com `sessionVersion` para revogação), não sessão em banco.
 - **Cache de metadados:** `titles`/`seasons` são atualizados a cada visita à página de detalhe (write-through), não só na primeira vez.
+- **E-mail transacional:** Brevo, não Resend como cogitado originalmente — conta já criada e remetente verificado antes de qualquer código ser escrito, então a troca não teve custo.
+- **Storage de avatar:** Supabase Storage (bucket `avatars`, público) em vez de um serviço novo (Vercel Blob, S3) — reaproveita o mesmo projeto Supabase já usado para o banco, sem depender do deploy na Vercel estar pronto.
 
 ## Bugs encontrados e corrigidos
 
 - Botão "Adicionar" reaparecendo como não-adicionado em buscas novas → busca agora consulta a grade do usuário.
 - Botão "Adicionar" demorado (2-3s) → resposta otimista instantânea + removida uma busca redundante à TMDb.
 - Loop infinito de redirecionamento login ↔ dashboard após a migração de banco (sessão antiga apontando para usuário inexistente) → rota `/api/auth/invalidate` limpa a sessão corretamente.
+- E-mail de teste (Brevo) chegando com acentos corrompidos (mojibake, `�` no lugar de "ç"/"ã"/"é") → causa era passar o corpo da requisição com acentos direto como argumento de linha de comando do shell, que não preservava UTF-8; corrigido escrevendo o payload num arquivo UTF-8 e enviando com `curl --data-binary @arquivo`.
+- Marcar como assistido o último episódio de uma temporada pelo card "próximo episódio" do dashboard apenas fazia o item sumir da lista, sem nenhuma celebração — corrigido generalizando o `CelebrationOverlay` para disparar por temporada, não só quando a série inteira termina (ver Fase 3).

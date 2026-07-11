@@ -1,6 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { GoogleIcon } from "@/components/icons/google-icon";
 import { signIn } from "@/lib/auth";
 
 import { SignupForm } from "./signup-form";
@@ -20,6 +21,7 @@ export default function SignupPage() {
           }}
         >
           <Button type="submit" variant="outline" className="w-full">
+            <GoogleIcon className="size-4" />
             Continuar com Google
           </Button>
         </form>

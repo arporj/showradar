@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import Link from "next/link";
 
+import { AvatarUpload } from "@/components/settings/avatar-upload";
 import { NotificationPreferencesForm } from "@/components/settings/notification-preferences-form";
 import { PrivacyToggle } from "@/components/settings/privacy-toggle";
 import { PushToggle } from "@/components/settings/push-toggle";
@@ -17,13 +18,21 @@ export default async function SettingsPage() {
     .from(notificationPreferences)
     .where(eq(notificationPreferences.userId, session.user.id));
 
-  const [account] = await db.select({ isPrivate: users.isPrivate }).from(users).where(eq(users.id, session.user.id));
+  const [account] = await db
+    .select({ isPrivate: users.isPrivate, avatarUrl: users.avatarUrl, image: users.image, name: users.name })
+    .from(users)
+    .where(eq(users.id, session.user.id));
 
   return (
     <div className="max-w-lg space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Configurações</h1>
         <p className="text-muted-foreground">Notificações e privacidade da sua grade.</p>
+      </div>
+
+      <div className="space-y-3">
+        <h2 className="text-sm font-medium text-muted-foreground">Foto de perfil</h2>
+        <AvatarUpload initialAvatarUrl={account?.avatarUrl ?? account?.image ?? null} name={account?.name ?? ""} />
       </div>
 
       <div className="space-y-3">

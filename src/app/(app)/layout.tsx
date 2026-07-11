@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { TmdbAttribution } from "@/components/layout/tmdb-attribution";
 import { auth, signOut } from "@/lib/auth";
 
 const NAV_LINKS = [
@@ -64,6 +65,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       </header>
 
       <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-8">{children}</main>
+
+      <footer className="border-t px-6 py-4">
+        <div className="mx-auto max-w-5xl">
+          <TmdbAttribution />
+        </div>
+      </footer>
     </div>
   );
 }
