@@ -41,8 +41,10 @@ export async function uploadAvatarAction(formData: FormData): Promise<{ error: s
   const supabase = getSupabaseAdminClient();
   // Fixed key, overwritten on every upload — avoids orphaned old avatars
   // piling up in the bucket, and sidesteps "which file is current" ambiguity
-  // when the user switches image formats between uploads.
-  const objectKey = `${session.user.id}/avatar`;
+  // when the user switches image formats between uploads. Namespaced under
+  // avatars/ since AVATAR_BUCKET ("showradar") is a general-purpose bucket,
+  // not avatar-specific.
+  const objectKey = `avatars/${session.user.id}/avatar`;
 
   const { error: uploadError } = await supabase.storage
     .from(AVATAR_BUCKET)

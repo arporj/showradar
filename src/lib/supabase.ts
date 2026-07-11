@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 
-export const AVATAR_BUCKET = "avatars";
+export const AVATAR_BUCKET = "showradar";
 
 declare global {
   var __supabaseAdminClient: ReturnType<typeof createClient> | undefined;
