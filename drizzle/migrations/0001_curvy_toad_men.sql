@@ -1,0 +1,1 @@
+ALTER TABLE "showradar"."titles" ADD COLUMN "watch_providers_br" jsonb;

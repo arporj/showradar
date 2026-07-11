@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1783546358137,
+      "tag": "0000_cynical_punisher",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1783615471254,
+      "tag": "0001_curvy_toad_men",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1783688934297,
+      "tag": "0002_condemned_dragon_man",
+      "breakpoints": true
+    }
+  ]
+}

@@ -1,0 +1,237 @@
+"use server";
+
+import { and, eq, inArray, lte } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+
+import { episodes, seasons, userEpisodeProgress, userLibrary } from "@/db/schema";
+import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
+import type { LibraryStatus } from "@/lib/library-status";
+import { getWatchedEpisodeCounts } from "@/lib/progress";
+import { syncSeasonEpisodes } from "@/lib/tmdb-sync";
+
+// Today as a plain date string (no time), matching how episode air_date is
+// stored — avoids timezone edge cases from comparing against a Date/Instant.
+function todayDateString() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+// Keeps `user_library.status` in lockstep with actual episode progress, so
+// "Assistindo"/"Assistido" are never something the user has to set by hand:
+// any watched episode moves a title to "watching", finishing every episode
+// moves it to "completed", and clearing every watched episode drops it back
+// to "plan_to_watch". "Abandonei" is the one exception — it's a deliberate,
+// sticky choice that episode activity should never silently override.
+async function syncLibraryStatusFromProgress(userId: string, titleId: string) {
+  const seasonRows = await db
+    .select({ id: seasons.id, episodeCount: seasons.episodeCount })
+    .from(seasons)
+    .where(eq(seasons.titleId, titleId));
+  const total = seasonRows.reduce((sum, s) => sum + (s.episodeCount ?? 0), 0);
+
+  const watchedCounts = await getWatchedEpisodeCounts(
+    userId,
+    seasonRows.map((s) => s.id),
+  );
+  const watched = [...watchedCounts.values()].reduce((sum, n) => sum + n, 0);
+
+  const seriesCompleted = total > 0 && watched >= total;
+  const nextStatus: LibraryStatus = seriesCompleted ? "completed" : watched > 0 ? "watching" : "plan_to_watch";
+
+  const [existing] = await db
+    .select({ status: userLibrary.status })
+    .from(userLibrary)
+    .where(and(eq(userLibrary.userId, userId), eq(userLibrary.titleId, titleId)));
+
+  if (existing?.status === "dropped") return { seriesCompleted: false };
+
+  if (!existing) {
+    await db.insert(userLibrary).values({
+      userId,
+      titleId,
+      status: nextStatus,
+      watchedAt: nextStatus === "completed" ? new Date() : null,
+    });
+    return { seriesCompleted };
+  }
+
+  if (existing.status !== nextStatus) {
+    await db
+      .update(userLibrary)
+      .set({ status: nextStatus, updatedAt: new Date(), watchedAt: nextStatus === "completed" ? new Date() : null })
+      .where(and(eq(userLibrary.userId, userId), eq(userLibrary.titleId, titleId)));
+  }
+
+  return { seriesCompleted };
+}
+
+export async function loadSeasonEpisodes(input: {
+  seasonId: string;
+  titleId: string;
+  tmdbTvId: number;
+  seasonNumber: number;
+}) {
+  const session = await auth();
+
+  await syncSeasonEpisodes(input.seasonId, input.titleId, input.tmdbTvId, input.seasonNumber);
+
+  const episodeRows = await db
+    .select()
+    .from(episodes)
+    .where(eq(episodes.seasonId, input.seasonId))
+    .orderBy(episodes.episodeNumber);
+
+  if (episodeRows.length === 0) return [];
+
+  const watchedIds = session?.user
+    ? new Set(
+        (
+          await db
+            .select({ episodeId: userEpisodeProgress.episodeId })
+            .from(userEpisodeProgress)
+            .where(
+              and(
+                eq(userEpisodeProgress.userId, session.user.id),
+                inArray(
+                  userEpisodeProgress.episodeId,
+                  episodeRows.map((e) => e.id),
+                ),
+              ),
+            )
+        ).map((row) => row.episodeId),
+      )
+    : new Set<string>();
+
+  return episodeRows.map((episode) => ({ ...episode, watched: watchedIds.has(episode.id) }));
+}
+
+export async function toggleEpisodeWatched(episodeId: string, watched: boolean, titleId: string, tmdbTvId: number) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
+
+  if (watched) {
+    await db
+      .insert(userEpisodeProgress)
+      .values({ userId: session.user.id, episodeId })
+      .onConflictDoNothing({ target: [userEpisodeProgress.userId, userEpisodeProgress.episodeId] });
+  } else {
+    await db
+      .delete(userEpisodeProgress)
+      .where(and(eq(userEpisodeProgress.userId, session.user.id), eq(userEpisodeProgress.episodeId, episodeId)));
+  }
+
+  const { seriesCompleted } = await syncLibraryStatusFromProgress(session.user.id, titleId);
+
+  let seasonCompleted = false;
+  if (watched) {
+    const [episodeRow] = await db.select({ seasonId: episodes.seasonId }).from(episodes).where(eq(episodes.id, episodeId));
+    if (episodeRow) {
+      const [seasonRow] = await db
+        .select({ episodeCount: seasons.episodeCount })
+        .from(seasons)
+        .where(eq(seasons.id, episodeRow.seasonId));
+      if (seasonRow?.episodeCount) {
+        const counts = await getWatchedEpisodeCounts(session.user.id, [episodeRow.seasonId]);
+        seasonCompleted = (counts.get(episodeRow.seasonId) ?? 0) >= seasonRow.episodeCount;
+      }
+    }
+  }
+
+  revalidatePath(`/title/tv/${tmdbTvId}`);
+  revalidatePath("/library");
+  revalidatePath("/dashboard");
+
+  return { seasonCompleted, seriesCompleted };
+}
+
+// Only aired episodes are affected — marking an episode that hasn't been
+// released yet as "watched" doesn't make sense, regardless of which way the
+// bulk toggle goes. Syncs the season's episodes first, since this can be
+// called straight from the collapsed season row, before the user has ever
+// expanded it (so `episodes` may not have any rows yet for this season).
+export async function setSeasonWatched(input: {
+  seasonId: string;
+  titleId: string;
+  tmdbTvId: number;
+  seasonNumber: number;
+  watched: boolean;
+}) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
+
+  await syncSeasonEpisodes(input.seasonId, input.titleId, input.tmdbTvId, input.seasonNumber);
+
+  const airedEpisodes = await db
+    .select({ id: episodes.id })
+    .from(episodes)
+    .where(and(eq(episodes.seasonId, input.seasonId), lte(episodes.airDate, todayDateString())));
+
+  const episodeIds = airedEpisodes.map((e) => e.id);
+
+  if (episodeIds.length > 0) {
+    if (input.watched) {
+      await db
+        .insert(userEpisodeProgress)
+        .values(episodeIds.map((episodeId) => ({ userId: session.user.id, episodeId })))
+        .onConflictDoNothing({ target: [userEpisodeProgress.userId, userEpisodeProgress.episodeId] });
+    } else {
+      await db
+        .delete(userEpisodeProgress)
+        .where(and(eq(userEpisodeProgress.userId, session.user.id), inArray(userEpisodeProgress.episodeId, episodeIds)));
+    }
+  }
+
+  await syncLibraryStatusFromProgress(session.user.id, input.titleId);
+
+  revalidatePath(`/title/tv/${input.tmdbTvId}`);
+  revalidatePath("/library");
+  revalidatePath("/dashboard");
+
+  return { airedCount: episodeIds.length };
+}
+
+// Used by the "mark previous episodes too" confirmation: marks every aired
+// episode up to and including `throughEpisodeNumber` in one season. Returns
+// every aired episode id at or before that number (not just newly-marked
+// ones) so the client can set watched=true on all of them idempotently.
+export async function markEpisodesWatchedThrough(input: {
+  seasonId: string;
+  titleId: string;
+  tmdbTvId: number;
+  seasonNumber: number;
+  throughEpisodeNumber: number;
+}) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
+
+  await syncSeasonEpisodes(input.seasonId, input.titleId, input.tmdbTvId, input.seasonNumber);
+
+  const airedUpTo = await db
+    .select({ id: episodes.id })
+    .from(episodes)
+    .where(
+      and(
+        eq(episodes.seasonId, input.seasonId),
+        lte(episodes.episodeNumber, input.throughEpisodeNumber),
+        lte(episodes.airDate, todayDateString()),
+      ),
+    );
+
+  const episodeIds = airedUpTo.map((e) => e.id);
+
+  if (episodeIds.length > 0) {
+    await db
+      .insert(userEpisodeProgress)
+      .values(episodeIds.map((episodeId) => ({ userId: session.user.id, episodeId })))
+      .onConflictDoNothing({ target: [userEpisodeProgress.userId, userEpisodeProgress.episodeId] });
+  }
+
+  await syncLibraryStatusFromProgress(session.user.id, input.titleId);
+
+  revalidatePath(`/title/tv/${input.tmdbTvId}`);
+  revalidatePath("/library");
+  revalidatePath("/dashboard");
+
+  return { watchedEpisodeIds: episodeIds };
+}
