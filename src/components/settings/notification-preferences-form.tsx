@@ -6,6 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { updateNotificationPreferences } from "@/lib/actions/notifications";
 
 interface Prefs {
+  emailEnabled: boolean;
   notifyNewEpisode: boolean;
   notifyNewSeason: boolean;
 }
@@ -27,6 +28,20 @@ export function NotificationPreferencesForm({ initial }: { initial: Prefs }) {
 
   return (
     <div className="space-y-3">
+      <label className="flex items-center justify-between gap-4 rounded-lg border p-4">
+        <div>
+          <p className="text-sm font-medium">Notificar por e-mail</p>
+          <p className="text-xs text-muted-foreground">
+            Além do push, também avisar por e-mail sobre novidades da sua grade.
+          </p>
+        </div>
+        <Switch
+          checked={prefs.emailEnabled}
+          disabled={isPending}
+          onCheckedChange={(checked) => toggle("emailEnabled", checked)}
+        />
+      </label>
+
       <label className="flex items-center justify-between gap-4 rounded-lg border p-4">
         <div>
           <p className="text-sm font-medium">Novo episódio</p>

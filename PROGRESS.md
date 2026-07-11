@@ -7,7 +7,7 @@ Referência do plano completo: `C:\Users\andre\.claude\plans\quero-fazer-um-sist
 ## Visão geral
 
 - **Núcleo (Fases 0-4): concluído e testado contra TMDb/banco reais.**
-- **Fase 5: push concluído e testado; e-mail transacional (Brevo) em produção via recuperação de senha; envio de e-mail pelo cron de notificações ainda pendente.**
+- **Fase 5: concluída** — push e e-mail (Brevo) no cron de notificações, quiet hours por fuso horário.
 - **Fase 6: não iniciado.**
 - **Expansão (Fases 7-13): não iniciada.**
 
@@ -52,7 +52,7 @@ Referência do plano completo: `C:\Users\andre\.claude\plans\quero-fazer-um-sist
 - [x] Botão "Voltar" preservando posição de rolagem e resultados da busca anterior
 - [x] Estados de carregamento (esqueleto) nas páginas de detalhe e de pessoa
 - [x] Otimizações de performance (menos consultas redundantes, consultas paralelas, ação mais leve ao adicionar da própria tela de detalhe)
-- [ ] Estado de carregamento (esqueleto) na página de busca e na grade — ainda não adicionado
+- [x] Estado de carregamento (esqueleto) na página de busca e na grade — troca o texto "Buscando..." por cartões-esqueleto (`components/search/result-card-skeleton.tsx`, `user-result-card-skeleton.tsx`) enquanto a primeira página de resultados carrega em cada aba; `library/loading.tsx` cobre o Suspense automático da rota (título, pílulas de filtro e grade de pôsteres)
 - [x] Atribuição obrigatória da TMDb (logo + texto legal no rodapé) — logo oficial (`public/tmdb-logo.svg`, versão "short blue" do brand kit da TMDb) + texto "Este produto usa a API do TMDB, mas não é endossado ou certificado pelo TMDB." linkando para themoviedb.org, no rodapé de todas as páginas autenticadas (`(app)/layout.tsx`) e das telas de login/signup (`(auth)/layout.tsx`); mesmo estilo do link de atribuição da JustWatch já existente (`components/layout/tmdb-attribution.tsx`)
 - [x] "Onde assistir" na página de detalhe — logos dos serviços de streaming (assinatura/grátis/com anúncios) disponíveis no Brasil, via `append_to_response=watch/providers` da TMDb (dados da JustWatch), sincronizado junto com o resto do título e cacheado em `titles.watch_providers_br` (migração `0001_curvy_toad_men.sql`); link de atribuição à JustWatch incluído (exigência de uso desses dados, independente da atribuição geral da TMDb acima)
 
@@ -81,7 +81,7 @@ Referência do plano completo: `C:\Users\andre\.claude\plans\quero-fazer-um-sist
 
 **Nota:** "pendências" do plano virou a seção "Quero assistir" no dashboard (mesmo rótulo já usado no filtro de status da Biblioteca) em vez de um termo novo — mantém o vocabulário do produto consistente.
 
-## Fase 5 — Notificações (push concluído; e-mail transacional via Brevo pronto para recuperação de senha — cron de notificações por e-mail ainda pendente)
+## Fase 5 — Notificações (concluída: push e e-mail no cron, quiet hours por fuso horário)
 
 - [x] Chaves VAPID geradas (`npx web-push generate-vapid-keys`) e em `.env.local`/`.env.example` (`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_SUBJECT`)
 - [x] Service Worker mínimo (`public/sw.js`) — só o necessário para push (evento `push` → `showNotification`, `notificationclick` → foca/abre a página do título); não é o Service Worker completo de PWA/offline da Fase 6, mas convive com ele depois sem conflito
@@ -91,10 +91,10 @@ Referência do plano completo: `C:\Users\andre\.claude\plans\quero-fazer-um-sist
 - [x] Deduplicação — `dedup_key` único em `notification_log` (`push:<userId>:<titleId>:<tipo>:<temporada-episódio ou data>`), checado antes de enviar e protegido por `onConflictDoNothing` como rede de segurança extra a nível de banco
 - [x] Assinaturas mortas (404/410) removidas automaticamente após tentativa de envio falhar (`lib/push.ts` classifica o erro; a rota do cron apaga a linha de `push_subscriptions`)
 - [x] Exclusão de talk shows/jornalismo dos alertas por episódio — gêneros TMDb "Talk" (10767) e "News" (10763) pulam notificação de tipo "novo episódio" (nova temporada e lançamento de filme não são afetados)
-- [ ] Envio de e-mail pelo cron de notificações (novo episódio/temporada) — a infra de e-mail em si **já existe e está testada** (Brevo, `lib/email.ts`, usada pela recuperação de senha da Fase 1), só falta reaproveitá-la aqui: hoje o cron só verifica `pushEnabled` e ignora o canal `"email"` do enum `notification_channel`. Não é mais um bloqueio de conta/infraestrutura, só de código
-- [ ] Quiet hours / fuso horário por usuário — colunas já existem em `notification_preferences`, ainda sem UI nem uso no cron (fora do escopo desta rodada)
+- [x] Envio de e-mail pelo cron de notificações (novo episódio/temporada/lançamento de filme) — reaproveita a infra da Fase 1 (`lib/email.ts`, Brevo); cada usuário elegível agora é checado nos dois canais independentemente (`emailEnabled`/`pushEnabled`), cada um com seu próprio `dedup_key` (`email:...` vs `push:...`) e sua própria linha em `notification_log` (`channel: "email"`), reaproveitando o mesmo título/corpo/link já calculados para o push — sem duplicar a lógica de mensagem por canal. Template em `lib/email.ts::notificationEmailHtml`
+- [x] Quiet hours / fuso horário por usuário — nova seção "Horário de silêncio" em `/settings` (`components/settings/quiet-hours-form.tsx`): toggle liga/desliga o período, dois campos de hora (início/fim, aceita virar a meia-noite, ex. 22:00–07:00) e um seletor de fuso horário limitado a 4 fusos brasileiros (`lib/quiet-hours.ts::TIMEZONE_OPTIONS`) — suficiente para um app 100% pt-BR, sem precisar de um seletor de fuso global. `lib/quiet-hours.ts::isWithinQuietHours` calcula o horário local do usuário via `Intl.DateTimeFormat` e é checado no cron antes de mandar por qualquer canal (push ou e-mail) — usuário com os dois campos em branco (padrão) nunca entra em silêncio
 
-**Como testei:** rodei o dev server com as env vars novas (precisou reiniciar — variáveis só carregam na subida do processo), confirmei `GET /api/cron/check-new-releases` retorna 401 sem o bearer e com um bearer errado, e 200 com o correto (rodou contra os 12 títulos reais rastreados pelas contas de teste desta sessão, sem erros). Confirmei os toggles de preferência persistindo de verdade (desligar → recarregar página → continua desligado, lido do banco). **Limitação do ambiente de teste:** o Chromium headless usado para verificação sempre reporta `Notification.permission` como `"denied"`, mesmo concedendo a permissão via Playwright — não deu para simular o clique em "Ativar" ponta a ponta pedindo permissão de verdade; o fluxo de gravação em `push_subscriptions` (mesmo padrão de upsert usado em outras tabelas do app) e o tratamento de erro de envio (`lib/push.ts`, testado com uma subscription inválida — retorna erro estruturado em vez de derrubar a rota) foram verificados separadamente. Também não há como forçar de propósito um "episódio lançado hoje" real sem re-sincronizar de verdade com a TMDb (a rota sempre busca dado fresco antes de comparar), então o caminho completo "detectou lançamento → mandou push → gravou log" só será visto com dado real do dia a dia.
+**Como testei:** validei a query estendida (`users` + `notification_preferences`, incluindo as colunas novas) direto contra o banco real; testei `isWithinQuietHours` com os três casos (sem horário configurado, dentro da janela com virada de meia-noite, fora da janela) e todos bateram com o esperado; enviei uma prévia real do novo template de e-mail de notificação (`notificationEmailHtml`) via Brevo para validação visual; rodei `GET /api/cron/check-new-releases` contra o dev server (200, sem eventos reais no dia do teste, então o envio em si não foi exercitado ao vivo — mas a consulta que alimenta esse envio foi validada isoladamente); `npm run build` (produção) e `npx tsc --noEmit` sem erros após as mudanças.
 
 ## Fase 6 — PWA + Polimento Premium (não iniciada)
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { UserResultCard } from "@/components/search/user-result-card";
+import { UserResultCardSkeleton } from "@/components/search/user-result-card-skeleton";
 import { Button } from "@/components/ui/button";
 import { usePaginatedSearch } from "@/hooks/use-paginated-search";
 import type { UserSearchResult } from "@/lib/user-search";
@@ -14,7 +15,9 @@ export function UserSearchTab({ query, active }: { query: string; active: boolea
 
   return (
     <div className="space-y-3">
-      {isLoading && results.length === 0 && <p className="text-sm text-muted-foreground">Buscando...</p>}
+      {isLoading &&
+        results.length === 0 &&
+        Array.from({ length: 4 }).map((_, i) => <UserResultCardSkeleton key={i} />)}
       {error && <p className="text-sm text-destructive">{error}</p>}
       {!isLoading && !error && results.length === 0 && (
         <p className="text-sm text-muted-foreground">Nada encontrado para &quot;{query}&quot;.</p>

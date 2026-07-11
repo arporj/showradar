@@ -59,7 +59,27 @@ export async function unsubscribeFromPush(endpoint: string) {
   revalidatePath("/settings");
 }
 
-export async function updateNotificationPreferences(input: { notifyNewEpisode: boolean; notifyNewSeason: boolean }) {
+export async function updateNotificationPreferences(input: {
+  emailEnabled: boolean;
+  notifyNewEpisode: boolean;
+  notifyNewSeason: boolean;
+}) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
+
+  await db
+    .insert(notificationPreferences)
+    .values({ userId: session.user.id, ...input })
+    .onConflictDoUpdate({ target: [notificationPreferences.userId], set: input });
+
+  revalidatePath("/settings");
+}
+
+export async function updateQuietHours(input: {
+  quietHoursStart: string | null;
+  quietHoursEnd: string | null;
+  timezone: string;
+}) {
   const session = await auth();
   if (!session?.user) redirect("/login");
 

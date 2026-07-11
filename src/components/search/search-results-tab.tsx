@@ -1,6 +1,7 @@
 "use client";
 
 import { SearchResultCard } from "@/components/search/result-card";
+import { SearchResultCardSkeleton } from "@/components/search/result-card-skeleton";
 import { Button } from "@/components/ui/button";
 import { usePaginatedSearch } from "@/hooks/use-paginated-search";
 import type { TmdbSearchResult } from "@/lib/tmdb";
@@ -22,7 +23,9 @@ export function SearchResultsTab({
 
   return (
     <div className="space-y-3">
-      {isLoading && results.length === 0 && <p className="text-sm text-muted-foreground">Buscando...</p>}
+      {isLoading &&
+        results.length === 0 &&
+        Array.from({ length: 4 }).map((_, i) => <SearchResultCardSkeleton key={i} />)}
       {error && <p className="text-sm text-destructive">{error}</p>}
       {!isLoading && !error && results.length === 0 && (
         <p className="text-sm text-muted-foreground">Nada encontrado para &quot;{query}&quot;.</p>

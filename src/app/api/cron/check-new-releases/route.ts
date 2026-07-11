@@ -7,9 +7,12 @@ import {
   pushSubscriptions,
   titles as titlesTable,
   userLibrary,
+  users,
 } from "@/db/schema";
 import { db } from "@/lib/db";
+import { notificationEmailHtml, sendEmail } from "@/lib/email";
 import { sendPushNotification } from "@/lib/push";
+import { isWithinQuietHours } from "@/lib/quiet-hours";
 import type { TmdbEpisodeRef } from "@/lib/tmdb";
 import { syncTitleFromTmdb } from "@/lib/tmdb-sync";
 
@@ -103,37 +106,35 @@ export async function GET(request: NextRequest) {
   let sent = 0;
   let failed = 0;
   let skippedDuplicate = 0;
+  let skippedQuietHours = 0;
 
   for (const event of events) {
     const eligibleUsers = await db
       .select({
         userId: userLibrary.userId,
+        email: users.email,
         pushEnabled: notificationPreferences.pushEnabled,
+        emailEnabled: notificationPreferences.emailEnabled,
         notifyNewEpisode: notificationPreferences.notifyNewEpisode,
         notifyNewSeason: notificationPreferences.notifyNewSeason,
+        quietHoursStart: notificationPreferences.quietHoursStart,
+        quietHoursEnd: notificationPreferences.quietHoursEnd,
+        timezone: notificationPreferences.timezone,
       })
       .from(userLibrary)
       .innerJoin(notificationPreferences, eq(notificationPreferences.userId, userLibrary.userId))
+      .innerJoin(users, eq(users.id, userLibrary.userId))
       .where(and(eq(userLibrary.titleId, event.titleId), ne(userLibrary.status, "dropped")));
 
     for (const user of eligibleUsers) {
-      if (!user.pushEnabled) continue;
       // new_movie_release has no dedicated preference column — it's gated
       // by the same "notify me about new content" toggle as new_episode.
       if (event.notificationType === "new_season" ? !user.notifyNewSeason : !user.notifyNewEpisode) continue;
 
-      const dedupKey = `push:${user.userId}:${event.titleId}:${event.notificationType}:${event.dedupSuffix}`;
-      const [existingLog] = await db
-        .select({ id: notificationLog.id })
-        .from(notificationLog)
-        .where(eq(notificationLog.dedupKey, dedupKey));
-      if (existingLog) {
-        skippedDuplicate++;
+      if (isWithinQuietHours(new Date(), user.timezone, user.quietHoursStart, user.quietHoursEnd)) {
+        skippedQuietHours++;
         continue;
       }
-
-      const subscriptions = await db.select().from(pushSubscriptions).where(eq(pushSubscriptions.userId, user.userId));
-      if (subscriptions.length === 0) continue;
 
       const title =
         event.notificationType === "new_movie_release"
@@ -144,34 +145,90 @@ export async function GET(request: NextRequest) {
       const body = event.episodeLabel ? `${event.episodeLabel} já está disponível` : "Já disponível para assistir";
       const url = `${process.env.NEXT_PUBLIC_APP_URL}/title/${event.mediaType}/${event.tmdbId}`;
 
-      let anySent = false;
-      for (const subscription of subscriptions) {
-        const result = await sendPushNotification(
-          { endpoint: subscription.endpoint, keys: { p256dh: subscription.p256dh, auth: subscription.auth } },
-          { title, body, url },
-        );
-        if (result.ok) {
-          anySent = true;
-        } else if (result.expired) {
-          await db.delete(pushSubscriptions).where(eq(pushSubscriptions.id, subscription.id));
+      if (user.pushEnabled) {
+        const pushDedupKey = `push:${user.userId}:${event.titleId}:${event.notificationType}:${event.dedupSuffix}`;
+        const [existingPushLog] = await db
+          .select({ id: notificationLog.id })
+          .from(notificationLog)
+          .where(eq(notificationLog.dedupKey, pushDedupKey));
+
+        if (!existingPushLog) {
+          const subscriptions = await db
+            .select()
+            .from(pushSubscriptions)
+            .where(eq(pushSubscriptions.userId, user.userId));
+
+          if (subscriptions.length > 0) {
+            let anySent = false;
+            for (const subscription of subscriptions) {
+              const result = await sendPushNotification(
+                { endpoint: subscription.endpoint, keys: { p256dh: subscription.p256dh, auth: subscription.auth } },
+                { title, body, url },
+              );
+              if (result.ok) {
+                anySent = true;
+              } else if (result.expired) {
+                await db.delete(pushSubscriptions).where(eq(pushSubscriptions.id, subscription.id));
+              }
+            }
+
+            await db
+              .insert(notificationLog)
+              .values({
+                userId: user.userId,
+                titleId: event.titleId,
+                channel: "push",
+                notificationType: event.notificationType,
+                status: anySent ? "sent" : "failed",
+                dedupKey: pushDedupKey,
+                sentAt: anySent ? new Date() : null,
+              })
+              .onConflictDoNothing({ target: [notificationLog.dedupKey] });
+
+            if (anySent) sent++;
+            else failed++;
+          }
+        } else {
+          skippedDuplicate++;
         }
       }
 
-      await db
-        .insert(notificationLog)
-        .values({
-          userId: user.userId,
-          titleId: event.titleId,
-          channel: "push",
-          notificationType: event.notificationType,
-          status: anySent ? "sent" : "failed",
-          dedupKey,
-          sentAt: anySent ? new Date() : null,
-        })
-        .onConflictDoNothing({ target: [notificationLog.dedupKey] });
+      if (user.emailEnabled) {
+        const emailDedupKey = `email:${user.userId}:${event.titleId}:${event.notificationType}:${event.dedupSuffix}`;
+        const [existingEmailLog] = await db
+          .select({ id: notificationLog.id })
+          .from(notificationLog)
+          .where(eq(notificationLog.dedupKey, emailDedupKey));
 
-      if (anySent) sent++;
-      else failed++;
+        if (existingEmailLog) {
+          skippedDuplicate++;
+          continue;
+        }
+
+        let emailSent = false;
+        try {
+          await sendEmail({ to: user.email, subject: title, htmlContent: notificationEmailHtml({ title, body, url }) });
+          emailSent = true;
+        } catch (error) {
+          console.error("Failed to send notification email", error);
+        }
+
+        await db
+          .insert(notificationLog)
+          .values({
+            userId: user.userId,
+            titleId: event.titleId,
+            channel: "email",
+            notificationType: event.notificationType,
+            status: emailSent ? "sent" : "failed",
+            dedupKey: emailDedupKey,
+            sentAt: emailSent ? new Date() : null,
+          })
+          .onConflictDoNothing({ target: [notificationLog.dedupKey] });
+
+        if (emailSent) sent++;
+        else failed++;
+      }
     }
   }
 
@@ -181,5 +238,6 @@ export async function GET(request: NextRequest) {
     notificationsSent: sent,
     notificationsFailed: failed,
     duplicatesSkipped: skippedDuplicate,
+    skippedQuietHours,
   });
 }

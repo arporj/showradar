@@ -60,3 +60,22 @@ export function passwordResetEmailHtml(resetUrl: string): string {
   </body>
 </html>`;
 }
+
+export function notificationEmailHtml({ title, body, url }: { title: string; body: string; url: string }): string {
+  return `<html>
+  <head><meta charset="utf-8"></head>
+  <body style="font-family: sans-serif; color: #111; line-height: 1.5;">
+    <h1 style="font-size: 20px;">${title}</h1>
+    <p>${body}</p>
+    <p>
+      <a href="${url}" style="display: inline-block; padding: 10px 20px; background: #111; color: #fff; text-decoration: none; border-radius: 6px;">
+        Ver no ShowRadar
+      </a>
+    </p>
+    <p style="color: #666; font-size: 12px;">
+      Você recebeu este e-mail porque tem notificações por e-mail ativadas no ShowRadar.
+      Pode desativar a qualquer momento em Configurações.
+    </p>
+  </body>
+</html>`;
+}

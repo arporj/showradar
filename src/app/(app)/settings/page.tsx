@@ -5,6 +5,7 @@ import { AvatarUpload } from "@/components/settings/avatar-upload";
 import { NotificationPreferencesForm } from "@/components/settings/notification-preferences-form";
 import { PrivacyToggle } from "@/components/settings/privacy-toggle";
 import { PushToggle } from "@/components/settings/push-toggle";
+import { QuietHoursForm } from "@/components/settings/quiet-hours-form";
 import { notificationPreferences, users } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -48,8 +49,20 @@ export default async function SettingsPage() {
         <PushToggle />
         <NotificationPreferencesForm
           initial={{
+            emailEnabled: prefs?.emailEnabled ?? true,
             notifyNewEpisode: prefs?.notifyNewEpisode ?? true,
             notifyNewSeason: prefs?.notifyNewSeason ?? true,
+          }}
+        />
+      </div>
+
+      <div className="space-y-3">
+        <h2 className="text-sm font-medium text-muted-foreground">Horário de silêncio</h2>
+        <QuietHoursForm
+          initial={{
+            quietHoursStart: prefs?.quietHoursStart ?? null,
+            quietHoursEnd: prefs?.quietHoursEnd ?? null,
+            timezone: prefs?.timezone ?? "America/Sao_Paulo",
           }}
         />
       </div>
