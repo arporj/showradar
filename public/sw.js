@@ -1,8 +1,20 @@
-// Minimal service worker for Web Push — just enough to receive a push
-// event, show a notification, and route a click to the right page. Not a
-// full PWA install/offline setup (that's a separate, later step); this file
-// can be extended or replaced by a precaching-aware service worker then
-// without touching the push logic below.
+// Service worker for both Web Push and PWA installability. Deliberately not
+// an offline-first cache — this app is data-heavy (TMDb/library state changes
+// constantly), so a network-first passthrough avoids ever serving stale
+// content; the fetch handler below exists only to satisfy installability
+// criteria (Chrome/Android require an active SW with a fetch listener).
+
+self.addEventListener("install", () => {
+  self.skipWaiting();
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(self.clients.claim());
+});
+
+self.addEventListener("fetch", (event) => {
+  event.respondWith(fetch(event.request));
+});
 
 self.addEventListener("push", (event) => {
   if (!event.data) return;
@@ -17,7 +29,7 @@ self.addEventListener("push", (event) => {
   const title = payload.title || "ShowRadar";
   const options = {
     body: payload.body || "",
-    icon: "/next.svg",
+    icon: "/icons/icon-192.png",
     data: { url: payload.url || "/dashboard" },
   };
 

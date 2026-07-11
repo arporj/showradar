@@ -45,5 +45,11 @@ export default auth((req) => {
 });
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|manifest.json|sw.js).*)"],
+  // Excludes anything with a file extension in its last path segment (static
+  // assets: favicon.ico, manifest.webmanifest, sw.js, icon.svg,
+  // apple-icon.png, everything under /icons/, /tmdb-logo.svg, etc.) instead
+  // of naming each one — no real page route in this app ever has a dot in
+  // its last segment (usernames/ids are all dot-free), so this can't
+  // accidentally swallow a real route.
+  matcher: ["/((?!api|_next/static|_next/image|.*\\.\\w+$).*)"],
 };

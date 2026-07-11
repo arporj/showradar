@@ -8,7 +8,7 @@ Referência do plano completo: `C:\Users\andre\.claude\plans\quero-fazer-um-sist
 
 - **Núcleo (Fases 0-4): concluído e testado contra TMDb/banco reais.**
 - **Fase 5: concluída** — push e e-mail (Brevo) no cron de notificações, quiet hours por fuso horário.
-- **Fase 6: não iniciado.**
+- **Fase 6: concluída** — PWA instalável, tema escuro/claro, responsividade mobile, telas de erro/404.
 - **Expansão (Fases 7-13): não iniciada.**
 
 ---
@@ -96,14 +96,18 @@ Referência do plano completo: `C:\Users\andre\.claude\plans\quero-fazer-um-sist
 
 **Como testei:** validei a query estendida (`users` + `notification_preferences`, incluindo as colunas novas) direto contra o banco real; testei `isWithinQuietHours` com os três casos (sem horário configurado, dentro da janela com virada de meia-noite, fora da janela) e todos bateram com o esperado; enviei uma prévia real do novo template de e-mail de notificação (`notificationEmailHtml`) via Brevo para validação visual; rodei `GET /api/cron/check-new-releases` contra o dev server (200, sem eventos reais no dia do teste, então o envio em si não foi exercitado ao vivo — mas a consulta que alimenta esse envio foi validada isoladamente); `npm run build` (produção) e `npx tsc --noEmit` sem erros após as mudanças.
 
-## Fase 6 — PWA + Polimento Premium (não iniciada)
+## Fase 6 — PWA + Polimento Premium (concluída)
 
-- [ ] Manifest, ícones, Service Worker (instalável)
-- [ ] Modal de instalação para iOS (detecção de dispositivo)
-- [ ] Alternância clara de modo escuro/claro (variáveis já existem via shadcn, falta o botão)
-- [ ] Responsividade revisada (mobile) em todas as telas
-- [ ] Auditoria completa de estados vazios/erro
-- [x] Atribuição da TMDb — feita, ver Fase 2
+- [x] Manifest, ícones, Service Worker (instalável) — `app/manifest.ts` (gerado, não JSON estático), ícone "radar" placeholder (`public/icons/source.svg`/`source-maskable.svg`, rasterizado via `sharp` em 192/512/512-maskable + apple-icon 180x180); `app/icon.svg` cobre o favicon. `public/sw.js` ganhou `install`/`activate`/`fetch` (passthrough network-first — app é dado-intensivo, então **não** é offline-first, só o mínimo pra passar no critério de instalabilidade do Chrome/Android) e passou a ser registrado em toda página (`components/pwa/register-service-worker.tsx`), não só em `/settings`. Ícone placeholder — trocar pela arte real do ShowRadar quando tiver
+- [x] Modal de instalação para iOS (detecção de dispositivo) — `components/pwa/ios-install-prompt.tsx`: detecta Safari em iOS/iPadOS (sem `beforeinstallprompt` nessa plataforma, a única forma é instrução manual via Compartilhar → Adicionar à Tela de Início), mostra uma vez (lembra em `localStorage`) com um atraso de 2s
+- [x] Alternância clara de modo escuro/claro — `ThemeProvider` (`next-themes`, que já era dependência mas nunca tinha sido montado — `useTheme()` em `sonner.tsx` era um no-op até agora) + botão com ícone sol/lua no header autenticado e no topo das telas de login/signup; testado ao vivo (clique muda a classe `dark` no `<html>` e persiste após reload)
+- [x] Responsividade revisada (mobile) em todas as telas — auditoria com screenshots reais em viewport de 375px (Playwright) encontrou **todas** as páginas autenticadas com overflow horizontal, causado por um único ponto: o header tinha 7 links de navegação numa linha só, sem quebra nem menu mobile. Corrigido escondendo a `<nav>` abaixo de `md:` e adicionando um menu hambúrguer (`DropdownMenu` já existente no kit, nunca usado até agora) com os mesmos links — resolveu o overflow em todas as páginas de uma vez
+- [x] Auditoria completa de estados vazios/erro — a maioria das listas já tinha mensagem de vazio adequada (Biblioteca, Histórico, Solicitações, Em Breve, Dashboard 100% vazio); a lacuna real era estrutural: **não existia `error.tsx` nem `not-found.tsx` em lugar nenhum do app**, então um `notFound()` (já chamado corretamente em `/title` e `/person` para IDs inválidos) caía na página genérica e sem estilo do Next. Adicionados `src/app/not-found.tsx` e `src/app/error.tsx` (usa `unstable_retry`, não `reset` — API nova desta versão do Next, `reset` virou o "escape hatch" e não a recomendação); testado ao vivo com um `tmdbId` inexistente (renderiza dentro do layout autenticado, com header) e uma rota totalmente inexistente (renderiza sozinha, status 404 correto nos dois casos)
+- [x] Atribuição da TMDb — feita, ver Fase 2. **Bug encontrado durante esta rodada**: o logo/texto da TMDb aparecia quebrado pra qualquer visitante deslogado (login/signup) — mesma causa-raiz do bug do manifest abaixo
+
+**Bug de infraestrutura encontrado e corrigido nesta rodada:** o matcher do `proxy.ts` só excluía arquivos estáticos por nome exato (`favicon.ico`, `manifest.json` — nome errado, o real é `manifest.webmanifest`, `sw.js`), então **qualquer asset estático não listado nominalmente** (o manifest do PWA, os ícones novos, e o `tmdb-logo.svg` que já existia) ficava bloqueado pelo middleware de autenticação para visitantes deslogados, redirecionando pra `/login` em vez de servir o arquivo. Trocado por um padrão de exclusão por extensão (`.*\.\w+$`) — o mesmo padrão documentado oficialmente pelos docs do Next para este caso —, que cobre qualquer arquivo estático presente ou futuro sem precisar listar nome por nome; nenhuma rota de página real neste app tem ponto no último segmento (usernames/ids são todos sem ponto), então a exclusão não corre risco de engolir uma rota de verdade.
+
+**Como testei:** Playwright headless (instalado localmente com `--no-save`, sem alterar `package.json`) dirigindo um Chromium contra o dev server: login real, screenshots em viewport mobile (375px) de 9 páginas autenticadas antes/depois da correção do header, toggle de tema com verificação da classe `dark` antes/depois de reload, fetch do `/manifest.webmanifest` e dos 3 ícones (200, `content-type` correto), verificação de que o Service Worker registra (`active: true`) sem erros de console, e navegação a um `tmdbId` inexistente + uma rota totalmente inexistente para validar `not-found.tsx`/status 404. `npm run build` (produção) e `npx tsc --noEmit`/`eslint` sem erros após todas as mudanças.
 
 ---
 
@@ -131,6 +135,8 @@ Referência do plano completo: `C:\Users\andre\.claude\plans\quero-fazer-um-sist
 - **Cache de metadados:** `titles`/`seasons` são atualizados a cada visita à página de detalhe (write-through), não só na primeira vez.
 - **E-mail transacional:** Brevo, não Resend como cogitado originalmente — conta já criada e remetente verificado antes de qualquer código ser escrito, então a troca não teve custo.
 - **Storage de avatar:** Supabase Storage (bucket `showradar`, público, de uso geral — não só avatares) em vez de um serviço novo (Vercel Blob, S3) — reaproveita o mesmo projeto Supabase já usado para o banco, sem depender do deploy na Vercel estar pronto.
+- **Ícone do app:** placeholder gerado (não é a arte final da marca) — um "radar" simples em SVG, rasterizado localmente via `sharp`, só pra destravar o PWA agora; trocar pelos arquivos de verdade quando existirem (`public/icons/source.svg`/`source-maskable.svg` são os arquivos-fonte a substituir).
+- **Menu mobile:** reaproveita o `DropdownMenu` já existente no kit (shadcn/Base UI) em vez de adicionar um componente de "sheet"/drawer novo só pra isso — mais simples e já testado.
 
 ## Bugs encontrados e corrigidos
 
@@ -140,3 +146,6 @@ Referência do plano completo: `C:\Users\andre\.claude\plans\quero-fazer-um-sist
 - E-mail de teste (Brevo) chegando com acentos corrompidos (mojibake, `�` no lugar de "ç"/"ã"/"é") → causa era passar o corpo da requisição com acentos direto como argumento de linha de comando do shell, que não preservava UTF-8; corrigido escrevendo o payload num arquivo UTF-8 e enviando com `curl --data-binary @arquivo`.
 - Marcar como assistido o último episódio de uma temporada pelo card "próximo episódio" do dashboard apenas fazia o item sumir da lista, sem nenhuma celebração — corrigido generalizando o `CelebrationOverlay` para disparar por temporada, não só quando a série inteira termina (ver Fase 3).
 - Deploy na Vercel sempre falhando com `DATABASE_URL is not set` mesmo após configurar as env vars → import do GitHub tinha sido feito duas vezes sem perceber, criando dois projetos Vercel separados; as env vars foram parar no projeto errado. Corrigido apagando o duplicado quebrado e renomeando o funcional (ver Fase 0).
+- Header quebrado no mobile (overflow horizontal em toda página autenticada) → 7 links de navegação numa única linha sem wrap nem menu mobile; corrigido com um menu hambúrguer abaixo de `md:` (ver Fase 6).
+- Assets estáticos (manifest do PWA, ícones, logo da TMDb) bloqueados pelo middleware de autenticação e redirecionando pra `/login` quando o visitante não estava logado → o matcher do `proxy.ts` só excluía arquivos por nome exato e não cobria os novos; trocado por exclusão genérica por extensão (ver Fase 6).
+- Nenhum `error.tsx`/`not-found.tsx` em lugar nenhum do app → `notFound()` (já usado em `/title` e `/person`) caía na página genérica do Next sem nenhuma identidade visual; adicionados os dois na raiz (ver Fase 6).

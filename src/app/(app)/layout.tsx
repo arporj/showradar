@@ -1,9 +1,12 @@
+import { Menu } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { TmdbAttribution } from "@/components/layout/tmdb-attribution";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { auth, signOut } from "@/lib/auth";
 
 const NAV_LINKS = [
@@ -35,7 +38,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <Link href="/dashboard" className="text-lg font-semibold tracking-tight">
               ShowRadar
             </Link>
-            <nav className="flex items-center gap-4 text-sm text-muted-foreground">
+            <nav className="hidden items-center gap-4 text-sm text-muted-foreground md:flex">
               {NAV_LINKS.map((link) => (
                 <Link key={link.href} href={link.href} className="hover:text-foreground">
                   {link.label}
@@ -45,6 +48,21 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </div>
 
           <div className="flex items-center gap-3">
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={<Button type="button" variant="ghost" size="icon" className="md:hidden" aria-label="Abrir menu" />}
+              >
+                <Menu className="size-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                {NAV_LINKS.map((link) => (
+                  <DropdownMenuItem key={link.href} render={<Link href={link.href} />}>
+                    {link.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <ThemeToggle />
             <Avatar className="size-8">
               <AvatarImage src={session.user.avatarUrl ?? undefined} alt={name} />
               <AvatarFallback>{name.slice(0, 2).toUpperCase()}</AvatarFallback>
