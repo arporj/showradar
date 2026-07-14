@@ -22,21 +22,11 @@ export function NextEpisodeCard({ item }: { item: NextEpisodeItem }) {
       // Revalidates /dashboard server-side, so once this resolves the whole
       // list re-renders with this show's *next* episode (or drops it if
       // there isn't one available yet) — no manual refetch needed here.
-      const { seasonCompleted, seriesCompleted } = await toggleEpisodeWatched(
-        item.episodeId,
-        true,
-        item.titleId,
-        item.tmdbId,
-      );
+      const { seriesCompleted } = await toggleEpisodeWatched(item.episodeId, true, item.titleId, item.tmdbId);
       if (seriesCompleted) {
         setCelebration({
           title: "Série concluída!",
           description: `Você assistiu a todos os episódios de ${item.showName}.`,
-        });
-      } else if (seasonCompleted) {
-        setCelebration({
-          title: "Temporada concluída!",
-          description: `Você assistiu a todos os episódios da temporada ${item.seasonNumber} de ${item.showName}.`,
         });
       }
     });

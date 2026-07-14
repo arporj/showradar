@@ -123,26 +123,11 @@ export async function toggleEpisodeWatched(episodeId: string, watched: boolean, 
 
   const { seriesCompleted } = await syncLibraryStatusFromProgress(session.user.id, titleId);
 
-  let seasonCompleted = false;
-  if (watched) {
-    const [episodeRow] = await db.select({ seasonId: episodes.seasonId }).from(episodes).where(eq(episodes.id, episodeId));
-    if (episodeRow) {
-      const [seasonRow] = await db
-        .select({ episodeCount: seasons.episodeCount })
-        .from(seasons)
-        .where(eq(seasons.id, episodeRow.seasonId));
-      if (seasonRow?.episodeCount) {
-        const counts = await getWatchedEpisodeCounts(session.user.id, [episodeRow.seasonId]);
-        seasonCompleted = (counts.get(episodeRow.seasonId) ?? 0) >= seasonRow.episodeCount;
-      }
-    }
-  }
-
   revalidatePath(`/title/tv/${tmdbTvId}`);
   revalidatePath("/library");
   revalidatePath("/dashboard");
 
-  return { seasonCompleted, seriesCompleted };
+  return { seriesCompleted };
 }
 
 // Only aired episodes are affected — marking an episode that hasn't been
@@ -234,4 +219,53 @@ export async function markEpisodesWatchedThrough(input: {
   revalidatePath("/dashboard");
 
   return { watchedEpisodeIds: episodeIds };
+}
+
+// Catch-up action for a show the user already watched outside the app (or
+// wants to skip ahead on) — marks every already-aired episode across every
+// season watched in one go, instead of going season by season. Syncs any
+// season whose episodes haven't been fetched yet first.
+export async function markAllEpisodesWatched(titleId: string, tmdbTvId: number) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
+
+  const seasonRows = await db
+    .select({ id: seasons.id, seasonNumber: seasons.seasonNumber })
+    .from(seasons)
+    .where(eq(seasons.titleId, titleId));
+  if (seasonRows.length === 0) return { watchedCountsBySeasonId: {} as Record<string, number> };
+
+  await Promise.all(seasonRows.map((s) => syncSeasonEpisodes(s.id, titleId, tmdbTvId, s.seasonNumber)));
+
+  const airedEpisodes = await db
+    .select({ id: episodes.id, seasonId: episodes.seasonId })
+    .from(episodes)
+    .where(
+      and(
+        inArray(
+          episodes.seasonId,
+          seasonRows.map((s) => s.id),
+        ),
+        lte(episodes.airDate, todayDateString()),
+      ),
+    );
+
+  if (airedEpisodes.length > 0) {
+    await db
+      .insert(userEpisodeProgress)
+      .values(airedEpisodes.map((e) => ({ userId: session.user.id, episodeId: e.id })))
+      .onConflictDoNothing({ target: [userEpisodeProgress.userId, userEpisodeProgress.episodeId] });
+  }
+
+  await syncLibraryStatusFromProgress(session.user.id, titleId);
+
+  revalidatePath(`/title/tv/${tmdbTvId}`);
+  revalidatePath("/library");
+  revalidatePath("/dashboard");
+
+  const watchedCountsBySeasonId: Record<string, number> = {};
+  for (const e of airedEpisodes) {
+    watchedCountsBySeasonId[e.seasonId] = (watchedCountsBySeasonId[e.seasonId] ?? 0) + 1;
+  }
+  return { watchedCountsBySeasonId };
 }
