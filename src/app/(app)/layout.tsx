@@ -3,9 +3,12 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
+import { SignOutForm } from "@/components/layout/sign-out-form";
 import { TmdbAttribution } from "@/components/layout/tmdb-attribution";
+import { OfflineIndicator } from "@/components/pwa/offline-indicator";
+import { OfflineSyncManager } from "@/components/pwa/offline-sync-manager";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { auth, signOut } from "@/lib/auth";
 
@@ -66,22 +69,20 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
+            <OfflineIndicator />
             <ThemeToggle />
             <Avatar className="size-8">
               <AvatarImage src={session.user.avatarUrl ?? undefined} alt={name} />
               <AvatarFallback>{name.slice(0, 2).toUpperCase()}</AvatarFallback>
             </Avatar>
             <span className="hidden text-sm text-muted-foreground sm:inline">@{session.user.username}</span>
-            <form
+            <SignOutForm
               action={async () => {
                 "use server";
                 await signOut({ redirectTo: "/login" });
               }}
-            >
-              <Button type="submit" variant="ghost" size="sm">
-                Sair
-              </Button>
-            </form>
+              label="Sair"
+            />
           </div>
         </div>
       </header>
@@ -93,6 +94,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <TmdbAttribution />
         </div>
       </footer>
+
+      <OfflineSyncManager userId={session.user.id} />
     </div>
   );
 }

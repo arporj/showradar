@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { addExistingTitleToLibrary, removeFromLibrary, updateLibraryStatus } from "@/lib/actions/library";
 import { LIBRARY_STATUS_LABEL, type LibraryStatus } from "@/lib/library-status";
+import { runOrQueue } from "@/lib/offline/run-or-queue";
 
 // Movies have no episode-level signal to derive status from, so all four
 // stay manual and always visible, in a fixed order.
@@ -36,7 +37,10 @@ export function LibraryStatusControl({
   function handleChangeStatus(status: LibraryStatus) {
     startTransition(async () => {
       setOptimisticStatus(status);
-      await updateLibraryStatus(titleId, status);
+      await runOrQueue(() => updateLibraryStatus(titleId, status), {
+        type: "library-status",
+        payload: { titleId, status },
+      });
     });
   }
 

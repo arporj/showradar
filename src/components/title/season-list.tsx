@@ -27,6 +27,8 @@ import {
   toggleEpisodeWatched,
 } from "@/lib/actions/episodes";
 import { formatDate } from "@/lib/format-date";
+import { isOffline } from "@/lib/offline/network-status";
+import { runOrQueue } from "@/lib/offline/run-or-queue";
 import { tmdbImageUrl } from "@/lib/tmdb";
 import { cn } from "@/lib/utils";
 
@@ -143,7 +145,10 @@ function SeasonItem({
     setEpisodeRows((prev) => prev!.map((e) => (e.id === episode.id ? { ...e, watched: nextWatched } : e)));
     onSeasonCountChange(season.id, watchedCount + (nextWatched ? 1 : -1));
     startTransition(async () => {
-      await toggleEpisodeWatched(episode.id, nextWatched, titleId, tmdbId);
+      await runOrQueue(() => toggleEpisodeWatched(episode.id, nextWatched, titleId, tmdbId), {
+        type: "episode-toggle",
+        payload: { episodeId: episode.id, watched: nextWatched, titleId, tmdbTvId: tmdbId },
+      });
     });
   }
 
@@ -157,7 +162,11 @@ function SeasonItem({
       (e) => e.episodeNumber < episode.episodeNumber && isAired(e.airDate) && !e.watched,
     );
 
-    if (earlierInSeasonUnwatched || incompleteEarlierSeasons.length > 0) {
+    // Offline, the "mark previous too?" backfill flow is out of scope (see
+    // markEarlierSeasonsInBackground/markEpisodesWatchedThrough below) — a
+    // click always just marks the one episode clicked, as if the user had
+    // answered "No, just this one".
+    if (!isOffline() && (earlierInSeasonUnwatched || incompleteEarlierSeasons.length > 0)) {
       setConfirm({ type: "episode", episode });
       return;
     }
@@ -195,14 +204,30 @@ function SeasonItem({
 
   function applySeasonToggle(nextWatched: boolean) {
     setMarkingSeason(true);
+    // Offline fallback for the aired-episode count normally returned by the
+    // server action — computed from already-loaded props, no network
+    // needed. An approximation for a still-airing season (episodeCount may
+    // include unaired episodes), but it self-corrects once the queued
+    // mutation actually replays and the page's data refreshes.
+    const offlineAiredEstimate = episodeRows
+      ? episodeRows.filter((e) => isAired(e.airDate)).length
+      : (season.episodeCount ?? 0);
     startTransition(async () => {
-      const { airedCount } = await setSeasonWatched({
-        seasonId: season.id,
-        titleId,
-        tmdbTvId: tmdbId,
-        seasonNumber: season.seasonNumber,
-        watched: nextWatched,
-      });
+      const result = await runOrQueue(
+        () =>
+          setSeasonWatched({
+            seasonId: season.id,
+            titleId,
+            tmdbTvId: tmdbId,
+            seasonNumber: season.seasonNumber,
+            watched: nextWatched,
+          }),
+        {
+          type: "season-toggle",
+          payload: { seasonId: season.id, titleId, tmdbTvId: tmdbId, seasonNumber: season.seasonNumber, watched: nextWatched },
+        },
+      );
+      const airedCount = result ? result.airedCount : offlineAiredEstimate;
       const nextCount = nextWatched ? airedCount : 0;
       onSeasonCountChange(season.id, nextCount);
       setEpisodeRows((prev) => (prev ? prev.map((e) => (isAired(e.airDate) ? { ...e, watched: nextWatched } : e)) : prev));
@@ -212,7 +237,9 @@ function SeasonItem({
 
   function handleMarkSeason() {
     const nextWatched = !seasonComplete;
-    if (nextWatched && incompleteEarlierSeasons.length > 0) {
+    // Offline, the "mark previous seasons too?" flow is out of scope (see
+    // markEarlierSeasonsInBackground below) — always just toggles this season.
+    if (!isOffline() && nextWatched && incompleteEarlierSeasons.length > 0) {
       setConfirm({ type: "season" });
       return;
     }

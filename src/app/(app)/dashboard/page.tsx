@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { NextEpisodeCard } from "@/components/dashboard/next-episode-card";
+import { SignOutForm } from "@/components/layout/sign-out-form";
 import { TitleCard } from "@/components/library/title-card";
 import { UpcomingRow } from "@/components/library/upcoming-row";
 import { Button } from "@/components/ui/button";
@@ -116,11 +117,7 @@ export default async function DashboardPage() {
 
       <div className="space-y-2 border-t pt-6">
         <h2 className="text-sm font-medium text-muted-foreground">Segurança</h2>
-        <form action={logoutEverywhereAction}>
-          <Button type="submit" variant="outline" size="sm">
-            Sair de todos os dispositivos
-          </Button>
-        </form>
+        <SignOutForm action={logoutEverywhereAction} label="Sair de todos os dispositivos" variant="outline" />
       </div>
     </div>
   );

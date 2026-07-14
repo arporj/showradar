@@ -8,6 +8,7 @@ import { CelebrationOverlay } from "@/components/title/celebration-overlay";
 import { WatchToggleButton } from "@/components/title/episode-watch-button";
 import { toggleEpisodeWatched } from "@/lib/actions/episodes";
 import type { NextEpisodeItem } from "@/lib/next-episode";
+import { runOrQueue } from "@/lib/offline/run-or-queue";
 import { tmdbImageUrl } from "@/lib/tmdb";
 
 export function NextEpisodeCard({ item }: { item: NextEpisodeItem }) {
@@ -22,8 +23,13 @@ export function NextEpisodeCard({ item }: { item: NextEpisodeItem }) {
       // Revalidates /dashboard server-side, so once this resolves the whole
       // list re-renders with this show's *next* episode (or drops it if
       // there isn't one available yet) — no manual refetch needed here.
-      const { seriesCompleted } = await toggleEpisodeWatched(item.episodeId, true, item.titleId, item.tmdbId);
-      if (seriesCompleted) {
+      // Offline, the toggle is queued instead: `result` is undefined and the
+      // celebration is simply skipped (not critical for correctness).
+      const result = await runOrQueue(
+        () => toggleEpisodeWatched(item.episodeId, true, item.titleId, item.tmdbId),
+        { type: "episode-toggle", payload: { episodeId: item.episodeId, watched: true, titleId: item.titleId, tmdbTvId: item.tmdbId } },
+      );
+      if (result?.seriesCompleted) {
         setCelebration({
           title: "Série concluída!",
           description: `Você assistiu a todos os episódios de ${item.showName}.`,

@@ -1,6 +1,6 @@
 # ShowRadar — Status do Projeto
 
-_Atualizado em: 2026-07-14 (complementos pós-Fase 9 concluídos: recomendação variável/descartável, episódios especiais, navegação do admin, contraste, agrupamento do feed e "Títulos parecidos" — fechando a última pendência real da Fase 10)_
+_Atualizado em: 2026-07-14 (Fase 12 — Sincronização offline — concluída)_
 
 Referência do plano completo: `C:\Users\andre\.claude\plans\quero-fazer-um-sistema-magical-kite.md`
 
@@ -16,7 +16,8 @@ Referência do plano completo: `C:\Users\andre\.claude\plans\quero-fazer-um-sist
 - **Complemento — episódios especiais, ordenação da grade e status clicável: concluído** — temporada 0 (especiais) deixou de contar pra decidir se uma série está "Assistida"; corrigido bug que impedia marcar especiais como assistidos (episódios sem `air_date` ficavam com o botão travado, sem erro nenhum); `/library` sem filtro agrupa por status (assistindo → quero assistir → assistido → abandonei); o status atual de um título não aparece mais como card clicável ao lado dos outros.
 - **Complemento — navegação do admin e contraste no modo claro: concluído** — `/admin` virou a própria lista de usuários (antes um dashboard separado, sem volta pra quem entrava em `/admin/users` ou num usuário — o app roda como PWA instalado, sem chrome de navegador), com abas "Usuários"/"Séries" e botão de voltar na página de um usuário; texto cinza (`--muted-foreground`) escurecido no tema claro pra melhor legibilidade (o escuro já estava bom).
 - **Complemento — agrupamento de episódios em "Atividade": concluído** — quando um amigo maratona vários episódios (ou temporadas inteiras) da mesma série, o feed agora colapsa tudo numa única linha expansível (usuário+série), em vez de uma linha por episódio dominando a lista e escondendo a atividade de outros amigos.
-- **Expansão restante (Fases 11-13): não iniciada.**
+- **Fase 12 (Sincronização offline): concluída** — fila de mutações em IndexedDB (marcar episódio/temporada assistido, mudar status da grade) enfileirada quando offline e sincronizada automaticamente ao reconectar; `/dashboard` e `/library` continuam abrindo offline via cache HTTP no Service Worker (não um snapshot em IndexedDB renderizado à parte, como o rascunho original cogitava — decisão revista nesta rodada, ver detalhes abaixo).
+- **Expansão restante (Fases 11 e 13): não iniciada.**
 
 ---
 
@@ -214,7 +215,7 @@ Pedido avulso do usuário, fora da numeração do plano original — três frent
 |---|---|---|
 | 7 | Monetização (anúncios discretos + assinatura Stripe) | Especificada (só arquitetura — rede de anúncio e preço ficam em aberto); pulada por ora a pedido do usuário |
 | 11 | Multi-idioma (pt-BR + en-US + es, UI e metadados) | Especificada; não iniciada |
-| 12 | Sincronização offline (cache de leitura + fila simples) | Especificada; não iniciada |
+| 12 | Sincronização offline (cache de leitura + fila simples) | **Concluída** — ver seção própria abaixo |
 | 13 | Importação de histórico (IMDb + Letterboxd via CSV) | Especificada; baixa prioridade, sem compromisso de cronograma |
 
 *(Fora de escopo por enquanto: wrapper nativo Capacitor + push nativo para lojas de app.)*
@@ -255,14 +256,25 @@ O único item que realmente faltava da Fase 10 original (não só uma pendência
 - [ ] Templates de e-mail (Brevo, `lib/email.ts`) também localizados — notificações e recuperação de senha
 - [ ] Seletor de idioma em `/settings` (troca o locale ativo, redireciona pra URL prefixada correspondente)
 
-### Fase 12 — Sincronização offline (especificação; não iniciada — escopo reduzido)
+### Fase 12 — Sincronização offline (concluída)
 
-- [ ] Armazenamento local via IndexedDB (`idb-keyval` ou `idb` — nenhuma dependência de persistência local existe hoje) — cache do snapshot de `/dashboard` e `/library` pra visualização offline
-- [ ] Fila de mutações limitada a ações sobre títulos já sincronizados: marcar episódio assistido/não assistido, marcar temporada inteira, mudar status da grade, favoritar — **não** inclui adicionar título novo (exige busca na TMDb, que já depende de rede)
-- [ ] Quando `navigator.onLine` for `false` (ou a Server Action falhar por rede), a ação grava na fila local do IndexedDB em vez de chamar o servidor, com resposta otimista na UI (estendendo o padrão `useOptimistic` já usado em `library-status-control.tsx` pra persistir também localmente, não só em memória)
-- [ ] `public/sw.js` ganha Background Sync (`sync` event) — ao voltar a conexão, replaya a fila em ordem, sem resolução de conflito real (last-write-wins: a mutação mais recente da fila vence se dois dispositivos divergirem)
-- [ ] Indicador visual de "modo offline" no header, e um resumo pós-sync ("3 ações sincronizadas") quando a fila termina de ser reenviada
-- [ ] Fora de escopo nesta fase (deliberadamente): resolução de conflito real, sincronização bidirecional completa, busca/adição de títulos offline
+Duas decisões de arquitetura que o rascunho original tinha deixado em aberto foram fechadas nesta rodada, com o usuário, antes de implementar:
+
+- **Visualização offline de `/dashboard`/`/library` via cache HTTP no Service Worker (Cache API), não um snapshot estruturado em IndexedDB renderizado por uma árvore React paralela** — reaproveita as páginas Server Component como já existem, sem duplicar layout; o trade-off aceito é que a tela offline é uma foto congelada da última visita online, sem refletir ações da fila em tempo real até voltar a ficar online e recarregar.
+- **"Favoritar" saiu do escopo da fila** — a coluna `user_library.isFavorite` existe no schema desde o núcleo mas nunca ganhou UI/action nenhuma; não fazia sentido construir uma feature nova só para deixá-la offline-capable. A fila cobre só as 3 mutações que já existiam de verdade.
+
+O que foi construído:
+
+- [x] `idb-keyval` (nova dependência) — fila de mutações em IndexedDB (`src/lib/offline/`), um store só (`showradar-offline`/`mutation-queue`), cada entrada namespaced por `userId` (IndexedDB é por origem, não por conta — importa em aparelho compartilhado, já que o app tem "sair de todos os dispositivos" desde a Fase 1) e tipada por união discriminada (`episode-toggle` / `season-toggle` / `library-status`, `src/lib/offline/types.ts`)
+- [x] `toggleEpisodeWatched`, `setSeasonWatched` e `updateLibraryStatus` já eram upserts idempotentes pra um estado-alvo explícito (não deltas) — replay em ordem de criação (FIFO) já dá "last-write-wins" entre dois aparelhos de graça, sem nenhuma lógica de merge nova
+- [x] `runOrQueue()` (`src/lib/offline/run-or-queue.ts`) — tenta a Server Action normalmente quando online; se falhar (offline de fato, ou uma falha real de rede — tratadas da mesma forma nesta fase de escopo reduzido) ou se `navigator.onLine` já for `false`, enfileira em vez de chamar o servidor. Usa `unstable_rethrow` do Next pra nunca engolir um `redirect()`/`notFound()` real (ex.: sessão expirada) como se fosse "offline". Substituiu a chamada direta às 3 actions em 4 pontos de mutação: `library-status-control.tsx`, `season-list.tsx` (toggle de episódio e de temporada inteira) e `next-episode-card.tsx` (o card "próximo episódio" do dashboard, achado durante a implementação — chamava `toggleEpisodeWatched` direto, fora do `season-list.tsx`, e ficaria quebrado offline bem na tela que devia funcionar offline)
+- [x] O fluxo composto "marcar episódios/temporadas anteriores também?" (`markEpisodesWatchedThrough`, `markAllEpisodesWatched`, `markEarlierSeasonsInBackground`) ficou fora da fila — offline, o diálogo de confirmação simplesmente não abre mais (`isOffline()` checado antes), e o clique vira sempre "só este episódio/temporada", como se o usuário tivesse respondido "não" à pergunta que nem chega a aparecer
+- [x] `OfflineSyncManager` (`src/components/pwa/offline-sync-manager.tsx`, montado em `(app)/layout.tsx`) — ao montar já online (fila deixada de uma sessão anterior) ou ao disparar o evento `online` do navegador, drena a fila em ordem (`drainQueue()`, get→delete→call por entrada, pra uma segunda aba tentando reproduzir a mesma entrada já removida ser um no-op seguro, não erro); ao sincronizar `N` itens, dá `router.refresh()` e mostra um toast ("N ações sincronizadas", via `sonner`)
+- [x] `public/sw.js` ganhou Background Sync (`sync` event) como reforço best-effort — Safari/iOS não tem `SyncManager` (o app já suporta iOS via `ios-install-prompt.tsx`), então o mecanismo principal continua sendo o listener `online` no cliente; o Service Worker só dá `postMessage` nos clients abertos pra pedir que rodem o mesmo `drainQueue()`, nunca chama a Server Action ele mesmo (reimplementar o protocolo de POST de Server Actions do Next dentro do SW seria frágil entre deploys)
+- [x] `public/sw.js` — navegação pra `/dashboard`/`/library` vira network-first com fallback de cache (Cache API); `/_next/static/*` vira cache-first (necessário pra uma página offline hidratar com estilo/JS em vez de HTML quebrado); `activate` passa a limpar caches `showradar-*` fora de uma allowlist. Os handlers de push/notificationclick da Fase 5/6 ficaram intocados
+- [x] `OfflineIndicator` (badge "Offline" no header, ao lado do `ThemeToggle`) e `SignOutForm` (`src/components/layout/sign-out-form.tsx`) — **risco encontrado durante a implementação:** o Service Worker intercepta a navegação antes de qualquer round-trip de rede, então uma resposta cacheada de `/dashboard`/`/library` nunca passava pelo checkpoint de auth do `proxy.ts`; num aparelho compartilhado, sair da conta e depois ficar offline serviria o HTML autenticado antigo do usuário anterior. Corrigido limpando o cache de páginas no cliente antes de submeter o sign-out de verdade (`clearOfflinePageCacheOnSignOut`) — os dois pontos de logout (`(app)/layout.tsx` e "sair de todos os dispositivos" em `/dashboard`) foram migrados pro novo componente
+
+**Como testei:** Playwright headless contra `npm run build && npm start` (porta separada da instância de dev já rodando) e o Supabase real de ponta a ponta — conta de teste nova, adicionou uma série via busca, visitou `/dashboard` e `/library` online (confirmado Service Worker `active` e os dois caches `showradar-pages-v1`/`showradar-static-v1` populados via `caches.keys()`); com o contexto do navegador em modo offline (`context.setOffline(true)`), confirmou que as duas rotas ainda renderizam (não a tela de erro do navegador), que o badge "Offline" aparece, e que marcar um episódio assistido pelo card do dashboard atualiza a UI na hora e grava uma entrada em IndexedDB (`showradar-offline`/`mutation-queue`, inspecionada direto via `indexedDB.open` na página); voltando a ficar online, confirmou que a fila esvazia sozinha (o listener `online`), que o toast de sincronização aparece, e que a query da fila volta a zero; por fim, saiu da conta e confirmou que `showradar-pages-v1` some do Cache Storage enquanto `showradar-static-v1` permanece. Conta de teste removida do banco ao final (via `drizzle`/`tsx`, cascade cuidou das linhas dependentes). `npx tsc --noEmit`, `npm run lint` e `npm run build` sem erros. **Pendente:** não testei num navegador sem `SyncManager` (Safari/iOS) — a recuperação por lá depende só do listener `online`, que foi testado, mas o registro do Background Sync em si (`requestBackgroundSync`) só foi validado por leitura de código garantindo que o feature-detect não lança erro.
 
 ### Fase 13 — Importação de histórico (especificação; baixa prioridade)
 
