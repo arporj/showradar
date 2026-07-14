@@ -74,6 +74,7 @@ export interface TmdbSearchResult {
   first_air_date?: string;
   known_for_department?: string;
   popularity?: number;
+  genre_ids?: number[];
   /** Not from TMDb — annotated by our own /api/tmdb/search route. */
   inLibrary?: boolean;
   numberOfSeasons?: number;
@@ -242,6 +243,71 @@ export function searchTv(query: string, page = 1) {
 export function searchPerson(query: string, page = 1) {
   return searchByType("/search/person", "person", query, page);
 }
+
+// /discover/movie and /discover/tv, like /search/movie and /search/tv, don't
+// stamp media_type on their results — reuse the same "tag it manually" shape
+// as searchByType so downstream code (dedup keys, SearchResultCard) is agnostic
+// to whether a result came from search or discover.
+async function discoverByType(
+  mediaType: "movie" | "tv",
+  genreIds: string | undefined,
+  companyId: number | undefined,
+  page: number,
+) {
+  const params: Record<string, string> = { page: String(page), sort_by: "popularity.desc", include_adult: "false" };
+  if (genreIds) params.with_genres = genreIds;
+  if (companyId) params.with_companies = String(companyId);
+  const data = await tmdbFetch<TmdbSearchResponse>(`/discover/${mediaType}`, params);
+  return { ...data, results: data.results.map((r) => ({ ...r, media_type: mediaType })) };
+}
+
+export function discoverMovie(page: number, opts: { genreIds?: string; companyId?: number }) {
+  return discoverByType("movie", opts.genreIds, opts.companyId, page);
+}
+
+export function discoverTv(page: number, opts: { genreIds?: string; companyId?: number }) {
+  return discoverByType("tv", opts.genreIds, opts.companyId, page);
+}
+
+/**
+ * Curated genre facet for the search combo. TMDb keeps separate (and
+ * differently-shaped) genre taxonomies for movies and TV — e.g. TV has no
+ * "Terror"/"Romance"/"Thriller" bucket, and merges Action+Adventure and
+ * Fantasy+Sci-Fi into single categories. Each entry maps to the movie
+ * genre id(s) (comma = AND, pipe = OR in TMDb's `with_genres`) and, where a
+ * reasonable TV equivalent exists, the TV genre id. IDs are stable across
+ * TMDb and pt-BR labels were confirmed against /genre/{movie,tv}/list.
+ */
+export const GENRE_FACETS = [
+  { label: "Ação e aventura", movieGenreIds: "28,12", tvGenreId: 10759 },
+  { label: "Animação", movieGenreIds: "16", tvGenreId: 16 },
+  { label: "Comédia", movieGenreIds: "35", tvGenreId: 35 },
+  { label: "Crime", movieGenreIds: "80", tvGenreId: 80 },
+  { label: "Documentário", movieGenreIds: "99", tvGenreId: 99 },
+  { label: "Drama", movieGenreIds: "18", tvGenreId: 18 },
+  { label: "Família", movieGenreIds: "10751", tvGenreId: 10751 },
+  { label: "Ficção científica e fantasia", movieGenreIds: "878,14", tvGenreId: 10765 },
+  { label: "Guerra", movieGenreIds: "10752", tvGenreId: 10768 },
+  { label: "Mistério", movieGenreIds: "9648", tvGenreId: 9648 },
+  { label: "Terror", movieGenreIds: "27", tvGenreId: undefined },
+  { label: "Romance", movieGenreIds: "10749", tvGenreId: undefined },
+  { label: "Thriller", movieGenreIds: "53", tvGenreId: undefined },
+  { label: "Faroeste", movieGenreIds: "37", tvGenreId: 37 },
+] as const satisfies readonly { label: string; movieGenreIds: string; tvGenreId: number | undefined }[];
+
+/**
+ * Curated franchise/studio shortcuts, keyed by TMDb company id (looked up via
+ * /search/company). There's no generic "franchise" facet in TMDb like there is
+ * for genre, so this list is hand-picked rather than fetched.
+ */
+export const FRANCHISE_FACETS = [
+  { label: "Marvel", companyId: 420 },
+  { label: "Star Wars", companyId: 1 },
+  { label: "Pixar", companyId: 3 },
+  { label: "DC", companyId: 429 },
+  { label: "Studio Ghibli", companyId: 10342 },
+  { label: "DreamWorks Animation", companyId: 521 },
+] as const satisfies readonly { label: string; companyId: number }[];
 
 // Below this popularity, the best match is likely noise (an obscure exact-ish
 // spelling match) rather than what the user actually meant.

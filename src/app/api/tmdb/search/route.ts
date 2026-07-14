@@ -1,11 +1,7 @@
-import { and, eq, inArray } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
-import { titles, userLibrary } from "@/db/schema";
 import { auth } from "@/lib/auth";
-import { db } from "@/lib/db";
 import {
-  getTvDetail,
   searchMovie,
   searchMovieFuzzy,
   searchMulti,
@@ -16,6 +12,7 @@ import {
   searchTvFuzzy,
   type TmdbSearchResponse,
 } from "@/lib/tmdb";
+import { annotateResults } from "@/lib/tmdb-annotate";
 
 type SearchType = "all" | "movie" | "tv" | "person";
 
@@ -81,39 +78,7 @@ export async function GET(req: NextRequest) {
     const results = sorted.slice(start, end);
     const hasMore = sorted.length > end || tmdbPage < data.total_pages;
 
-    const tmdbIds = results.filter((r) => r.media_type !== "person").map((r) => r.id);
-
-    const libraryKeys = new Set<string>();
-    if (tmdbIds.length > 0) {
-      const rows = await db
-        .select({ tmdbId: titles.tmdbId, mediaType: titles.mediaType })
-        .from(userLibrary)
-        .innerJoin(titles, eq(userLibrary.titleId, titles.id))
-        .where(and(eq(userLibrary.userId, session.user.id), inArray(titles.tmdbId, tmdbIds)));
-      for (const row of rows) libraryKeys.add(`${row.mediaType}-${row.tmdbId}`);
-    }
-
-    // Season count isn't in TMDb's search response, only the full /tv detail —
-    // fetch it in parallel just for the (usually few) tv results in this page.
-    const seasonCounts = new Map<number, number>();
-    await Promise.all(
-      results
-        .filter((r) => r.media_type === "tv")
-        .map(async (r) => {
-          try {
-            const detail = await getTvDetail(r.id);
-            seasonCounts.set(r.id, detail.seasons.filter((s) => s.season_number > 0).length);
-          } catch {
-            // Season count is a nice-to-have; don't fail the whole search over it.
-          }
-        }),
-    );
-
-    const annotated = results.map((r) => ({
-      ...r,
-      inLibrary: r.media_type === "person" ? undefined : libraryKeys.has(`${r.media_type}-${r.id}`),
-      numberOfSeasons: r.media_type === "tv" ? seasonCounts.get(r.id) : undefined,
-    }));
+    const annotated = await annotateResults(results, session.user.id);
 
     return NextResponse.json({ results: annotated, hasMore });
   } catch {
