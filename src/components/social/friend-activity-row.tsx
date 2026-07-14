@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { EpisodeGroupToggle } from "@/components/social/episode-group-toggle";
 import { RatingStars } from "@/components/title/rating-stars";
 import type { FriendActivityItem } from "@/lib/feed";
 import { formatDate } from "@/lib/format-date";
@@ -32,10 +33,13 @@ export function FriendActivityRow({ item }: { item: FriendActivityItem }) {
           </Link>
         </p>
         {item.type === "episode" && (
-          <p className="truncate text-xs text-muted-foreground">
-            T{item.seasonNumber}E{item.episodeNumber}
-            {item.episodeName ? ` • ${item.episodeName}` : ""}
-          </p>
+          <>
+            <p className="truncate text-xs text-muted-foreground">
+              T{item.seasonNumber}E{item.episodeNumber}
+              {item.episodeName ? ` • ${item.episodeName}` : ""}
+            </p>
+            {item.moreEpisodes.length > 0 && <EpisodeGroupToggle episodes={item.moreEpisodes} />}
+          </>
         )}
         {item.type === "rating" && item.rating != null && (
           <div className="flex items-center gap-2">
