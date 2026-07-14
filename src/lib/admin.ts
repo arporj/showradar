@@ -4,8 +4,8 @@ import { titles, userLibrary, users, type userPlanEnum } from "@/db/schema";
 import { db } from "@/lib/db";
 import { escapeLikePattern } from "@/lib/user-search";
 
-export async function getAdminMetrics() {
-  const [[{ totalUsers }], signupsByDay, topTitles] = await Promise.all([
+export async function getAdminUserMetrics() {
+  const [[{ totalUsers }], signupsByDay] = await Promise.all([
     db.select({ totalUsers: sql<number>`count(*)::int` }).from(users),
     db
       .select({
@@ -16,25 +16,27 @@ export async function getAdminMetrics() {
       .where(gte(users.createdAt, sql`now() - interval '30 days'`))
       .groupBy(sql`date_trunc('day', ${users.createdAt})`)
       .orderBy(sql`date_trunc('day', ${users.createdAt})`),
-    db
-      .select({
-        titleId: userLibrary.titleId,
-        name: titles.name,
-        mediaType: titles.mediaType,
-        count: sql<number>`count(*)::int`,
-      })
-      .from(userLibrary)
-      .innerJoin(titles, eq(userLibrary.titleId, titles.id))
-      .groupBy(userLibrary.titleId, titles.name, titles.mediaType)
-      .orderBy(desc(sql`count(*)`))
-      .limit(10),
   ]);
 
   return {
     totalUsers,
     newSignups30d: signupsByDay.reduce((sum, day) => sum + day.count, 0),
-    topTitles,
   };
+}
+
+export async function getAdminTopTitles() {
+  return db
+    .select({
+      titleId: userLibrary.titleId,
+      name: titles.name,
+      mediaType: titles.mediaType,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(userLibrary)
+    .innerJoin(titles, eq(userLibrary.titleId, titles.id))
+    .groupBy(userLibrary.titleId, titles.name, titles.mediaType)
+    .orderBy(desc(sql`count(*)`))
+    .limit(10);
 }
 
 const PAGE_SIZE = 20;

@@ -4,6 +4,7 @@ import { PlanControl } from "@/components/admin/plan-control";
 import { SuspendToggle } from "@/components/admin/suspend-toggle";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { BackButton } from "@/components/ui/back-button";
 import { getAdminUserDetail } from "@/lib/admin";
 import { formatDate } from "@/lib/format-date";
 
@@ -17,6 +18,8 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
 
   return (
     <div className="max-w-lg space-y-6">
+      <BackButton />
+
       <div className="flex items-center gap-4">
         <Avatar className="size-16">
           <AvatarImage src={user.avatarUrl ?? user.image ?? undefined} alt={displayName} />

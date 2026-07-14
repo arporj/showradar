@@ -60,7 +60,11 @@
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
+  /* Neutral-500 (0.556) only clears ~4.7:1 on white — reads washed-out,
+     especially at small sizes. Neutral-600 keeps it visibly "muted" next to
+     --foreground while landing at ~7.8:1, comfortably AAA. Dark mode's
+     lighter-on-dark pairing already had enough contrast, so left as-is. */
+  --muted-foreground: oklch(0.439 0 0);
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
