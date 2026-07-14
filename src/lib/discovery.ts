@@ -3,10 +3,60 @@ import { alias } from "drizzle-orm/pg-core";
 
 import { follows, titles as titlesTable, userLibrary, users } from "@/db/schema";
 import { db } from "@/lib/db";
-import type { TmdbMediaType } from "@/lib/tmdb";
+import { getTitleRecommendations, type TmdbMediaType, type TmdbSearchResult } from "@/lib/tmdb";
 import type { FollowStatus } from "@/lib/user-search";
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
+// Bounds how many TMDb /recommendations calls a single page load can trigger
+// — these run in parallel, so this caps latency, not just request count.
+const RECOMMENDATION_SOURCE_LIMIT = 6;
+
+/**
+ * "Recomendados para você": seeded from the user's most recently completed
+ * titles (the strongest positive signal we have — stronger than a plain
+ * library add, which could just be "meaning to watch"), fanned out through
+ * TMDb's /recommendations (falling back to /similar, see lib/tmdb.ts) and
+ * merged by how many source titles recommended the same candidate. Titles
+ * already in the user's library (any status, including dropped) are
+ * excluded — recommending something they've already dealt with isn't useful.
+ */
+export async function getRecommendedForYou(viewerId: string, limit = 10): Promise<TmdbSearchResult[]> {
+  const libraryRows = await db
+    .select({ tmdbId: titlesTable.tmdbId, mediaType: titlesTable.mediaType, status: userLibrary.status, watchedAt: userLibrary.watchedAt })
+    .from(userLibrary)
+    .innerJoin(titlesTable, eq(userLibrary.titleId, titlesTable.id))
+    .where(eq(userLibrary.userId, viewerId));
+
+  const sourceRows = libraryRows
+    .filter((row) => row.status === "completed")
+    .sort((a, b) => (b.watchedAt?.getTime() ?? 0) - (a.watchedAt?.getTime() ?? 0))
+    .slice(0, RECOMMENDATION_SOURCE_LIMIT);
+
+  if (sourceRows.length === 0) return [];
+
+  const excludedKeys = new Set(libraryRows.map((row) => `${row.mediaType}-${row.tmdbId}`));
+
+  const perSourceResults = await Promise.all(
+    sourceRows.map((row) => getTitleRecommendations(row.mediaType, row.tmdbId).catch(() => [] as TmdbSearchResult[])),
+  );
+
+  const candidates = new Map<string, { result: TmdbSearchResult; hits: number }>();
+  for (const results of perSourceResults) {
+    for (const result of results) {
+      const key = `${result.media_type}-${result.id}`;
+      if (excludedKeys.has(key)) continue;
+      const existing = candidates.get(key);
+      if (existing) existing.hits += 1;
+      else candidates.set(key, { result, hits: 1 });
+    }
+  }
+
+  return [...candidates.values()]
+    .sort((a, b) => b.hits - a.hits || (b.result.popularity ?? 0) - (a.result.popularity ?? 0))
+    .slice(0, limit)
+    .map((entry) => entry.result);
+}
 
 export interface DiscoveryTitle {
   id: string;

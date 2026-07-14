@@ -298,6 +298,17 @@ export function searchPersonFuzzy(query: string) {
   return withFuzzyFallback(searchPerson, query);
 }
 
+// TMDb's /recommendations is collaborative-filtering based and returns
+// nothing for less-popular titles; /similar (content-based, genres/keywords)
+// almost always has something. Falling back keeps the "recomendados" widget
+// from going empty just because a user's watch history skews niche.
+export async function getTitleRecommendations(mediaType: TmdbMediaType, tmdbId: number) {
+  const base = mediaType === "movie" ? "/movie" : "/tv";
+  const primary = await tmdbFetch<TmdbSearchResponse>(`${base}/${tmdbId}/recommendations`, { page: "1" });
+  const data = primary.results.length > 0 ? primary : await tmdbFetch<TmdbSearchResponse>(`${base}/${tmdbId}/similar`, { page: "1" });
+  return data.results.map((r) => ({ ...r, media_type: mediaType }));
+}
+
 export async function getMovieDetail(id: number) {
   return tmdbFetch<TmdbMovieDetail>(`/movie/${id}`, {
     append_to_response: "credits,external_ids,videos,watch/providers",

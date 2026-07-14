@@ -18,19 +18,32 @@ function toSearchResult(title: DiscoveryTitle): TmdbSearchResult {
 }
 
 export interface DiscoveryData {
+  recommended: TmdbSearchResult[];
   mostWatched: DiscoveryTitle[];
   topRated: DiscoveryTitle[];
   popularUsers: PopularUser[];
 }
 
-// "Recomendados para você" (Fase 10) and "Atores aniversariantes de hoje" are
-// deliberately left out here — both need infrastructure that doesn't exist
-// yet (a real recommendation source, and a people/birthday table).
-export function DiscoverySection({ mostWatched, topRated, popularUsers }: DiscoveryData) {
-  if (mostWatched.length === 0 && topRated.length === 0 && popularUsers.length === 0) return null;
+// "Atores aniversariantes de hoje" is still left out — it'd need a new
+// people/birthday table that doesn't exist yet.
+export function DiscoverySection({ recommended, mostWatched, topRated, popularUsers }: DiscoveryData) {
+  if (recommended.length === 0 && mostWatched.length === 0 && topRated.length === 0 && popularUsers.length === 0) {
+    return null;
+  }
 
   return (
     <div className="space-y-8 pt-2">
+      {recommended.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-lg font-medium">Recomendados para você</h2>
+          <div className="space-y-3">
+            {recommended.map((result) => (
+              <SearchResultCard key={`${result.media_type}-${result.id}`} result={result} />
+            ))}
+          </div>
+        </section>
+      )}
+
       {mostWatched.length > 0 && (
         <section className="space-y-3">
           <h2 className="text-lg font-medium">Mais assistidos da semana</h2>

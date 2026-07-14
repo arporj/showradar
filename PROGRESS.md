@@ -10,8 +10,9 @@ Referência do plano completo: `C:\Users\andre\.claude\plans\quero-fazer-um-sist
 - **Fase 5: concluída** — push e e-mail (Brevo) no cron de notificações, quiet hours por fuso horário.
 - **Fase 6: concluída** — PWA instalável, tema escuro/claro, responsividade mobile, telas de erro/404.
 - **Fase 8: concluída** — Fase 7 (Monetização) pulada a pedido do usuário; boa parte do social (busca de usuários, seguir/aceitar, perfil público, privacidade) já tinha sido construída junto do núcleo sem ser documentada aqui; esta rodada fechou busca por e-mail exato, contagem por aba na busca e o feed de atividade dos amigos.
-- **Amigos, Área Administrativa e Motor de Descoberta: concluído** — fora do plano original (pedido avulso do usuário): lista de amigos com follow mútuo automático, área `/admin` (usuários, plano, suspensão, métricas) e 3 das 5 vitrines de descoberta na tela de busca.
-- **Expansão restante (Fases 9-13): não iniciada** — Fases 9 e 10 já têm, respectivamente, um placeholder e um slot reservado no motor de descoberta acima (ver notas nas seções de cada fase).
+- **Amigos, Área Administrativa e Motor de Descoberta: concluído** — fora do plano original (pedido avulso do usuário): lista de amigos com follow mútuo automático, área `/admin` (usuários, plano, suspensão, métricas) e 4 das 5 vitrines de descoberta na tela de busca (a 5ª, "Recomendados para você"/Fase 10, entrou depois — ver abaixo).
+- **Fase 10 (Recomendação): concluída** — vitrine "Recomendados para você" (TMDb `/recommendations`+`/similar` a partir dos títulos concluídos pelo usuário), na frente de todas as outras vitrines de `/search`.
+- **Expansão restante (Fases 9, 11-13): não iniciada** — Fase 9 já tem um placeholder no motor de descoberta acima (ver nota na seção correspondente).
 
 ---
 
@@ -135,15 +136,23 @@ Pedido avulso do usuário, fora da numeração do plano original — três frent
 
 **Como testei:** ponta a ponta com Playwright headless contra o dev server e o Supabase real — duas contas de teste criadas via signup, ambas assistem o mesmo filme (gera atividade "da semana"), A segue B e B aceita, confirmado que B passou a seguir A de volta sozinho (`/friends` nos dois lados, botão "Seguindo" no perfil um do outro) e que desfazer a amizade limpa os dois lados; `/search` sem digitar nada mostra as 3 vitrines com dados reais, incluindo o filme e o username de B; A promovido a admin via SQL, acessa `/admin`, busca B em `/admin/users`, muda o plano pra premium e suspende a conta — confirmado que B não consegue mais logar (foi assim que o bug do parágrafo acima apareceu) e que B, sem ser admin, é barrado em `/admin`. Contas de teste removidas do banco ao final. `npx tsc --noEmit`, `npm run lint` e `npm run build` sem erros.
 
+### Complemento — Fase 10 (Motor de Recomendação), adicionado depois
+
+- [x] "Recomendados para você" deixou de ser placeholder — `getTitleRecommendations` (`lib/tmdb.ts`) chama `/movie|tv/{id}/recommendations` da TMDb (caindo pra `/similar` quando a recomendação vier vazia, comum em títulos menos populares) para cada um dos até 6 títulos mais recentemente concluídos pelo usuário; os candidatos de todas as chamadas são mesclados por `lib/discovery.ts::getRecommendedForYou`, contando quantas fontes recomendaram o mesmo título (desempate pela popularidade TMDb) e excluindo qualquer coisa já na grade do usuário (qualquer status, incluindo abandonei). Sem tabela nova — os resultados vêm direto da TMDb, sem depender de sincronizar o título antes
+- [x] Vitrine posicionada **primeiro**, antes de "Mais assistidos"/"Maiores notas"/"Mais populares" (pedido explícito do usuário) — reaproveita o mesmo `SearchResultCard` das outras vitrines, sem componente novo, já que a resposta da TMDb tem exatamente o formato que o card espera
+- [x] Some da tela pra quem ainda não concluiu nada (sem título concluído, não há sinal pra recomendar a partir de) — mesmo padrão das outras vitrines condicionais
+
+**Como testei:** Playwright headless contra o dev server e o Supabase real — conta de teste nova, adiciona _Matrix_ e marca como assistido, volta pra `/search` sem digitar nada e confirma que "Recomendados para você" é o primeiro heading da página (antes de "Mais assistidos da semana"), com 10 títulos coerentes com o gênero (sequências de Matrix, Interestelar, Tron, Ghost in the Shell etc.). Conta de teste removida do banco ao final. `npx tsc --noEmit`, `eslint` e `npm run build` sem erros.
+
 ---
 
-## Fases de Expansão (7, 9-13)
+## Fases de Expansão (7, 9, 11-13)
 
 | Fase | Conteúdo | Status |
 |---|---|---|
 | 7 | Monetização (anúncios discretos + assinatura Stripe) | Especificada (só arquitetura — rede de anúncio e preço ficam em aberto); pulada por ora a pedido do usuário |
 | 9 | Avaliações públicas (nota + texto por título) | Especificada; não iniciada |
-| 10 | Recomendação (baseada em `/recommendations` da TMDb) | Especificada; não iniciada |
+| 10 | Recomendação (baseada em `/recommendations` da TMDb) | **Concluída** — ver "Complemento — Fase 10" acima |
 | 11 | Multi-idioma (pt-BR + en-US + es, UI e metadados) | Especificada; não iniciada |
 | 12 | Sincronização offline (cache de leitura + fila simples) | Especificada; não iniciada |
 | 13 | Importação de histórico (IMDb + Letterboxd via CSV) | Especificada; baixa prioridade, sem compromisso de cronograma |

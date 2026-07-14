@@ -1,12 +1,13 @@
 import { SearchBox } from "@/components/search/search-box";
 import { auth } from "@/lib/auth";
-import { getMostPopularUsers, getMostWatchedThisWeek, getTopRatedThisWeek } from "@/lib/discovery";
+import { getMostPopularUsers, getMostWatchedThisWeek, getRecommendedForYou, getTopRatedThisWeek } from "@/lib/discovery";
 
 export default async function SearchPage() {
   const session = await auth();
   if (!session?.user) return null;
 
-  const [mostWatched, topRated, popularUsers] = await Promise.all([
+  const [recommended, mostWatched, topRated, popularUsers] = await Promise.all([
+    getRecommendedForYou(session.user.id),
     getMostWatchedThisWeek(session.user.id),
     getTopRatedThisWeek(session.user.id),
     getMostPopularUsers(session.user.id),
@@ -20,7 +21,7 @@ export default async function SearchPage() {
           Encontre filmes, séries ou atores para adicionar à sua grade.
         </p>
       </div>
-      <SearchBox discovery={{ mostWatched, topRated, popularUsers }} />
+      <SearchBox discovery={{ recommended, mostWatched, topRated, popularUsers }} />
     </div>
   );
 }
