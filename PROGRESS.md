@@ -127,14 +127,68 @@ Referência do plano completo: `C:\Users\andre\.claude\plans\quero-fazer-um-sist
 
 | Fase | Conteúdo | Status |
 |---|---|---|
-| 7 | Monetização (anúncios discretos + assinatura Stripe para remover anúncios) | Pulada por ora, a pedido do usuário — retomar quando fizer sentido |
-| 9 | Avaliações públicas (nota + texto por título) | Não iniciada |
-| 10 | Recomendação (baseada em `/recommendations` da TMDb) | Não iniciada |
-| 11 | Multi-idioma (UI + metadados localizados) | Não iniciada |
-| 12 | Sincronização offline-first | Não iniciada |
-| 13 | Importação de histórico (Trakt/Letterboxd/IMDb) | Baixa prioridade, sem compromisso de cronograma |
+| 7 | Monetização (anúncios discretos + assinatura Stripe) | Especificada (só arquitetura — rede de anúncio e preço ficam em aberto); pulada por ora a pedido do usuário |
+| 9 | Avaliações públicas (nota + texto por título) | Especificada; não iniciada |
+| 10 | Recomendação (baseada em `/recommendations` da TMDb) | Especificada; não iniciada |
+| 11 | Multi-idioma (pt-BR + en-US + es, UI e metadados) | Especificada; não iniciada |
+| 12 | Sincronização offline (cache de leitura + fila simples) | Especificada; não iniciada |
+| 13 | Importação de histórico (IMDb + Letterboxd via CSV) | Especificada; baixa prioridade, sem compromisso de cronograma |
 
 *(Fora de escopo por enquanto: wrapper nativo Capacitor + push nativo para lojas de app.)*
+
+### Fase 7 — Monetização (especificação; pulada por ora)
+
+- [ ] Campo de plano do usuário — `users.plan` enum (`free`/`premium`), padrão `free`; propagado pro JWT/sessão no mesmo callback `jwt()` que já recarrega `dbUser` a cada refresh (mesmo mecanismo de `sessionVersion`), e nos tipos estendidos de `next-auth.d.ts` (mesmo padrão de `username`/`avatarUrl`)
+- [ ] Componente `<AdSlot placement="..." />` com pontos de inserção definidos (dashboard entre seções, entre resultados de busca, dentro da grade) — renderiza vazio quando `session.user.plan === "premium"`; a implementação do anúncio em si (rede/script) fica atrás de uma interface trocável — **nenhuma rede específica integrada nesta especificação**, decisão de negócio pendente
+- [ ] Assinatura via Stripe — Checkout Session (assinatura recorrente) criada por Server Action (`lib/actions/billing.ts`), redireciona pro Checkout hospedado da Stripe; webhook `/api/webhooks/stripe` (verificação de assinatura HMAC) atualiza `users.plan` em `checkout.session.completed`/`customer.subscription.deleted`
+- [ ] Preço, período de teste grátis e texto de venda ficam como placeholder (`STRIPE_PRICE_ID` via env var) — decisão de negócio a tomar quando a fase for retomada de verdade
+- [ ] Conta Stripe em modo teste (já pendente desde a Fase 0) — pré-requisito de infraestrutura
+
+### Fase 9 — Avaliações públicas (especificação; não iniciada)
+
+- [ ] Reaproveita `user_library.personal_rating` (coluna `smallint` já existente no schema, nunca usada) em vez de criar tabela nova — cada usuário só tem uma linha por título (índice único `userId+titleId` já existe), então nota + texto cabem ali
+- [ ] Novas colunas `user_library.review_text` (texto livre, opcional) e `review_updated_at` (timestamp) — migração Drizzle
+- [ ] Escala: 5 estrelas com meia-estrela (armazenado como inteiro 1-10 no `personal_rating`, 2 pontos por estrela); componente de estrelas usando o mesmo tipo de interação animada do ícone de "assistido" (`episode-watch-button.tsx`) como referência
+- [ ] Só é possível avaliar um título com status `completed` na grade — mesma trava de conceito já usada para "abandonei" em `syncLibraryStatusFromProgress`
+- [ ] Nota e texto **sempre públicos**, independente de perfil fechado ou de seguir — desacoplado do sistema de privacidade da Fase 8 (estilo Letterboxd/IMDb)
+- [ ] Página de detalhe do título ganha seção "Avaliações": nota do TMDb (`titles.vote_average`, já sincronizada e cacheada, nunca exibida até hoje) lado a lado com a nova nota média ShowRadar (agregada dos `personal_rating` de todos que avaliaram aquele título — consulta nova em `lib/ratings.ts`, mesmo padrão de `getWatchedEpisodeCounts` em `lib/progress.ts`), seguida da lista de avaliações individuais (nota + texto + autor + data), mais recentes primeiro
+- [ ] `lib/actions/ratings.ts` — `submitRating`/`deleteRating`, seguindo o padrão de `lib/actions/follow.ts` (checagem de dono via `userId` no `where`, `revalidatePath` na página do título)
+- [ ] Avaliar um título pela primeira vez gera evento no feed de atividade da Fase 8 (`lib/feed.ts::getFriendActivity`) — só a **primeira** avaliação de cada usuário por título gera evento; edições não repetem (mesmo princípio já usado pra não duplicar o evento de "série concluída" quando o último episódio já gerou um)
+
+### Fase 10 — Recomendação (especificação; não iniciada)
+
+- [ ] Novos métodos no cliente TMDb (`lib/tmdb.ts`) — `getMovieRecommendations`/`getTvRecommendations` (`/movie/{id}/recommendations`, `/tv/{id}/recommendations`), reaproveitando o `tmdbFetch` com retry/backoff já usado pelos demais métodos e os tipos de `TmdbSearchResult`
+- [ ] Página de detalhe do título ganha seção "Títulos parecidos" — reaproveita `ResultCard` (mesmo cartão da busca), já indicando "Adicionado" pra quem já está na grade (mesma lógica que a busca já usa)
+- [ ] Nova seção "Recomendados para você" no dashboard — calculada a partir dos títulos mais recentes com status `completed`/`isFavorite` do usuário (top 3), agregando as recomendações de cada um, deduplicando e excluindo o que já está na grade; seção condicional (só aparece com biblioteca suficiente), mesmo padrão condicional das seções já existentes do dashboard
+- [ ] Sem cache de recomendação no banco nesta fase — busca sob demanda a cada carregamento de página (dado de "descoberta", não precisa do write-through que `titles`/`seasons` têm)
+
+### Fase 11 — Multi-idioma (especificação; não iniciada)
+
+- [ ] `next-intl` (padrão de mercado para App Router) — rotas migradas para `app/[locale]/...`, prefixo obrigatório em toda URL (`/pt-BR/dashboard`, `/en-US/dashboard`, `/es/dashboard`); `proxy.ts`/middleware ganha negociação de idioma no primeiro acesso (`Accept-Language`) com redirect pro prefixo correto
+- [ ] Extração de toda string hardcoded em pt-BR (praticamente todo componente do app) para catálogos de mensagem (`messages/pt-BR.json`, `en-US.json`, `es.json`) e tradução completa dos três — maior esforço mecânico desta fase, toca a maioria dos arquivos de `components/` e `app/`
+- [ ] `lib/format-date.ts` deixa de travar `"pt-BR"` fixo (remove a trava/comentário atual) e passa a receber o locale da rota
+- [ ] `lib/tmdb.ts` — `DEFAULT_LANGUAGE` deixa de ser constante fixa e passa a derivar do locale ativo (`pt-BR`→`pt-BR`, `en-US`→`en-US`, `es`→`es-ES`, variante de espanhol a confirmar) — como a TMDb já devolve metadados localizados nativamente por esse parâmetro, boa parte do conteúdo (sinopse, nome) já vem traduzido de graça
+- [ ] "Onde assistir" (`watch_providers`) é por **região**, não por idioma — decisão nova necessária aqui: mapear locale→região (`pt-BR`→BR, `en-US`→US, `es`→ES ou MX) e estender `titles.watch_providers_br` (hoje fixo em BR) pra guardar por região; título passa a ser sincronizado uma vez por região visitada, não uma vez só
+- [ ] Templates de e-mail (Brevo, `lib/email.ts`) também localizados — notificações e recuperação de senha
+- [ ] Seletor de idioma em `/settings` (troca o locale ativo, redireciona pra URL prefixada correspondente)
+
+### Fase 12 — Sincronização offline (especificação; não iniciada — escopo reduzido)
+
+- [ ] Armazenamento local via IndexedDB (`idb-keyval` ou `idb` — nenhuma dependência de persistência local existe hoje) — cache do snapshot de `/dashboard` e `/library` pra visualização offline
+- [ ] Fila de mutações limitada a ações sobre títulos já sincronizados: marcar episódio assistido/não assistido, marcar temporada inteira, mudar status da grade, favoritar — **não** inclui adicionar título novo (exige busca na TMDb, que já depende de rede)
+- [ ] Quando `navigator.onLine` for `false` (ou a Server Action falhar por rede), a ação grava na fila local do IndexedDB em vez de chamar o servidor, com resposta otimista na UI (estendendo o padrão `useOptimistic` já usado em `library-status-control.tsx` pra persistir também localmente, não só em memória)
+- [ ] `public/sw.js` ganha Background Sync (`sync` event) — ao voltar a conexão, replaya a fila em ordem, sem resolução de conflito real (last-write-wins: a mutação mais recente da fila vence se dois dispositivos divergirem)
+- [ ] Indicador visual de "modo offline" no header, e um resumo pós-sync ("3 ações sincronizadas") quando a fila termina de ser reenviada
+- [ ] Fora de escopo nesta fase (deliberadamente): resolução de conflito real, sincronização bidirecional completa, busca/adição de títulos offline
+
+### Fase 13 — Importação de histórico (especificação; baixa prioridade)
+
+- [ ] Não existe padrão de mercado único de CSV — cada origem exige parser próprio; escopo desta fase cobre só **IMDb** (`Title Type`, `Your Rating`, `Date Rated` — filmes e séries) e **Letterboxd** (ZIP com `ratings.csv`/`watched.csv` — só filmes); outras origens (Trakt via API, SeriePix) ficam pra uma iteração futura, formato de exportação a confirmar quando chegar a vez
+- [ ] Nova tela `/settings/import` — upload de arquivo (`.csv`/`.zip`), reaproveitando o padrão de upload já existente (`avatar-upload.tsx`, `FormData` + validação de tipo/tamanho)
+- [ ] Parsers dedicados por origem (`lib/import/imdb.ts`, `lib/import/letterboxd.ts`) normalizando cada linha pra um formato comum (`{ title, year, mediaType, rating?, watchedAt? }`)
+- [ ] Casamento com a TMDb via `searchMultiFuzzy` (já existe no cliente TMDb, usado hoje pela busca com correção ortográfica) por título+ano; linhas sem correspondência confiável entram numa lista de revisão manual (usuário escolhe entre os resultados da busca ou pula a linha)
+- [ ] Processamento síncrono dentro da própria Server Action, com limite de linhas por upload (ex.: 500) — sem infraestrutura de fila/job em background, dado o volume esperado e a baixa prioridade desta fase
+- [ ] Upsert em `user_library` (status `completed` quando a origem trouxer data assistida, `plan_to_watch` quando for item de watchlist), reaproveitando `onConflictDoNothing` como as demais ações de biblioteca; nota importada (quando a origem trouxer) alimenta `personal_rating`/`review_text` da Fase 9, se já implementada
 
 ---
 
