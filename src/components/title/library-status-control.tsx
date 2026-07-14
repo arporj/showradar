@@ -61,8 +61,13 @@ export function LibraryStatusControl({
   // been dropped — it's the one way back. Showing it while already
   // watching/completed/plan_to_watch would be redundant or nonsensical, so
   // exactly one of the two toggle buttons is visible at a time.
-  const statusButtons: LibraryStatus[] =
+  //
+  // Either way, the current status itself is never offered as a button — a
+  // click should always mean "change to something else", never a no-op
+  // re-click on the status already shown in the badge above.
+  const availableStatuses: LibraryStatus[] =
     mediaType === "tv" ? (optimisticStatus === "dropped" ? ["plan_to_watch"] : ["dropped"]) : MOVIE_STATUS_BUTTONS;
+  const statusButtons = availableStatuses.filter((status) => status !== optimisticStatus);
 
   return (
     <div className="flex flex-wrap items-center gap-2">

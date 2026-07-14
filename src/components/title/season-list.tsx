@@ -36,6 +36,14 @@ type ConfirmState = { type: "episode"; episode: EpisodeRow } | { type: "season" 
 
 const todayDateString = new Date().toISOString().slice(0, 10);
 
+// Many specials/extras (season 0) come back from TMDb with no air_date at
+// all — treated as already aired (mirrors lib/actions/episodes.ts::airedCondition)
+// so their watch toggle isn't stuck disabled; only a *known* future date
+// holds an episode back.
+function isAired(airDate: string | null) {
+  return !airDate || airDate <= todayDateString;
+}
+
 export function SeasonList({
   seasons,
   watchedCounts,
@@ -146,7 +154,7 @@ function SeasonItem({
     }
 
     const earlierInSeasonUnwatched = episodeRows!.some(
-      (e) => e.episodeNumber < episode.episodeNumber && e.airDate && e.airDate <= todayDateString && !e.watched,
+      (e) => e.episodeNumber < episode.episodeNumber && isAired(e.airDate) && !e.watched,
     );
 
     if (earlierInSeasonUnwatched || incompleteEarlierSeasons.length > 0) {
@@ -197,11 +205,7 @@ function SeasonItem({
       });
       const nextCount = nextWatched ? airedCount : 0;
       onSeasonCountChange(season.id, nextCount);
-      setEpisodeRows((prev) =>
-        prev
-          ? prev.map((e) => (e.airDate && e.airDate <= todayDateString ? { ...e, watched: nextWatched } : e))
-          : prev,
-      );
+      setEpisodeRows((prev) => (prev ? prev.map((e) => (isAired(e.airDate) ? { ...e, watched: nextWatched } : e)) : prev));
       setMarkingSeason(false);
     });
   }
@@ -308,7 +312,7 @@ function SeasonItem({
 }
 
 function EpisodeRowItem({ episode, onToggle }: { episode: EpisodeRow; onToggle: () => void }) {
-  const aired = !!episode.airDate && episode.airDate <= todayDateString;
+  const aired = isAired(episode.airDate);
   const still = tmdbImageUrl(episode.stillPath, "w300");
 
   return (

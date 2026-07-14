@@ -38,7 +38,15 @@ export function WatchProgress({
   const [celebration, setCelebration] = useState<{ title: string; description: string } | null>(null);
   const [confirmMarkAll, setConfirmMarkAll] = useState(false);
   const [isMarkingAll, startMarkingAll] = useTransition();
-  const totalWatched = Object.values(watchedCounts).reduce((sum, n) => sum + n, 0);
+
+  // Season 0 (specials) is excluded here too, so this sum lines up with
+  // `totalEpisodes` (already specials-free, see the title page) instead of
+  // drifting past 100% or completing early just because specials got marked.
+  const regularSeasonIds = new Set(seasons.filter((s) => s.seasonNumber !== 0).map((s) => s.id));
+  const sumWatched = (counts: Record<string, number>) =>
+    Object.entries(counts).reduce((sum, [seasonId, n]) => sum + (regularSeasonIds.has(seasonId) ? n : 0), 0);
+
+  const totalWatched = sumWatched(watchedCounts);
   // Tracks whether we've already celebrated this completion, so unmarking
   // and re-marking the last episode doesn't re-fire the overlay, and so a
   // show that was *already* complete on page load doesn't celebrate either.
@@ -50,7 +58,7 @@ export function WatchProgress({
   function handleSeasonCountChange(seasonId: string, count: number) {
     setWatchedCounts((prev) => {
       const next = { ...prev, [seasonId]: count };
-      const nextTotal = Object.values(next).reduce((sum, n) => sum + n, 0);
+      const nextTotal = sumWatched(next);
       const nowComplete = totalEpisodes > 0 && nextTotal >= totalEpisodes;
 
       if (nowComplete && !wasCompleteRef.current) {
@@ -74,7 +82,7 @@ export function WatchProgress({
       const { watchedCountsBySeasonId } = await markAllEpisodesWatched(titleId, tmdbId);
       setWatchedCounts((prev) => {
         const next = { ...prev, ...watchedCountsBySeasonId };
-        const nextTotal = Object.values(next).reduce((sum, n) => sum + n, 0);
+        const nextTotal = sumWatched(next);
         const nowComplete = totalEpisodes > 0 && nextTotal >= totalEpisodes;
 
         if (nowComplete && !wasCompleteRef.current) {

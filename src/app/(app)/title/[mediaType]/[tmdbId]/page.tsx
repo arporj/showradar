@@ -70,7 +70,12 @@ export default async function TitleDetailPage({
     libraryEntry && LIBRARY_STATUSES.includes(libraryEntry.status) ? libraryEntry.status : null;
 
   const watchedCountsObj = Object.fromEntries(watchedCounts);
-  const totalEpisodes = seasonRows.reduce((sum, s) => sum + (s.episodeCount ?? 0), 0);
+  // Season 0 (specials) is excluded from the overall total — mirrors
+  // lib/actions/episodes.ts::syncLibraryStatusFromProgress, so "Progresso
+  // geral" and the completion celebration agree with the "Assistido" status.
+  const totalEpisodes = seasonRows
+    .filter((s) => s.seasonNumber !== 0)
+    .reduce((sum, s) => sum + (s.episodeCount ?? 0), 0);
 
   const cast = (title.credits as TmdbCastMember[] | null) ?? [];
   const genres = (title.genres as { id: number; name: string }[] | null) ?? [];

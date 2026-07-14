@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq, inArray, lte } from "drizzle-orm";
+import { and, eq, inArray, isNull, lte, or } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -17,6 +17,13 @@ function todayDateString() {
   return new Date().toISOString().slice(0, 10);
 }
 
+// Many specials/extras (season 0) come back from TMDb with no air_date at
+// all — treated as already aired (rather than excluded) so bulk actions
+// don't silently skip them; only a *known* future date holds an episode back.
+function airedCondition() {
+  return or(isNull(episodes.airDate), lte(episodes.airDate, todayDateString()));
+}
+
 // Keeps `user_library.status` in lockstep with actual episode progress, so
 // "Assistindo"/"Assistido" are never something the user has to set by hand:
 // any watched episode moves a title to "watching", finishing every episode
@@ -25,16 +32,22 @@ function todayDateString() {
 // sticky choice that episode activity should never silently override.
 async function syncLibraryStatusFromProgress(userId: string, titleId: string) {
   const seasonRows = await db
-    .select({ id: seasons.id, episodeCount: seasons.episodeCount })
+    .select({ id: seasons.id, seasonNumber: seasons.seasonNumber, episodeCount: seasons.episodeCount })
     .from(seasons)
     .where(eq(seasons.titleId, titleId));
-  const total = seasonRows.reduce((sum, s) => sum + (s.episodeCount ?? 0), 0);
+
+  // Season 0 is TMDb's convention for specials — extras, behind-the-scenes,
+  // etc. — which don't belong to the show's actual run (same reasoning as
+  // lib/next-episode.ts skipping season 0 there), so they're excluded from
+  // whether the series itself counts as "completed".
+  const regularSeasons = seasonRows.filter((s) => s.seasonNumber !== 0);
+  const total = regularSeasons.reduce((sum, s) => sum + (s.episodeCount ?? 0), 0);
 
   const watchedCounts = await getWatchedEpisodeCounts(
     userId,
     seasonRows.map((s) => s.id),
   );
-  const watched = [...watchedCounts.values()].reduce((sum, n) => sum + n, 0);
+  const watched = regularSeasons.reduce((sum, s) => sum + (watchedCounts.get(s.id) ?? 0), 0);
 
   const seriesCompleted = total > 0 && watched >= total;
   const nextStatus: LibraryStatus = seriesCompleted ? "completed" : watched > 0 ? "watching" : "plan_to_watch";
@@ -150,7 +163,7 @@ export async function setSeasonWatched(input: {
   const airedEpisodes = await db
     .select({ id: episodes.id })
     .from(episodes)
-    .where(and(eq(episodes.seasonId, input.seasonId), lte(episodes.airDate, todayDateString())));
+    .where(and(eq(episodes.seasonId, input.seasonId), airedCondition()));
 
   const episodeIds = airedEpisodes.map((e) => e.id);
 
@@ -199,7 +212,7 @@ export async function markEpisodesWatchedThrough(input: {
       and(
         eq(episodes.seasonId, input.seasonId),
         lte(episodes.episodeNumber, input.throughEpisodeNumber),
-        lte(episodes.airDate, todayDateString()),
+        airedCondition(),
       ),
     );
 
@@ -246,7 +259,7 @@ export async function markAllEpisodesWatched(titleId: string, tmdbTvId: number) 
           episodes.seasonId,
           seasonRows.map((s) => s.id),
         ),
-        lte(episodes.airDate, todayDateString()),
+        airedCondition(),
       ),
     );
 

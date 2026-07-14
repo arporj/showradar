@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import Link from "next/link";
 
 import { TitleCard } from "@/components/library/title-card";
@@ -30,6 +30,18 @@ export default async function LibraryPage({
   const conditions = [eq(userLibrary.userId, session.user.id)];
   if (statusFilter) conditions.push(eq(userLibrary.status, statusFilter));
 
+  // "Tudo" groups by status before recency — watching first (what's active
+  // right now), then plan_to_watch (queued up next), then completed, and
+  // dropped last (the least relevant group). A no-op once a status filter is
+  // applied above, since every row then shares the same rank already.
+  const statusRank = sql<number>`case ${userLibrary.status}
+    when 'watching' then 0
+    when 'plan_to_watch' then 1
+    when 'completed' then 2
+    when 'dropped' then 3
+    else 4
+  end`;
+
   const rows = await db
     .select({
       titleId: titlesTable.id,
@@ -43,7 +55,7 @@ export default async function LibraryPage({
     .from(userLibrary)
     .innerJoin(titlesTable, eq(userLibrary.titleId, titlesTable.id))
     .where(and(...conditions))
-    .orderBy(desc(userLibrary.addedAt));
+    .orderBy(statusRank, desc(userLibrary.addedAt));
 
   return (
     <div className="space-y-6">
