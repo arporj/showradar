@@ -14,6 +14,7 @@ const PUBLIC_PATHS = ["/login", "/signup"];
 // not get bounced to /dashboard by the "already authenticated" redirect below.
 const ALWAYS_ACCESSIBLE_PATHS = ["/forgot-password", "/reset-password"];
 const ONBOARDING_PATH = "/onboarding";
+const ADMIN_PATH = "/admin";
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;
@@ -35,6 +36,10 @@ export default auth((req) => {
 
   if (needsUsername && !isOnboardingPath) {
     return NextResponse.redirect(new URL(ONBOARDING_PATH, req.nextUrl));
+  }
+
+  if (pathname.startsWith(ADMIN_PATH) && req.auth?.user.role !== "admin") {
+    return NextResponse.redirect(new URL("/dashboard", req.nextUrl));
   }
 
   if (!needsUsername && (isPublicPath || isOnboardingPath)) {

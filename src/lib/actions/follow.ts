@@ -25,24 +25,62 @@ export async function unfollow(targetUserId: string, targetUsername: string) {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  // Also covers cancelling a still-pending outgoing request — same row either way.
-  await db
-    .delete(follows)
-    .where(and(eq(follows.followerId, session.user.id), eq(follows.followingId, targetUserId)));
+  await db.transaction(async (tx) => {
+    const [myRow] = await tx
+      .select({ status: follows.status })
+      .from(follows)
+      .where(and(eq(follows.followerId, session.user.id), eq(follows.followingId, targetUserId)));
+
+    // Also covers cancelling a still-pending outgoing request — same row either way.
+    await tx
+      .delete(follows)
+      .where(and(eq(follows.followerId, session.user.id), eq(follows.followingId, targetUserId)));
+
+    // Accepted relationships are always mutual (see acceptFollowRequest below),
+    // so unfollowing one is "unfriending" — undo the other direction too.
+    if (myRow?.status === "accepted") {
+      await tx
+        .delete(follows)
+        .where(and(eq(follows.followerId, targetUserId), eq(follows.followingId, session.user.id)));
+    }
+  });
 
   revalidatePath(`/user/${targetUsername}`);
+  revalidatePath("/friends");
 }
 
 export async function acceptFollowRequest(followId: string) {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  await db
-    .update(follows)
-    .set({ status: "accepted", respondedAt: new Date() })
-    .where(and(eq(follows.id, followId), eq(follows.followingId, session.user.id), eq(follows.status, "pending")));
+  await db.transaction(async (tx) => {
+    const [request] = await tx
+      .update(follows)
+      .set({ status: "accepted", respondedAt: new Date() })
+      .where(and(eq(follows.id, followId), eq(follows.followingId, session.user.id), eq(follows.status, "pending")))
+      .returning({ followerId: follows.followerId });
+
+    if (!request) return;
+
+    // Accepting a follow request makes the relationship mutual right away —
+    // the accepter follows back automatically instead of needing a second,
+    // separate approval in the other direction.
+    await tx
+      .insert(follows)
+      .values({
+        followerId: session.user.id,
+        followingId: request.followerId,
+        status: "accepted",
+        respondedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: [follows.followerId, follows.followingId],
+        set: { status: "accepted", respondedAt: new Date() },
+      });
+  });
 
   revalidatePath("/follow-requests");
+  revalidatePath("/friends");
   if (session.user.username) revalidatePath(`/user/${session.user.username}`);
 }
 

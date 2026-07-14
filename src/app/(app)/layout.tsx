@@ -16,6 +16,7 @@ const NAV_LINKS = [
   { href: "/library", label: "Minha Grade" },
   { href: "/upcoming", label: "Em breve" },
   { href: "/history", label: "Histórico" },
+  { href: "/friends", label: "Amigos" },
   { href: "/follow-requests", label: "Solicitações" },
   { href: "/settings", label: "Configurações" },
 ];
@@ -30,6 +31,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
 
   const name = session.user.name ?? session.user.username ?? "";
+  const navLinks =
+    session.user.role === "admin" ? [...NAV_LINKS, { href: "/admin", label: "Admin" }] : NAV_LINKS;
 
   return (
     <div className="flex min-h-svh flex-col">
@@ -40,7 +43,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               ShowRadar
             </Link>
             <nav className="hidden items-center gap-4 text-sm text-muted-foreground md:flex">
-              {NAV_LINKS.map((link) => (
+              {navLinks.map((link) => (
                 <Link key={link.href} href={link.href} className="hover:text-foreground">
                   {link.label}
                 </Link>
@@ -56,7 +59,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                 <Menu className="size-4" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
-                {NAV_LINKS.map((link) => (
+                {navLinks.map((link) => (
                   <DropdownMenuItem key={link.href} render={<Link href={link.href} />}>
                     {link.label}
                   </DropdownMenuItem>

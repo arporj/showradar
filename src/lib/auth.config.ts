@@ -17,6 +17,7 @@ export const authConfig = {
         session.user.id = token.sub;
         session.user.username = token.username ?? null;
         session.user.avatarUrl = token.avatarUrl ?? null;
+        session.user.role = token.role ?? "user";
       }
       return session;
     },

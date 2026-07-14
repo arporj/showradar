@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 
+import { DiscoverySection, type DiscoveryData } from "@/components/discovery/discovery-section";
 import { SearchResultsTab } from "@/components/search/search-results-tab";
 import { UserSearchTab } from "@/components/search/user-search-tab";
 import { Input } from "@/components/ui/input";
@@ -24,7 +25,7 @@ function tabLabel(tab: (typeof TABS)[number], counts: SearchCounts | null) {
   return count === null ? tab.label : `${tab.label} (${count})`;
 }
 
-export function SearchBox() {
+export function SearchBox({ discovery }: { discovery: DiscoveryData }) {
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [activeTab, setActiveTab] = useState<TabValue>("all");
@@ -46,7 +47,7 @@ export function SearchBox() {
         autoFocus
       />
 
-      {debouncedQuery.length >= 2 && (
+      {debouncedQuery.length >= 2 ? (
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabValue)}>
           <TabsList>
             {TABS.map((tab) => (
@@ -65,6 +66,8 @@ export function SearchBox() {
             </TabsContent>
           ))}
         </Tabs>
+      ) : (
+        <DiscoverySection {...discovery} />
       )}
     </div>
   );

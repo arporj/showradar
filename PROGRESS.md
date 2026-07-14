@@ -10,7 +10,8 @@ Referência do plano completo: `C:\Users\andre\.claude\plans\quero-fazer-um-sist
 - **Fase 5: concluída** — push e e-mail (Brevo) no cron de notificações, quiet hours por fuso horário.
 - **Fase 6: concluída** — PWA instalável, tema escuro/claro, responsividade mobile, telas de erro/404.
 - **Fase 8: concluída** — Fase 7 (Monetização) pulada a pedido do usuário; boa parte do social (busca de usuários, seguir/aceitar, perfil público, privacidade) já tinha sido construída junto do núcleo sem ser documentada aqui; esta rodada fechou busca por e-mail exato, contagem por aba na busca e o feed de atividade dos amigos.
-- **Expansão restante (Fases 9-13): não iniciada.**
+- **Amigos, Área Administrativa e Motor de Descoberta: concluído** — fora do plano original (pedido avulso do usuário): lista de amigos com follow mútuo automático, área `/admin` (usuários, plano, suspensão, métricas) e 3 das 5 vitrines de descoberta na tela de busca.
+- **Expansão restante (Fases 9-13): não iniciada** — Fases 9 e 10 já têm, respectivamente, um placeholder e um slot reservado no motor de descoberta acima (ver notas nas seções de cada fase).
 
 ---
 
@@ -121,6 +122,19 @@ Referência do plano completo: `C:\Users\andre\.claude\plans\quero-fazer-um-sist
 
 **Como testei:** ponta a ponta com Playwright headless contra o dev server e o Supabase real — duas contas de teste criadas via signup, A busca "batman" e confere as 4 contagens por aba batendo com o que cada aba lista, busca o e-mail completo de B (acha) e um pedaço do e-mail de B (não acha, confirmando que não é parcial), busca um pedaço do username de B (acha, confirmando que username continua parcial), A segue B, B aceita em `/follow-requests`, B adiciona um filme e marca como assistido na página de detalhe, A confere que a atividade aparece em `/feed` com avatar/nome/pôster/data corretos. Contas de teste removidas do banco ao final. `npx tsc --noEmit`, `npm run build` e `eslint` sem erros.
 
+## Amigos, Área Administrativa e Motor de Descoberta (concluído)
+
+Pedido avulso do usuário, fora da numeração do plano original — três frentes:
+
+- [x] Lista de amigos (`/friends`, novo link "Amigos" no menu) — antes não existia nenhuma forma de ver quem virou amigo depois de um pedido de seguir aceito. Redefinido o que "aceitar" significa: `acceptFollowRequest` (`lib/actions/follow.ts`) agora também garante a linha recíproca (`insert ... onConflictDoUpdate`) — quem aceita passa a seguir de volta automaticamente, sem precisar de um segundo aceite na direção contrária. Script one-off rodado uma única vez pra backfillar a linha espelhada de toda amizade `accepted` anterior a essa mudança
+- [x] `unfollow` virou "desfazer amizade" quando a relação é mútua — apaga as duas linhas de `follows` de uma vez (antes só apagava a direção do próprio usuário); continua cancelando só o próprio pedido quando ainda está `pending`
+- [x] Área administrativa (`/admin`, link "Admin" no menu só pra quem tem `role = "admin"`) — três telas: dashboard com métricas gerais (total de usuários, cadastros dos últimos 30 dias, títulos mais adicionados), `/admin/users` com busca/filtro por nome/e-mail/plano e paginação (mesmo padrão de `api/users/search`), `/admin/users/[id]` com plano (toggle free/premium — mesma coluna `users.plan` já desenhada na especificação da Fase 7 abaixo) e suspensão de conta
+- [x] `users.role` (`user`/`admin`), `users.plan` (`free`/`premium`) e `users.is_suspended`, novos no schema — `role` e a checagem de suspensão propagados pro JWT/sessão no mesmo padrão de `username`/`avatarUrl`; `proxy.ts` protege `/admin` só com o token edge-safe, sem precisar tocar banco. Não existe UI pra promover alguém a admin (evita abrir uma superfície de escalonamento de privilégio nova) — primeiro admin promovido via `UPDATE` manual direto no Supabase
+- [x] Motor de descoberta — três das cinco vitrines pedidas, na própria tela de busca, no espaço que ficava vazio antes de digitar algo (`components/discovery/discovery-section.tsx`, `lib/discovery.ts`): "Mais assistidos da semana" e "Maiores notas da semana" (últimos 7 dias de atividade `completed`, ordenadas por contagem ou pela nota do TMDb já cacheada — placeholder até a Fase 9 trazer nota real de usuário) e "Mais populares" (ranking por contagem de seguidores aceitos). "Recomendados para você" (Fase 10) e "Atores aniversariantes de hoje" ficaram de fora — a primeira depende do motor de recomendação ainda não construído, a segunda exigiria uma tabela nova de pessoas/aniversário que não existe hoje
+- [x] **Bug encontrado e corrigido nesta rodada:** suspender uma conta (`users.is_suspended`) só invalidava uma sessão **já ativa** no próximo refresh do token — não impedia um **novo** login (a checagem tinha ido parar só no callback `jwt()`, que roda depois que o login já foi aceito). Corrigido com um callback `signIn` em `lib/auth.ts` (mecanismo do Auth.js pra bloquear o login em si, cobre Credentials e Google ao mesmo tempo); a checagem em `jwt()` continua existindo, agora só cobrindo o caso complementar (conta suspensa enquanto o usuário já está logado em outro lugar)
+
+**Como testei:** ponta a ponta com Playwright headless contra o dev server e o Supabase real — duas contas de teste criadas via signup, ambas assistem o mesmo filme (gera atividade "da semana"), A segue B e B aceita, confirmado que B passou a seguir A de volta sozinho (`/friends` nos dois lados, botão "Seguindo" no perfil um do outro) e que desfazer a amizade limpa os dois lados; `/search` sem digitar nada mostra as 3 vitrines com dados reais, incluindo o filme e o username de B; A promovido a admin via SQL, acessa `/admin`, busca B em `/admin/users`, muda o plano pra premium e suspende a conta — confirmado que B não consegue mais logar (foi assim que o bug do parágrafo acima apareceu) e que B, sem ser admin, é barrado em `/admin`. Contas de teste removidas do banco ao final. `npx tsc --noEmit`, `npm run lint` e `npm run build` sem erros.
+
 ---
 
 ## Fases de Expansão (7, 9-13)
@@ -146,6 +160,8 @@ Referência do plano completo: `C:\Users\andre\.claude\plans\quero-fazer-um-sist
 
 ### Fase 9 — Avaliações públicas (especificação; não iniciada)
 
+**Nota:** a vitrine "Maiores notas da semana" do motor de descoberta (ver seção "Amigos, Área Administrativa e Motor de Descoberta" acima) já usa a nota do TMDb como placeholder nesse exato lugar da UI — quando esta fase for implementada, basta trocar a fonte de dado dentro de `lib/discovery.ts::getTopRatedThisWeek`.
+
 - [ ] Reaproveita `user_library.personal_rating` (coluna `smallint` já existente no schema, nunca usada) em vez de criar tabela nova — cada usuário só tem uma linha por título (índice único `userId+titleId` já existe), então nota + texto cabem ali
 - [ ] Novas colunas `user_library.review_text` (texto livre, opcional) e `review_updated_at` (timestamp) — migração Drizzle
 - [ ] Escala: 5 estrelas com meia-estrela (armazenado como inteiro 1-10 no `personal_rating`, 2 pontos por estrela); componente de estrelas usando o mesmo tipo de interação animada do ícone de "assistido" (`episode-watch-button.tsx`) como referência
@@ -156,6 +172,8 @@ Referência do plano completo: `C:\Users\andre\.claude\plans\quero-fazer-um-sist
 - [ ] Avaliar um título pela primeira vez gera evento no feed de atividade da Fase 8 (`lib/feed.ts::getFriendActivity`) — só a **primeira** avaliação de cada usuário por título gera evento; edições não repetem (mesmo princípio já usado pra não duplicar o evento de "série concluída" quando o último episódio já gerou um)
 
 ### Fase 10 — Recomendação (especificação; não iniciada)
+
+**Nota:** a vitrine "Recomendados para você" já está prevista no motor de descoberta (`components/discovery/discovery-section.tsx`), só não é renderizada ainda — implementar os métodos abaixo e adicionar a busca em `lib/discovery.ts` reativa a vitrine sem mais mudanças estruturais na tela de busca.
 
 - [ ] Novos métodos no cliente TMDb (`lib/tmdb.ts`) — `getMovieRecommendations`/`getTvRecommendations` (`/movie/{id}/recommendations`, `/tv/{id}/recommendations`), reaproveitando o `tmdbFetch` com retry/backoff já usado pelos demais métodos e os tipos de `TmdbSearchResult`
 - [ ] Página de detalhe do título ganha seção "Títulos parecidos" — reaproveita `ResultCard` (mesmo cartão da busca), já indicando "Adicionado" pra quem já está na grade (mesma lógica que a busca já usa)
@@ -214,3 +232,4 @@ Referência do plano completo: `C:\Users\andre\.claude\plans\quero-fazer-um-sist
 - Header quebrado no mobile (overflow horizontal em toda página autenticada) → 7 links de navegação numa única linha sem wrap nem menu mobile; corrigido com um menu hambúrguer abaixo de `md:` (ver Fase 6).
 - Assets estáticos (manifest do PWA, ícones, logo da TMDb) bloqueados pelo middleware de autenticação e redirecionando pra `/login` quando o visitante não estava logado → o matcher do `proxy.ts` só excluía arquivos por nome exato e não cobria os novos; trocado por exclusão genérica por extensão (ver Fase 6).
 - Nenhum `error.tsx`/`not-found.tsx` em lugar nenhum do app → `notFound()` (já usado em `/title` e `/person`) caía na página genérica do Next sem nenhuma identidade visual; adicionados os dois na raiz (ver Fase 6).
+- Suspender uma conta (`users.is_suspended`) bloqueava sessões já ativas no próximo refresh, mas não impedia um **novo** login → a checagem só existia no callback `jwt()` (roda depois que o login já foi aceito); corrigido com um callback `signIn` dedicado, o mecanismo certo do Auth.js pra recusar o login em si (ver seção "Amigos, Área Administrativa e Motor de Descoberta").

@@ -6,6 +6,7 @@ declare module "next-auth" {
       id: string;
       username: string | null;
       avatarUrl: string | null;
+      role: "user" | "admin";
     } & DefaultSession["user"];
   }
 }
@@ -15,5 +16,6 @@ declare module "@auth/core/jwt" {
     username?: string | null;
     avatarUrl?: string | null;
     sessionVersion?: number;
+    role?: "user" | "admin";
   }
 }

@@ -49,6 +49,18 @@ export const { handlers, auth, signIn, signOut, unstable_update: updateSession }
   ],
   callbacks: {
     ...authConfig.callbacks,
+    // Gates new sign-ins (both Credentials and Google) for suspended
+    // accounts. A brand-new OAuth user has no row yet — nothing to block.
+    // The `jwt` callback below handles the complementary case: an already
+    // signed-in session for an account that gets suspended mid-session.
+    async signIn({ user }) {
+      if (!user.email) return true;
+      const [dbUser] = await db
+        .select({ isSuspended: users.isSuspended })
+        .from(users)
+        .where(eq(users.email, user.email));
+      return !dbUser?.isSuspended;
+    },
     // A Credentials provider forces Auth.js to use JWT sessions (it has no
     // concept of a persisted session row). "Log out of all devices" is
     // implemented via `users.sessionVersion` instead of a sessions table —
@@ -59,7 +71,11 @@ export const { handlers, auth, signIn, signOut, unstable_update: updateSession }
 
       const [dbUser] = await db.select().from(users).where(eq(users.id, userId));
 
-      if (!dbUser || (token.sessionVersion !== undefined && dbUser.sessionVersion !== token.sessionVersion)) {
+      if (
+        !dbUser ||
+        dbUser.isSuspended ||
+        (token.sessionVersion !== undefined && dbUser.sessionVersion !== token.sessionVersion)
+      ) {
         return null;
       }
 
@@ -67,6 +83,7 @@ export const { handlers, auth, signIn, signOut, unstable_update: updateSession }
       token.username = dbUser.username;
       token.avatarUrl = dbUser.avatarUrl ?? dbUser.image;
       token.sessionVersion = dbUser.sessionVersion;
+      token.role = dbUser.role;
       return token;
     },
   },

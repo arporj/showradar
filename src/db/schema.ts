@@ -44,6 +44,8 @@ export const notificationStatusEnum = appSchema.enum("notification_status", [
   "failed",
 ]);
 export const followStatusEnum = appSchema.enum("follow_status", ["pending", "accepted"]);
+export const userRoleEnum = appSchema.enum("user_role", ["user", "admin"]);
+export const userPlanEnum = appSchema.enum("user_plan", ["free", "premium"]);
 
 // Auth.js adapter requires these exact JS property names (id/name/email/emailVerified/image)
 // on the users table it's handed; everything else here is app-specific.
@@ -61,6 +63,11 @@ export const users = appSchema.table("users", {
   // Closed by default: existing accounts never opted into a publicly viewable
   // library, so new/existing rows start private until the user opens up.
   isPrivate: boolean("is_private").notNull().default(true),
+  role: userRoleEnum("role").notNull().default("user"),
+  // Manually toggled by an admin today (Fase 7's Stripe webhook will write to
+  // this same column later instead of replacing it).
+  plan: userPlanEnum("plan").notNull().default("free"),
+  isSuspended: boolean("is_suspended").notNull().default(false),
   createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
 });
