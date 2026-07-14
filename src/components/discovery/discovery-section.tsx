@@ -1,4 +1,5 @@
 import { PopularUserCard } from "@/components/discovery/popular-user-card";
+import { RecommendedSection } from "@/components/discovery/recommended-section";
 import { SearchResultCard } from "@/components/search/result-card";
 import type { DiscoveryTitle, PopularUser } from "@/lib/discovery";
 import type { TmdbSearchResult } from "@/lib/tmdb";
@@ -33,16 +34,7 @@ export function DiscoverySection({ recommended, mostWatched, topRated, popularUs
 
   return (
     <div className="space-y-8 pt-2">
-      {recommended.length > 0 && (
-        <section className="space-y-3">
-          <h2 className="text-lg font-medium">Recomendados para você</h2>
-          <div className="space-y-3">
-            {recommended.map((result) => (
-              <SearchResultCard key={`${result.media_type}-${result.id}`} result={result} />
-            ))}
-          </div>
-        </section>
-      )}
+      {recommended.length > 0 && <RecommendedSection initialRecommended={recommended} />}
 
       {mostWatched.length > 0 && (
         <section className="space-y-3">

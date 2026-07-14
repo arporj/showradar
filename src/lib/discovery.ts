@@ -1,7 +1,7 @@
 import { and, desc, eq, gte, ne, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
-import { follows, titles as titlesTable, userLibrary, users } from "@/db/schema";
+import { dismissedRecommendations, follows, titles as titlesTable, userLibrary, users } from "@/db/schema";
 import { db } from "@/lib/db";
 import { getRatingSummaries } from "@/lib/ratings";
 import { getTitleRecommendations, type TmdbMediaType, type TmdbSearchResult } from "@/lib/tmdb";
@@ -13,21 +13,44 @@ const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 // — these run in parallel, so this caps latency, not just request count.
 const RECOMMENDATION_SOURCE_LIMIT = 6;
 
+// The shown `limit` is shuffled out of this much bigger pool of top
+// candidates, so reloading the page varies both the order and the actual
+// titles shown instead of always surfacing the same `limit` in the same spot.
+const RECOMMENDATION_POOL_SIZE_MULTIPLIER = 3;
+
+function shuffle<T>(items: T[]): T[] {
+  const shuffled = [...items];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
 /**
  * "Recomendados para você": seeded from the user's most recently completed
  * titles (the strongest positive signal we have — stronger than a plain
  * library add, which could just be "meaning to watch"), fanned out through
  * TMDb's /recommendations (falling back to /similar, see lib/tmdb.ts) and
  * merged by how many source titles recommended the same candidate. Titles
- * already in the user's library (any status, including dropped) are
- * excluded — recommending something they've already dealt with isn't useful.
+ * already in the user's library (any status, including dropped) or
+ * explicitly dismissed by the user are excluded. The final `limit` is
+ * shuffled from the top-ranked pool (see RECOMMENDATION_POOL_SIZE_MULTIPLIER)
+ * so the showcase doesn't render in the exact same order — or with the exact
+ * same titles — on every visit.
  */
 export async function getRecommendedForYou(viewerId: string, limit = 10): Promise<TmdbSearchResult[]> {
-  const libraryRows = await db
-    .select({ tmdbId: titlesTable.tmdbId, mediaType: titlesTable.mediaType, status: userLibrary.status, watchedAt: userLibrary.watchedAt })
-    .from(userLibrary)
-    .innerJoin(titlesTable, eq(userLibrary.titleId, titlesTable.id))
-    .where(eq(userLibrary.userId, viewerId));
+  const [libraryRows, dismissedRows] = await Promise.all([
+    db
+      .select({ tmdbId: titlesTable.tmdbId, mediaType: titlesTable.mediaType, status: userLibrary.status, watchedAt: userLibrary.watchedAt })
+      .from(userLibrary)
+      .innerJoin(titlesTable, eq(userLibrary.titleId, titlesTable.id))
+      .where(eq(userLibrary.userId, viewerId)),
+    db
+      .select({ tmdbId: dismissedRecommendations.tmdbId, mediaType: dismissedRecommendations.mediaType })
+      .from(dismissedRecommendations)
+      .where(eq(dismissedRecommendations.userId, viewerId)),
+  ]);
 
   const sourceRows = libraryRows
     .filter((row) => row.status === "completed")
@@ -36,7 +59,10 @@ export async function getRecommendedForYou(viewerId: string, limit = 10): Promis
 
   if (sourceRows.length === 0) return [];
 
-  const excludedKeys = new Set(libraryRows.map((row) => `${row.mediaType}-${row.tmdbId}`));
+  const excludedKeys = new Set([
+    ...libraryRows.map((row) => `${row.mediaType}-${row.tmdbId}`),
+    ...dismissedRows.map((row) => `${row.mediaType}-${row.tmdbId}`),
+  ]);
 
   const perSourceResults = await Promise.all(
     sourceRows.map((row) => getTitleRecommendations(row.mediaType, row.tmdbId).catch(() => [] as TmdbSearchResult[])),
@@ -53,8 +79,11 @@ export async function getRecommendedForYou(viewerId: string, limit = 10): Promis
     }
   }
 
-  return [...candidates.values()]
+  const pool = [...candidates.values()]
     .sort((a, b) => b.hits - a.hits || (b.result.popularity ?? 0) - (a.result.popularity ?? 0))
+    .slice(0, limit * RECOMMENDATION_POOL_SIZE_MULTIPLIER);
+
+  return shuffle(pool)
     .slice(0, limit)
     .map((entry) => entry.result);
 }

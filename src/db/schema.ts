@@ -239,6 +239,22 @@ export const userEpisodeProgress = appSchema.table(
   (t) => [uniqueIndex("user_episode_progress_user_id_episode_id_idx").on(t.userId, t.episodeId)],
 );
 
+// One row per title a user has swiped away from "Recomendados para você" —
+// checked on every recompute so a dismissed title never resurfaces there.
+export const dismissedRecommendations = appSchema.table(
+  "dismissed_recommendations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tmdbId: integer("tmdb_id").notNull(),
+    mediaType: mediaTypeEnum("media_type").notNull(),
+    dismissedAt: timestamp("dismissed_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("dismissed_recommendations_user_id_tmdb_id_media_type_idx").on(t.userId, t.tmdbId, t.mediaType)],
+);
+
 export const pushSubscriptions = appSchema.table("push_subscriptions", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: uuid("user_id")

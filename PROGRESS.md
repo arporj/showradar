@@ -145,6 +145,16 @@ Pedido avulso do usuário, fora da numeração do plano original — três frent
 
 **Como testei:** Playwright headless contra o dev server e o Supabase real — conta de teste nova, adiciona _Matrix_ e marca como assistido, volta pra `/search` sem digitar nada e confirma que "Recomendados para você" é o primeiro heading da página (antes de "Mais assistidos da semana"), com 10 títulos coerentes com o gênero (sequências de Matrix, Interestelar, Tron, Ghost in the Shell etc.). Conta de teste removida do banco ao final. `npx tsc --noEmit`, `eslint` e `npm run build` sem erros.
 
+### Complemento — variação e descarte em "Recomendados para você", adicionado depois
+
+**Motivação:** o usuário notou que a vitrine sempre mostrava os mesmos 10 títulos, na mesma ordem, a cada visita — esperado, já que `getRecommendedForYou` era uma ordenação puramente determinística (contagem de fontes + popularidade TMDb) sobre um conjunto de candidatos estável. Pediu duas coisas: não repetir sempre a mesma ordem e, se possível, poder descartar uma recomendação permanentemente.
+
+- [x] `lib/discovery.ts::getRecommendedForYou` — os candidatos continuam ranqueados por contagem de fontes + popularidade, mas os `limit` (10) exibidos agora são sorteados (Fisher-Yates) de um **pool** 3x maior (`RECOMMENDATION_POOL_SIZE_MULTIPLIER`) do topo do ranking, não mais os 10 primeiros direto. Cada carregamento de `/search` varia tanto a ordem quanto os próprios títulos exibidos, sem abrir mão de qualidade (o pool continua sendo os melhores candidatos, só a escolha final dentro dele que é aleatória)
+- [x] Nova tabela `dismissed_recommendations` (`user_id` + `tmdb_id` + `media_type`, índice único nos três) — cada card da vitrine ganhou um botão "X" (`components/discovery/recommended-section.tsx`, novo client component) que grava o descarte via `lib/actions/discovery.ts::dismissRecommendation` e some da lista na hora (estado local otimista, sem esperar o roundtrip); `getRecommendedForYou` passa a excluir também esses títulos, junto com o que já excluía (grade do usuário), então o descarte é permanente — não volta a aparecer em visitas futuras
+- [x] Migração `drizzle/migrations/0005_mute_owl.sql` gerada e aplicada no Supabase real (`npx drizzle-kit generate` + `migrate`)
+
+**Como testei:** sem navegador headless disponível nesta sessão — validação foi por script (`tsx`) chamando `getRecommendedForYou` direto contra o Supabase real, com uma conta de teste existente: duas chamadas consecutivas confirmaram conjunto e ordem diferentes; inserir uma linha em `dismissed_recommendations` e chamar de novo (5x) confirmou que o título descartado nunca mais reaparece. Conta de teste (órfã de sessão anterior, sem relação com esta mudança) removida do banco ao final, script de verificação descartado. `npx tsc --noEmit`, `eslint` e `npm run build` sem erros. **Pendente:** clique do botão "X" (`recommended-section.tsx`) não foi exercitado num navegador real — validado só por leitura de código + compilação.
+
 ---
 
 ## Fase 9 — Avaliações públicas (concluída)
