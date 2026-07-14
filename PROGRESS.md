@@ -1,6 +1,6 @@
 # ShowRadar — Status do Projeto
 
-_Atualizado em: 2026-07-14 (Fase 9 concluída)_
+_Atualizado em: 2026-07-14 (complementos pós-Fase 9 concluídos: recomendação variável/descartável, episódios especiais, navegação do admin, contraste e agrupamento do feed)_
 
 Referência do plano completo: `C:\Users\andre\.claude\plans\quero-fazer-um-sistema-magical-kite.md`
 
@@ -11,8 +11,11 @@ Referência do plano completo: `C:\Users\andre\.claude\plans\quero-fazer-um-sist
 - **Fase 6: concluída** — PWA instalável, tema escuro/claro, responsividade mobile, telas de erro/404.
 - **Fase 8: concluída** — Fase 7 (Monetização) pulada a pedido do usuário; boa parte do social (busca de usuários, seguir/aceitar, perfil público, privacidade) já tinha sido construída junto do núcleo sem ser documentada aqui; esta rodada fechou busca por e-mail exato, contagem por aba na busca e o feed de atividade dos amigos.
 - **Amigos, Área Administrativa e Motor de Descoberta: concluído** — fora do plano original (pedido avulso do usuário): lista de amigos com follow mútuo automático, área `/admin` (usuários, plano, suspensão, métricas) e 4 das 5 vitrines de descoberta na tela de busca (a 5ª, "Recomendados para você"/Fase 10, entrou depois — ver abaixo).
-- **Fase 10 (Recomendação): concluída** — vitrine "Recomendados para você" (TMDb `/recommendations`+`/similar` a partir dos títulos concluídos pelo usuário), na frente de todas as outras vitrines de `/search`.
+- **Fase 10 (Recomendação): concluída**, com dois complementos depois — vitrine "Recomendados para você" (TMDb `/recommendations`+`/similar` a partir dos títulos concluídos pelo usuário), na frente de todas as outras vitrines de `/search`; depois ganhou variação a cada carregamento (pool + sorteio, em vez de sempre os mesmos 10 na mesma ordem) e descarte permanente por título (nova tabela `dismissed_recommendations`, botão "X" no card).
 - **Fase 9 (Avaliações públicas): concluída** — nota (5 estrelas com meia-estrela) + texto opcional por título, sempre públicas, reaproveitando `user_library.personal_rating`; "Maiores notas da semana" do motor de descoberta trocou o placeholder (nota TMDb) pela nota média real da comunidade.
+- **Complemento — episódios especiais, ordenação da grade e status clicável: concluído** — temporada 0 (especiais) deixou de contar pra decidir se uma série está "Assistida"; corrigido bug que impedia marcar especiais como assistidos (episódios sem `air_date` ficavam com o botão travado, sem erro nenhum); `/library` sem filtro agrupa por status (assistindo → quero assistir → assistido → abandonei); o status atual de um título não aparece mais como card clicável ao lado dos outros.
+- **Complemento — navegação do admin e contraste no modo claro: concluído** — `/admin` virou a própria lista de usuários (antes um dashboard separado, sem volta pra quem entrava em `/admin/users` ou num usuário — o app roda como PWA instalado, sem chrome de navegador), com abas "Usuários"/"Séries" e botão de voltar na página de um usuário; texto cinza (`--muted-foreground`) escurecido no tema claro pra melhor legibilidade (o escuro já estava bom).
+- **Complemento — agrupamento de episódios em "Atividade": concluído** — quando um amigo maratona vários episódios (ou temporadas inteiras) da mesma série, o feed agora colapsa tudo numa única linha expansível (usuário+série), em vez de uma linha por episódio dominando a lista e escondendo a atividade de outros amigos.
 - **Expansão restante (Fases 11-13): não iniciada.**
 
 ---
@@ -297,3 +300,5 @@ Pedido avulso do usuário, fora da numeração do plano original — três frent
 - Assets estáticos (manifest do PWA, ícones, logo da TMDb) bloqueados pelo middleware de autenticação e redirecionando pra `/login` quando o visitante não estava logado → o matcher do `proxy.ts` só excluía arquivos por nome exato e não cobria os novos; trocado por exclusão genérica por extensão (ver Fase 6).
 - Nenhum `error.tsx`/`not-found.tsx` em lugar nenhum do app → `notFound()` (já usado em `/title` e `/person`) caía na página genérica do Next sem nenhuma identidade visual; adicionados os dois na raiz (ver Fase 6).
 - Suspender uma conta (`users.is_suspended`) bloqueava sessões já ativas no próximo refresh, mas não impedia um **novo** login → a checagem só existia no callback `jwt()` (roda depois que o login já foi aceito); corrigido com um callback `signIn` dedicado, o mecanismo certo do Auth.js pra recusar o login em si (ver seção "Amigos, Área Administrativa e Motor de Descoberta").
+- Marcar um episódio especial (temporada 0) como assistido não fazia nada, sem erro nenhum no console → boa parte dos especiais vem da TMDb com `air_date` nulo (extras, bastidores), e o botão de assistir ficava `disabled` sempre que a data fosse nula — um botão desabilitado não dispara `onClick`; corrigido tratando "sem data" como "já disponível" (ver complemento "episódios especiais, ordenação da grade e status clicável").
+- Área `/admin`: entrar em "ver usuários" e depois num usuário específico não tinha volta nenhuma → o app roda como PWA instalado (`display: "standalone"`), sem seta de voltar do navegador, e nenhuma das duas telas tinha um link de volta próprio; corrigido reestruturando `/admin` e adicionando um `BackButton` (ver complemento "navegação do admin e contraste no modo claro").
