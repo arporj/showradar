@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 
 import { BackButton } from "@/components/ui/back-button";
 import { LibraryStatusControl } from "@/components/title/library-status-control";
+import { TitleRatingsSection } from "@/components/title/title-ratings-section";
 import { WatchProgress } from "@/components/title/watch-progress";
 import { WatchProviders } from "@/components/title/watch-providers";
 import { seasons as seasonsTable, titles, userLibrary } from "@/db/schema";
@@ -12,6 +13,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { LIBRARY_STATUSES } from "@/lib/library-status";
 import { getWatchedEpisodeCounts } from "@/lib/progress";
+import { getTitleRatingSummary, getTitleReviews } from "@/lib/ratings";
 import { tmdbImageUrl, type TmdbCastMember, type TmdbWatchProviderRegion } from "@/lib/tmdb";
 import { syncTitleFromTmdb } from "@/lib/tmdb-sync";
 
@@ -49,7 +51,7 @@ export default async function TitleDetailPage({
   ]);
   if (!title) notFound();
 
-  const [libraryRows, watchedCounts] = await Promise.all([
+  const [libraryRows, watchedCounts, ratingSummary, reviews] = await Promise.all([
     session?.user
       ? db
           .select()
@@ -60,6 +62,8 @@ export default async function TitleDetailPage({
       session?.user?.id,
       seasonRows.map((s) => s.id),
     ),
+    getTitleRatingSummary(titleId),
+    getTitleReviews(titleId),
   ]);
   const libraryEntry = libraryRows[0];
   const currentStatus =
@@ -160,6 +164,19 @@ export default async function TitleDetailPage({
           />
         </div>
       )}
+
+      <TitleRatingsSection
+        titleId={titleId}
+        mediaType={mediaType}
+        tmdbId={tmdbIdNum}
+        voteAverage={title.voteAverage}
+        summary={ratingSummary}
+        reviews={reviews}
+        currentUserId={session?.user?.id}
+        currentUserRating={libraryEntry?.personalRating ?? null}
+        currentUserReviewText={libraryEntry?.reviewText ?? null}
+        canRate={currentStatus === "completed"}
+      />
     </div>
   );
 }

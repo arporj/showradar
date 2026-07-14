@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { RatingStars } from "@/components/title/rating-stars";
 import type { FriendActivityItem } from "@/lib/feed";
 import { formatDate } from "@/lib/format-date";
 import { tmdbImageUrl } from "@/lib/tmdb";
@@ -25,7 +26,7 @@ export function FriendActivityRow({ item }: { item: FriendActivityItem }) {
           <Link href={`/user/${item.user.username}`} className="font-medium hover:underline">
             {displayName}
           </Link>{" "}
-          {item.type === "episode" ? "assistiu" : "concluiu"}{" "}
+          {item.type === "episode" ? "assistiu" : item.type === "rating" ? "avaliou" : "concluiu"}{" "}
           <Link href={titleHref} className="font-medium hover:underline">
             {item.name}
           </Link>
@@ -35,6 +36,14 @@ export function FriendActivityRow({ item }: { item: FriendActivityItem }) {
             T{item.seasonNumber}E{item.episodeNumber}
             {item.episodeName ? ` • ${item.episodeName}` : ""}
           </p>
+        )}
+        {item.type === "rating" && item.rating != null && (
+          <div className="flex items-center gap-2">
+            <RatingStars value={item.rating} readOnly size="sm" />
+            {item.reviewText && (
+              <p className="line-clamp-1 text-xs italic text-muted-foreground">&ldquo;{item.reviewText}&rdquo;</p>
+            )}
+          </div>
         )}
         <p className="text-xs text-muted-foreground">{formatDate(item.watchedAt)}</p>
       </div>

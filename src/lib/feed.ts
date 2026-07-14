@@ -13,7 +13,7 @@ interface ActivityUser {
 
 export interface FriendActivityItem {
   key: string;
-  type: "episode" | "movie";
+  type: "episode" | "movie" | "rating";
   watchedAt: Date;
   user: ActivityUser;
   titleId: string;
@@ -24,6 +24,8 @@ export interface FriendActivityItem {
   seasonNumber: number | null;
   episodeNumber: number | null;
   episodeName: string | null;
+  rating: number | null;
+  reviewText: string | null;
 }
 
 /**
@@ -42,7 +44,7 @@ export async function getFriendActivity(userId: string, limit = 30): Promise<Fri
   const followingIds = followingRows.map((row) => row.followingId);
   if (followingIds.length === 0) return [];
 
-  const [episodeRows, movieRows] = await Promise.all([
+  const [episodeRows, movieRows, ratingRows] = await Promise.all([
     db
       .select({
         watchedAt: userEpisodeProgress.watchedAt,
@@ -95,6 +97,34 @@ export async function getFriendActivity(userId: string, limit = 30): Promise<Fri
       )
       .orderBy(desc(userLibrary.watchedAt))
       .limit(limit),
+    db
+      .select({
+        reviewCreatedAt: userLibrary.reviewCreatedAt,
+        userId: users.id,
+        username: users.username,
+        name: users.name,
+        avatarUrl: users.avatarUrl,
+        image: users.image,
+        titleId: titlesTable.id,
+        tmdbId: titlesTable.tmdbId,
+        mediaType: titlesTable.mediaType,
+        titleName: titlesTable.name,
+        posterPath: titlesTable.posterPath,
+        rating: userLibrary.personalRating,
+        reviewText: userLibrary.reviewText,
+      })
+      .from(userLibrary)
+      .innerJoin(users, eq(userLibrary.userId, users.id))
+      .innerJoin(titlesTable, eq(userLibrary.titleId, titlesTable.id))
+      .where(
+        and(
+          inArray(userLibrary.userId, followingIds),
+          isNotNull(userLibrary.personalRating),
+          isNotNull(userLibrary.reviewCreatedAt),
+        ),
+      )
+      .orderBy(desc(userLibrary.reviewCreatedAt))
+      .limit(limit),
   ]);
 
   const items: FriendActivityItem[] = [
@@ -111,6 +141,8 @@ export async function getFriendActivity(userId: string, limit = 30): Promise<Fri
       seasonNumber: row.seasonNumber,
       episodeNumber: row.episodeNumber,
       episodeName: row.episodeName,
+      rating: null,
+      reviewText: null,
     })),
     ...movieRows.map((row) => ({
       key: `movie-${row.userId}-${row.titleId}`,
@@ -125,6 +157,24 @@ export async function getFriendActivity(userId: string, limit = 30): Promise<Fri
       seasonNumber: null,
       episodeNumber: null,
       episodeName: null,
+      rating: null,
+      reviewText: null,
+    })),
+    ...ratingRows.map((row) => ({
+      key: `rating-${row.userId}-${row.titleId}`,
+      type: "rating" as const,
+      watchedAt: row.reviewCreatedAt!,
+      user: { id: row.userId, username: row.username, name: row.name, avatarUrl: row.avatarUrl ?? row.image },
+      titleId: row.titleId,
+      tmdbId: row.tmdbId,
+      mediaType: row.mediaType,
+      name: row.titleName,
+      posterPath: row.posterPath,
+      seasonNumber: null,
+      episodeNumber: null,
+      episodeName: null,
+      rating: row.rating,
+      reviewText: row.reviewText,
     })),
   ];
 

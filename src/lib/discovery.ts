@@ -3,6 +3,7 @@ import { alias } from "drizzle-orm/pg-core";
 
 import { follows, titles as titlesTable, userLibrary, users } from "@/db/schema";
 import { db } from "@/lib/db";
+import { getRatingSummaries } from "@/lib/ratings";
 import { getTitleRecommendations, type TmdbMediaType, type TmdbSearchResult } from "@/lib/tmdb";
 import type { FollowStatus } from "@/lib/user-search";
 
@@ -111,16 +112,22 @@ export async function getMostWatchedThisWeek(viewerId: string, limit = 10) {
 }
 
 /**
- * Placeholder for real community ratings (Fase 9, not implemented yet): reuses
- * the same "active this week" candidate set as getMostWatchedThisWeek, just
- * reordered by the TMDb score already cached on `titles`. Swap this to order
- * by an aggregated `personal_rating` once Fase 9 ships.
+ * Reuses the same "active this week" candidate set as getMostWatchedThisWeek,
+ * reordered by the real ShowRadar community rating (Fase 9) instead of the
+ * TMDb score — only candidates with at least one ShowRadar rating qualify,
+ * ties broken by how many ratings back that average up.
  */
 export async function getTopRatedThisWeek(viewerId: string, limit = 10) {
   const candidates = await getRecentlyCompletedTitles(viewerId, 50);
+  const summaries = await getRatingSummaries(candidates.map((title) => title.id));
+
   return candidates
-    .filter((title) => title.voteAverage != null)
-    .sort((a, b) => Number(b.voteAverage) - Number(a.voteAverage))
+    .filter((title) => summaries.has(title.id))
+    .sort((a, b) => {
+      const summaryA = summaries.get(a.id)!;
+      const summaryB = summaries.get(b.id)!;
+      return summaryB.average - summaryA.average || summaryB.count - summaryA.count;
+    })
     .slice(0, limit);
 }
 

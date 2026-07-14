@@ -1,6 +1,6 @@
 # ShowRadar — Status do Projeto
 
-_Atualizado em: 2026-07-14_
+_Atualizado em: 2026-07-14 (Fase 9 concluída)_
 
 Referência do plano completo: `C:\Users\andre\.claude\plans\quero-fazer-um-sistema-magical-kite.md`
 
@@ -12,7 +12,8 @@ Referência do plano completo: `C:\Users\andre\.claude\plans\quero-fazer-um-sist
 - **Fase 8: concluída** — Fase 7 (Monetização) pulada a pedido do usuário; boa parte do social (busca de usuários, seguir/aceitar, perfil público, privacidade) já tinha sido construída junto do núcleo sem ser documentada aqui; esta rodada fechou busca por e-mail exato, contagem por aba na busca e o feed de atividade dos amigos.
 - **Amigos, Área Administrativa e Motor de Descoberta: concluído** — fora do plano original (pedido avulso do usuário): lista de amigos com follow mútuo automático, área `/admin` (usuários, plano, suspensão, métricas) e 4 das 5 vitrines de descoberta na tela de busca (a 5ª, "Recomendados para você"/Fase 10, entrou depois — ver abaixo).
 - **Fase 10 (Recomendação): concluída** — vitrine "Recomendados para você" (TMDb `/recommendations`+`/similar` a partir dos títulos concluídos pelo usuário), na frente de todas as outras vitrines de `/search`.
-- **Expansão restante (Fases 9, 11-13): não iniciada** — Fase 9 já tem um placeholder no motor de descoberta acima (ver nota na seção correspondente).
+- **Fase 9 (Avaliações públicas): concluída** — nota (5 estrelas com meia-estrela) + texto opcional por título, sempre públicas, reaproveitando `user_library.personal_rating`; "Maiores notas da semana" do motor de descoberta trocou o placeholder (nota TMDb) pela nota média real da comunidade.
+- **Expansão restante (Fases 11-13): não iniciada.**
 
 ---
 
@@ -131,7 +132,7 @@ Pedido avulso do usuário, fora da numeração do plano original — três frent
 - [x] `unfollow` virou "desfazer amizade" quando a relação é mútua — apaga as duas linhas de `follows` de uma vez (antes só apagava a direção do próprio usuário); continua cancelando só o próprio pedido quando ainda está `pending`
 - [x] Área administrativa (`/admin`, link "Admin" no menu só pra quem tem `role = "admin"`) — três telas: dashboard com métricas gerais (total de usuários, cadastros dos últimos 30 dias, títulos mais adicionados), `/admin/users` com busca/filtro por nome/e-mail/plano e paginação (mesmo padrão de `api/users/search`), `/admin/users/[id]` com plano (toggle free/premium — mesma coluna `users.plan` já desenhada na especificação da Fase 7 abaixo) e suspensão de conta
 - [x] `users.role` (`user`/`admin`), `users.plan` (`free`/`premium`) e `users.is_suspended`, novos no schema — `role` e a checagem de suspensão propagados pro JWT/sessão no mesmo padrão de `username`/`avatarUrl`; `proxy.ts` protege `/admin` só com o token edge-safe, sem precisar tocar banco. Não existe UI pra promover alguém a admin (evita abrir uma superfície de escalonamento de privilégio nova) — primeiro admin promovido via `UPDATE` manual direto no Supabase
-- [x] Motor de descoberta — três das cinco vitrines pedidas, na própria tela de busca, no espaço que ficava vazio antes de digitar algo (`components/discovery/discovery-section.tsx`, `lib/discovery.ts`): "Mais assistidos da semana" e "Maiores notas da semana" (últimos 7 dias de atividade `completed`, ordenadas por contagem ou pela nota do TMDb já cacheada — placeholder até a Fase 9 trazer nota real de usuário) e "Mais populares" (ranking por contagem de seguidores aceitos). "Recomendados para você" (Fase 10) e "Atores aniversariantes de hoje" ficaram de fora — a primeira depende do motor de recomendação ainda não construído, a segunda exigiria uma tabela nova de pessoas/aniversário que não existe hoje
+- [x] Motor de descoberta — três das cinco vitrines pedidas, na própria tela de busca, no espaço que ficava vazio antes de digitar algo (`components/discovery/discovery-section.tsx`, `lib/discovery.ts`): "Mais assistidos da semana" e "Maiores notas da semana" (últimos 7 dias de atividade `completed`, ordenadas por contagem ou pela nota do TMDb já cacheada — placeholder até a Fase 9 trazer nota real de usuário, ver "Fase 9" abaixo, onde o placeholder foi substituído) e "Mais populares" (ranking por contagem de seguidores aceitos). "Recomendados para você" (Fase 10) e "Atores aniversariantes de hoje" ficaram de fora — a primeira depende do motor de recomendação ainda não construído, a segunda exigiria uma tabela nova de pessoas/aniversário que não existe hoje
 - [x] **Bug encontrado e corrigido nesta rodada:** suspender uma conta (`users.is_suspended`) só invalidava uma sessão **já ativa** no próximo refresh do token — não impedia um **novo** login (a checagem tinha ido parar só no callback `jwt()`, que roda depois que o login já foi aceito). Corrigido com um callback `signIn` em `lib/auth.ts` (mecanismo do Auth.js pra bloquear o login em si, cobre Credentials e Google ao mesmo tempo); a checagem em `jwt()` continua existindo, agora só cobrindo o caso complementar (conta suspensa enquanto o usuário já está logado em outro lugar)
 
 **Como testei:** ponta a ponta com Playwright headless contra o dev server e o Supabase real — duas contas de teste criadas via signup, ambas assistem o mesmo filme (gera atividade "da semana"), A segue B e B aceita, confirmado que B passou a seguir A de volta sozinho (`/friends` nos dois lados, botão "Seguindo" no perfil um do outro) e que desfazer a amizade limpa os dois lados; `/search` sem digitar nada mostra as 3 vitrines com dados reais, incluindo o filme e o username de B; A promovido a admin via SQL, acessa `/admin`, busca B em `/admin/users`, muda o plano pra premium e suspende a conta — confirmado que B não consegue mais logar (foi assim que o bug do parágrafo acima apareceu) e que B, sem ser admin, é barrado em `/admin`. Contas de teste removidas do banco ao final. `npx tsc --noEmit`, `npm run lint` e `npm run build` sem erros.
@@ -146,13 +147,27 @@ Pedido avulso do usuário, fora da numeração do plano original — três frent
 
 ---
 
-## Fases de Expansão (7, 9, 11-13)
+## Fase 9 — Avaliações públicas (concluída)
+
+- [x] Reaproveita `user_library.personal_rating` (coluna `smallint` já existente no schema, nunca usada até agora) em vez de criar tabela nova — cada usuário só tem uma linha por título (índice único `userId+titleId` já existia), então nota + texto cabem ali
+- [x] Novas colunas em `user_library`: `review_text` (texto livre, opcional), `review_updated_at` (bumped a cada salvamento, cria ou edita — usada pra ordenar "mais recentes primeiro") e `review_created_at` (gravada só na primeira vez, nunca sobrescrita depois — **coluna extra além do que a especificação original previa**, necessária pra separar "avaliou pela primeira vez" de "só editou de novo", ver próximo item)
+- [x] Escala de 5 estrelas com meia-estrela (`personal_rating` continua inteiro 1-10, 2 pontos por estrela) — `components/title/rating-stars.tsx`: cada estrela tem duas zonas de clique (metade esquerda/direita) sobrepostas a um ícone `Star` clipado por `width`/`overflow-hidden` pra render de meia-estrela; reaproveita a classe `animate-episode-check-pop` de `episode-watch-button.tsx` no "pop" de cada estrela preenchida
+- [x] Só é possível avaliar um título com status `completed` na grade — checado no servidor (`lib/actions/ratings.ts::submitRating`, mesmo espírito do guard de "abandonei" em `syncLibraryStatusFromProgress`), não só escondido na UI; mudar o status de volta pra longe de `completed` depois **não apaga** uma avaliação já feita, só impede novas edições até voltar a `completed`
+- [x] Nota e texto sempre públicos, independente de perfil fechado ou de seguir — desacoplado do sistema de privacidade da Fase 8
+- [x] Seção "Avaliações" na página de detalhe do título (`components/title/title-ratings-section.tsx`) — nota do TMDb (`titles.vote_average`, nunca exibida até hoje) lado a lado com a nota média ShowRadar (`lib/ratings.ts::getTitleRatingSummary`, mesmo padrão agregado de `getWatchedEpisodeCounts` em `lib/progress.ts`), formulário de avaliação (só quando o status é `completed`) e lista de avaliações individuais (nota + texto + autor + data), mais recentes primeiro
+- [x] `lib/actions/ratings.ts` — `submitRating`/`deleteRating`, seguindo o padrão de `lib/actions/follow.ts`
+- [x] Avaliar um título pela primeira vez gera evento no feed de atividade da Fase 8 (`lib/feed.ts::getFriendActivity`) — nova query sobre `user_library` datada por `review_created_at` (não `review_updated_at`), então só a primeira avaliação aparece; editar a nota depois não gera um segundo evento
+- [x] "Maiores notas da semana" do motor de descoberta (`lib/discovery.ts::getTopRatedThisWeek`) trocou o placeholder (nota TMDb) pela nota média ShowRadar real, via `lib/ratings.ts::getRatingSummaries` (versão em lote) — só títulos com pelo menos uma avaliação entram na vitrine agora, desempate por quantidade de avaliações
+
+**Como testei:** Playwright headless contra o dev server e o Supabase real — duas contas de teste, A completa um filme e avalia com 4 estrelas + texto, seção "Avaliações" confere (nota TMDb 8.7/10, média ShowRadar com "(1 avaliação)", entrada própria marcada "(você)"); screenshot confirma o render da meia-estrela depois de editar a nota pra 3.5 estrelas (clip exato na metade do ícone); B passa a seguir A (aceito), `/feed` de B mostra o evento "avaliou" **uma única vez** mesmo depois da edição da nota; título adicionado sem marcar como assistido não mostra o formulário de avaliação; `/search` sem digitar nada mostra "Maiores notas da semana" já reordenada pela nota real. Contas de teste removidas do banco ao final. `npx tsc --noEmit`, `npm run lint` e `npm run build` sem erros.
+
+---
+
+## Fases de Expansão (7, 11-13)
 
 | Fase | Conteúdo | Status |
 |---|---|---|
 | 7 | Monetização (anúncios discretos + assinatura Stripe) | Especificada (só arquitetura — rede de anúncio e preço ficam em aberto); pulada por ora a pedido do usuário |
-| 9 | Avaliações públicas (nota + texto por título) | Especificada; não iniciada |
-| 10 | Recomendação (baseada em `/recommendations` da TMDb) | **Concluída** — ver "Complemento — Fase 10" acima |
 | 11 | Multi-idioma (pt-BR + en-US + es, UI e metadados) | Especificada; não iniciada |
 | 12 | Sincronização offline (cache de leitura + fila simples) | Especificada; não iniciada |
 | 13 | Importação de histórico (IMDb + Letterboxd via CSV) | Especificada; baixa prioridade, sem compromisso de cronograma |
@@ -167,9 +182,7 @@ Pedido avulso do usuário, fora da numeração do plano original — três frent
 - [ ] Preço, período de teste grátis e texto de venda ficam como placeholder (`STRIPE_PRICE_ID` via env var) — decisão de negócio a tomar quando a fase for retomada de verdade
 - [ ] Conta Stripe em modo teste (já pendente desde a Fase 0) — pré-requisito de infraestrutura
 
-### Fase 9 — Avaliações públicas (especificação; não iniciada)
-
-**Nota:** a vitrine "Maiores notas da semana" do motor de descoberta (ver seção "Amigos, Área Administrativa e Motor de Descoberta" acima) já usa a nota do TMDb como placeholder nesse exato lugar da UI — quando esta fase for implementada, basta trocar a fonte de dado dentro de `lib/discovery.ts::getTopRatedThisWeek`.
+### Fase 9 — Avaliações públicas (especificação original; ver "Fase 9 — Avaliações públicas (concluída)" acima para o que foi de fato implementado)
 
 - [ ] Reaproveita `user_library.personal_rating` (coluna `smallint` já existente no schema, nunca usada) em vez de criar tabela nova — cada usuário só tem uma linha por título (índice único `userId+titleId` já existe), então nota + texto cabem ali
 - [ ] Novas colunas `user_library.review_text` (texto livre, opcional) e `review_updated_at` (timestamp) — migração Drizzle

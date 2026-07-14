@@ -190,6 +190,13 @@ export const userLibrary = appSchema.table(
     status: libraryStatusEnum("status").notNull().default("plan_to_watch"),
     isFavorite: boolean("is_favorite").notNull().default(false),
     personalRating: smallint("personal_rating"),
+    reviewText: text("review_text"),
+    // Bumped on every save (create or edit) — drives "most recent first" in
+    // the public reviews list. reviewCreatedAt below is set once and never
+    // touched again, so the feed can tell "first rating" from "edited it
+    // again" without the two colliding.
+    reviewUpdatedAt: timestamp("review_updated_at", { mode: "date" }),
+    reviewCreatedAt: timestamp("review_created_at", { mode: "date" }),
     addedAt: timestamp("added_at", { mode: "date" }).notNull().defaultNow(),
     watchedAt: timestamp("watched_at", { mode: "date" }),
     updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
