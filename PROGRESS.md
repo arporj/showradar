@@ -1,6 +1,6 @@
 # ShowRadar — Status do Projeto
 
-_Atualizado em: 2026-07-14 (complementos pós-Fase 9 concluídos: recomendação variável/descartável, episódios especiais, navegação do admin, contraste e agrupamento do feed)_
+_Atualizado em: 2026-07-14 (complementos pós-Fase 9 concluídos: recomendação variável/descartável, episódios especiais, navegação do admin, contraste, agrupamento do feed e "Títulos parecidos" — fechando a última pendência real da Fase 10)_
 
 Referência do plano completo: `C:\Users\andre\.claude\plans\quero-fazer-um-sistema-magical-kite.md`
 
@@ -11,7 +11,7 @@ Referência do plano completo: `C:\Users\andre\.claude\plans\quero-fazer-um-sist
 - **Fase 6: concluída** — PWA instalável, tema escuro/claro, responsividade mobile, telas de erro/404.
 - **Fase 8: concluída** — Fase 7 (Monetização) pulada a pedido do usuário; boa parte do social (busca de usuários, seguir/aceitar, perfil público, privacidade) já tinha sido construída junto do núcleo sem ser documentada aqui; esta rodada fechou busca por e-mail exato, contagem por aba na busca e o feed de atividade dos amigos.
 - **Amigos, Área Administrativa e Motor de Descoberta: concluído** — fora do plano original (pedido avulso do usuário): lista de amigos com follow mútuo automático, área `/admin` (usuários, plano, suspensão, métricas) e 4 das 5 vitrines de descoberta na tela de busca (a 5ª, "Recomendados para você"/Fase 10, entrou depois — ver abaixo).
-- **Fase 10 (Recomendação): concluída, com uma pendência real** — vitrine "Recomendados para você" (TMDb `/recommendations`+`/similar` a partir dos títulos concluídos pelo usuário) em `/search` (não no `/dashboard` como o plano original previa — mudança a pedido do usuário), com dois complementos depois: variação a cada carregamento (pool + sorteio, em vez de sempre os mesmos 10 na mesma ordem) e descarte permanente por título (tabela `dismissed_recommendations`, botão "X" no card). **Falta:** a seção "Títulos parecidos" na página de detalhe do título, prevista no plano original, nunca foi construída (ver "Fase 10" mais abaixo).
+- **Fase 10 (Recomendação): concluída** — vitrine "Recomendados para você" (TMDb `/recommendations`+`/similar` a partir dos títulos concluídos pelo usuário) em `/search` (não no `/dashboard` como o plano original previa — mudança a pedido do usuário), com três complementos depois: variação a cada carregamento (pool + sorteio, em vez de sempre os mesmos 10 na mesma ordem), descarte permanente por título (tabela `dismissed_recommendations`, botão "X" no card) e a seção "Títulos parecidos" ao final da página de detalhe do título (o único item que de fato faltava do plano original).
 - **Fase 9 (Avaliações públicas): concluída** — nota (5 estrelas com meia-estrela) + texto opcional por título, sempre públicas, reaproveitando `user_library.personal_rating`; "Maiores notas da semana" do motor de descoberta trocou o placeholder (nota TMDb) pela nota média real da comunidade.
 - **Complemento — episódios especiais, ordenação da grade e status clicável: concluído** — temporada 0 (especiais) deixou de contar pra decidir se uma série está "Assistida"; corrigido bug que impedia marcar especiais como assistidos (episódios sem `air_date` ficavam com o botão travado, sem erro nenhum); `/library` sem filtro agrupa por status (assistindo → quero assistir → assistido → abandonei); o status atual de um título não aparece mais como card clicável ao lado dos outros.
 - **Complemento — navegação do admin e contraste no modo claro: concluído** — `/admin` virou a própria lista de usuários (antes um dashboard separado, sem volta pra quem entrava em `/admin/users` ou num usuário — o app roda como PWA instalado, sem chrome de navegador), com abas "Usuários"/"Séries" e botão de voltar na página de um usuário; texto cinza (`--muted-foreground`) escurecido no tema claro pra melhor legibilidade (o escuro já estava bom).
@@ -227,14 +227,23 @@ Pedido avulso do usuário, fora da numeração do plano original — três frent
 - [ ] Preço, período de teste grátis e texto de venda ficam como placeholder (`STRIPE_PRICE_ID` via env var) — decisão de negócio a tomar quando a fase for retomada de verdade
 - [ ] Conta Stripe em modo teste (já pendente desde a Fase 0) — pré-requisito de infraestrutura
 
-### Fase 10 — Recomendação (concluída, com uma pendência real)
+### Fase 10 — Recomendação (concluída)
 
-A vitrine "Recomendados para você" foi implementada e está em produção — ver "Complemento — Fase 10 (Motor de Recomendação)" e "Complemento — variação e descarte em 'Recomendados para você'" mais acima para o que foi de fato construído. Duas divergências em relação à especificação original abaixo, uma delas **ainda pendente de verdade** (não é só este documento desatualizado):
+A vitrine "Recomendados para você" foi implementada e está em produção — ver "Complemento — Fase 10 (Motor de Recomendação)" e "Complemento — variação e descarte em 'Recomendados para você'" mais acima para o que foi de fato construído. Uma divergência (deliberada) e um item que faltava (fechado depois, ver "Complemento — Títulos parecidos" abaixo) em relação à especificação original:
 
 - [x] Método no cliente TMDb (`lib/tmdb.ts::getTitleRecommendations`) — `/movie|tv/{id}/recommendations` com fallback pra `/similar`, um método único por `mediaType` em vez de dois métodos separados como o rascunho original previa (diferença de implementação, sem impacto)
-- [ ] **Pendente:** página de detalhe do título ganhar uma seção "Títulos parecidos" — reaproveitaria `SearchResultCard` (mesmo cartão da busca), já indicando "Adicionado" pra quem já está na grade; nunca foi construída, não existe em nenhum lugar do código hoje
+- [x] Página de detalhe do título ganhou a seção "Títulos parecidos" — fechado depois, ver "Complemento — Títulos parecidos na página de detalhe" abaixo
 - [x] Seção "Recomendados para você" construída — em `/search` (**não** no `/dashboard` como o rascunho original previa; mudança deliberada, a pedido explícito do usuário durante a implementação), calculada a partir dos títulos concluídos, deduplicando e excluindo o que já está na grade
 - [x] Sem cache dos resultados de recomendação no banco (busca sob demanda a cada carregamento) — a tabela `dismissed_recommendations` adicionada depois é sobre exclusões permanentes por título, não sobre cachear a resposta da TMDb
+
+### Complemento — Títulos parecidos na página de detalhe, adicionado depois
+
+O único item que realmente faltava da Fase 10 original (não só uma pendência de documentação — o código não existia). Implementado ao final da página de detalhe do título, a pedido do usuário.
+
+- [x] `lib/discovery.ts::getSimilarTitles(viewerId, mediaType, tmdbId)` — reaproveita `getTitleRecommendations` (mesmo cliente TMDb da vitrine "Recomendados para você"), escopado a **um** título fonte (não ao histórico do usuário inteiro) e sem excluir títulos já na grade — só marca `inLibrary` pra o card mostrar "Adicionado", igual a busca já faz. Filtra o próprio título fora da lista (defensivo, caso a TMDb algum dia devolva auto-referência)
+- [x] Nova seção "Títulos parecidos" ao final de `title/[mediaType]/[tmdbId]/page.tsx` (depois de "Avaliações", último elemento da página — posição pedida pelo usuário), reaproveitando `SearchResultCard` sem componente novo, buscada em paralelo com o resto dos dados da página (mesmo `Promise.all` de `libraryRows`/`watchedCounts`/etc.)
+
+**Como testei:** sem navegador nesta sessão — script (`tsx`) contra a TMDb e o Supabase reais: `getSimilarTitles` pra _The Matrix_ (tmdb 603) sem nenhum dado de grade retornou 10 candidatos reais (Matrix Reloaded, Matrix Revolutions, O Exterminador do Futuro: Gênesis etc.), nenhum deles sendo o próprio Matrix, todos com `inLibrary=false`; adicionei "Matrix Reloaded" à grade da conta de teste e chamei de novo — só esse título passou a `inLibrary=true`, os outros 9 continuaram `false`. Conta de teste e dado de grade removidos do banco ao final, script descartado. `npx tsc --noEmit`, `eslint` e `npm run build` sem erros. **Pendente:** a seção não foi visualizada num navegador real — só validada por leitura de código, tipagem, build e o script contra dados reais.
 
 ### Fase 11 — Multi-idioma (especificação; não iniciada)
 

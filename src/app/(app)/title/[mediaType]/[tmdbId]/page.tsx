@@ -5,12 +5,14 @@ import { notFound } from "next/navigation";
 
 import { BackButton } from "@/components/ui/back-button";
 import { LibraryStatusControl } from "@/components/title/library-status-control";
+import { SearchResultCard } from "@/components/search/result-card";
 import { TitleRatingsSection } from "@/components/title/title-ratings-section";
 import { WatchProgress } from "@/components/title/watch-progress";
 import { WatchProviders } from "@/components/title/watch-providers";
 import { seasons as seasonsTable, titles, userLibrary } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getSimilarTitles } from "@/lib/discovery";
 import { LIBRARY_STATUSES } from "@/lib/library-status";
 import { getWatchedEpisodeCounts } from "@/lib/progress";
 import { getTitleRatingSummary, getTitleReviews } from "@/lib/ratings";
@@ -51,7 +53,7 @@ export default async function TitleDetailPage({
   ]);
   if (!title) notFound();
 
-  const [libraryRows, watchedCounts, ratingSummary, reviews] = await Promise.all([
+  const [libraryRows, watchedCounts, ratingSummary, reviews, similarTitles] = await Promise.all([
     session?.user
       ? db
           .select()
@@ -64,6 +66,7 @@ export default async function TitleDetailPage({
     ),
     getTitleRatingSummary(titleId),
     getTitleReviews(titleId),
+    getSimilarTitles(session?.user?.id, mediaType, tmdbIdNum),
   ]);
   const libraryEntry = libraryRows[0];
   const currentStatus =
@@ -182,6 +185,17 @@ export default async function TitleDetailPage({
         currentUserReviewText={libraryEntry?.reviewText ?? null}
         canRate={currentStatus === "completed"}
       />
+
+      {similarTitles.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-lg font-semibold">Títulos parecidos</h2>
+          <div className="space-y-3">
+            {similarTitles.map((result) => (
+              <SearchResultCard key={`${result.media_type}-${result.id}`} result={result} />
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

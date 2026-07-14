@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, ne, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, ne, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
 import { dismissedRecommendations, follows, titles as titlesTable, userLibrary, users } from "@/db/schema";
@@ -86,6 +86,41 @@ export async function getRecommendedForYou(viewerId: string, limit = 10): Promis
   return shuffle(pool)
     .slice(0, limit)
     .map((entry) => entry.result);
+}
+
+/**
+ * "Títulos parecidos" on a title's own detail page — unlike
+ * getRecommendedForYou above, this is scoped to a single source title (not
+ * seeded from the viewer's whole library) and doesn't exclude titles already
+ * in the viewer's library; it just flags them `inLibrary` so the card can
+ * show "Adicionado", same as search results already do.
+ */
+export async function getSimilarTitles(
+  viewerId: string | undefined,
+  mediaType: TmdbMediaType,
+  tmdbId: number,
+  limit = 10,
+): Promise<TmdbSearchResult[]> {
+  const results = await getTitleRecommendations(mediaType, tmdbId).catch(() => [] as TmdbSearchResult[]);
+  const candidates = results.filter((result) => result.id !== tmdbId).slice(0, limit);
+  if (!viewerId || candidates.length === 0) return candidates;
+
+  const libraryRows = await db
+    .select({ tmdbId: titlesTable.tmdbId, mediaType: titlesTable.mediaType })
+    .from(userLibrary)
+    .innerJoin(titlesTable, eq(userLibrary.titleId, titlesTable.id))
+    .where(
+      and(
+        eq(userLibrary.userId, viewerId),
+        inArray(
+          titlesTable.tmdbId,
+          candidates.map((result) => result.id),
+        ),
+      ),
+    );
+  const libraryKeys = new Set(libraryRows.map((row) => `${row.mediaType}-${row.tmdbId}`));
+
+  return candidates.map((result) => ({ ...result, inLibrary: libraryKeys.has(`${result.media_type}-${result.id}`) }));
 }
 
 export interface DiscoveryTitle {
