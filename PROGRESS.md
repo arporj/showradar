@@ -1,6 +1,6 @@
 # ShowRadar — Status do Projeto
 
-_Atualizado em: 2026-07-11_
+_Atualizado em: 2026-07-14_
 
 Referência do plano completo: `C:\Users\andre\.claude\plans\quero-fazer-um-sistema-magical-kite.md`
 
@@ -9,7 +9,8 @@ Referência do plano completo: `C:\Users\andre\.claude\plans\quero-fazer-um-sist
 - **Núcleo (Fases 0-4): concluído e testado contra TMDb/banco reais.**
 - **Fase 5: concluída** — push e e-mail (Brevo) no cron de notificações, quiet hours por fuso horário.
 - **Fase 6: concluída** — PWA instalável, tema escuro/claro, responsividade mobile, telas de erro/404.
-- **Expansão (Fases 7-13): não iniciada.**
+- **Fase 8: concluída** — Fase 7 (Monetização) pulada a pedido do usuário; boa parte do social (busca de usuários, seguir/aceitar, perfil público, privacidade) já tinha sido construída junto do núcleo sem ser documentada aqui; esta rodada fechou busca por e-mail exato, contagem por aba na busca e o feed de atividade dos amigos.
+- **Expansão restante (Fases 9-13): não iniciada.**
 
 ---
 
@@ -109,14 +110,24 @@ Referência do plano completo: `C:\Users\andre\.claude\plans\quero-fazer-um-sist
 
 **Como testei:** Playwright headless (instalado localmente com `--no-save`, sem alterar `package.json`) dirigindo um Chromium contra o dev server: login real, screenshots em viewport mobile (375px) de 9 páginas autenticadas antes/depois da correção do header, toggle de tema com verificação da classe `dark` antes/depois de reload, fetch do `/manifest.webmanifest` e dos 3 ícones (200, `content-type` correto), verificação de que o Service Worker registra (`active: true`) sem erros de console, e navegação a um `tmdbId` inexistente + uma rota totalmente inexistente para validar `not-found.tsx`/status 404. `npm run build` (produção) e `npx tsc --noEmit`/`eslint` sem erros após todas as mudanças.
 
+## Fase 8 — Social (concluída; Fase 7/Monetização pulada a pedido do usuário)
+
+- [x] Perfis públicos/fechados — `users.is_private` (fechado por padrão), toggle "Perfil fechado" em `/settings` (`components/settings/privacy-toggle.tsx`); página `/user/[username]` mostra a grade completa (aberto, ou fechado + seguidor aceito) ou uma mensagem de bloqueio caso contrário
+- [x] Seguir, estilo Instagram (pedido → aceite) — tabela `follows` (`pending`/`accepted`), `lib/actions/follow.ts` (enviar/cancelar/aceitar/recusar), `/follow-requests` para gerenciar pedidos recebidos; segue **sempre** passa por aceite manual, mesmo em perfil aberto (perfil aberto já libera a grade sem seguir — seguir é sobre o feed, não sobre visibilidade)
+- [x] Busca de usuários por username/nome (parcial, com contagem de títulos em comum) na aba "Usuários" de `/search` (`api/users/search`, `components/search/user-search-tab.tsx`)
+- [x] Busca de usuários por e-mail — antes só existia a busca parcial por username/nome; agora, se a query contém `@`, vira comparação **exata** por e-mail (`lib/user-search.ts::buildUserSearchCondition`) em vez de `ilike`, para não virar ferramenta de varredura de e-mails de terceiros
+- [x] Contagem por aba na busca — `Séries (X) | Filmes (Y) | Atores (Z) | Usuários (A)`, via nova rota `api/search-counts` (contagens reais do TMDb por categoria + contagem de usuários no banco, buscadas em paralelo e independente da aba ativa) e `hooks/use-search-counts.ts`; aba "Tudo" fica sem número (não é uma categoria própria)
+- [x] Feed de atividade dos amigos (`/feed`, novo link "Atividade" no menu) — `lib/feed.ts::getFriendActivity` mescla, em JS, episódios assistidos e filmes concluídos por quem o usuário segue **e foi aceito**, ordenado por data; sem paginação nesta primeira versão (30 itens mais recentes); não emite um evento redundante para série concluída (já coberto pelo evento do último episódio)
+
+**Como testei:** ponta a ponta com Playwright headless contra o dev server e o Supabase real — duas contas de teste criadas via signup, A busca "batman" e confere as 4 contagens por aba batendo com o que cada aba lista, busca o e-mail completo de B (acha) e um pedaço do e-mail de B (não acha, confirmando que não é parcial), busca um pedaço do username de B (acha, confirmando que username continua parcial), A segue B, B aceita em `/follow-requests`, B adiciona um filme e marca como assistido na página de detalhe, A confere que a atividade aparece em `/feed` com avatar/nome/pôster/data corretos. Contas de teste removidas do banco ao final. `npx tsc --noEmit`, `npm run build` e `eslint` sem erros.
+
 ---
 
-## Fases de Expansão (7-13) — nenhuma iniciada
+## Fases de Expansão (7, 9-13)
 
 | Fase | Conteúdo | Status |
 |---|---|---|
-| 7 | Monetização (anúncios discretos + assinatura Stripe para remover anúncios) | Não iniciada |
-| 8 | Social (perfis públicos, seguir, feed de atividade) | Não iniciada |
+| 7 | Monetização (anúncios discretos + assinatura Stripe para remover anúncios) | Pulada por ora, a pedido do usuário — retomar quando fizer sentido |
 | 9 | Avaliações públicas (nota + texto por título) | Não iniciada |
 | 10 | Recomendação (baseada em `/recommendations` da TMDb) | Não iniciada |
 | 11 | Multi-idioma (UI + metadados localizados) | Não iniciada |

@@ -6,6 +6,7 @@ import { SearchResultsTab } from "@/components/search/search-results-tab";
 import { UserSearchTab } from "@/components/search/user-search-tab";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useSearchCounts, type SearchCounts } from "@/hooks/use-search-counts";
 
 const TABS = [
   { value: "all", label: "Tudo", kind: "tmdb" },
@@ -17,12 +18,19 @@ const TABS = [
 
 type TabValue = (typeof TABS)[number]["value"];
 
+function tabLabel(tab: (typeof TABS)[number], counts: SearchCounts | null) {
+  if (tab.value === "all") return tab.label;
+  const count = counts?.[tab.value] ?? null;
+  return count === null ? tab.label : `${tab.label} (${count})`;
+}
+
 export function SearchBox() {
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [activeTab, setActiveTab] = useState<TabValue>("all");
 
   const trimmed = query.trim();
+  const counts = useSearchCounts(debouncedQuery);
 
   useEffect(() => {
     const timeout = setTimeout(() => setDebouncedQuery(trimmed), 300);
@@ -43,7 +51,7 @@ export function SearchBox() {
           <TabsList>
             {TABS.map((tab) => (
               <TabsTrigger key={tab.value} value={tab.value}>
-                {tab.label}
+                {tabLabel(tab, counts)}
               </TabsTrigger>
             ))}
           </TabsList>

@@ -11,6 +11,7 @@ import { auth, signOut } from "@/lib/auth";
 
 const NAV_LINKS = [
   { href: "/dashboard", label: "Início" },
+  { href: "/feed", label: "Atividade" },
   { href: "/search", label: "Buscar" },
   { href: "/library", label: "Minha Grade" },
   { href: "/upcoming", label: "Em breve" },

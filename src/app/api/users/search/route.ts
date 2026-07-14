@@ -1,15 +1,12 @@
-import { and, desc, eq, ilike, ne, or, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 import { follows, userLibrary, users } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { buildUserSearchCondition } from "@/lib/user-search";
 
 const PAGE_SIZE = 10;
-
-function escapeLikePattern(value: string) {
-  return value.replace(/[%_\\]/g, (char) => `\\${char}`);
-}
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -23,7 +20,6 @@ export async function GET(req: NextRequest) {
   }
 
   const page = Math.max(1, Number(req.nextUrl.searchParams.get("page")) || 1);
-  const pattern = `%${escapeLikePattern(query)}%`;
 
   // Count of titles that both the viewer and the candidate have in their
   // library, regardless of status (plan_to_watch/watching/completed/dropped).
@@ -46,7 +42,7 @@ export async function GET(req: NextRequest) {
     })
     .from(users)
     .leftJoin(follows, and(eq(follows.followerId, session.user.id), eq(follows.followingId, users.id)))
-    .where(and(ne(users.id, session.user.id), or(ilike(users.username, pattern), ilike(users.name, pattern))))
+    .where(buildUserSearchCondition(session.user.id, query))
     .orderBy(desc(titlesInCommon))
     // Fetch one extra row as a cheap "is there a next page" peek.
     .limit(PAGE_SIZE + 1)
