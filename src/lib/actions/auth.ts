@@ -59,7 +59,9 @@ export async function signupAction(_prevState: ActionState, formData: FormData):
   });
 
   try {
-    await signIn("credentials", { email, password, redirectTo: "/dashboard" });
+    // ?signup=... marca o redirect pós-cadastro pro dashboard disparar a
+    // conversão do Google Ads (components/analytics/signup-conversion.tsx).
+    await signIn("credentials", { email, password, redirectTo: "/dashboard?signup=credentials" });
   } catch (error) {
     if (error instanceof AuthError) {
       return { error: "Conta criada. Faça login para continuar." };
@@ -122,7 +124,9 @@ export async function setUsernameAction(_prevState: ActionState, formData: FormD
   // refreshed — without this, the proxy would bounce us right back here.
   await updateSession({});
 
-  redirect("/dashboard");
+  // Onboarding só acontece no primeiro login via Google — é o "fim do
+  // cadastro" desse fluxo, então marca a conversão como os credentials fazem.
+  redirect("/dashboard?signup=google");
 }
 
 export async function logoutEverywhereAction() {

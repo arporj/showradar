@@ -1,7 +1,8 @@
 import { and, desc, eq } from "drizzle-orm";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 
+import { SignupConversion } from "@/components/analytics/signup-conversion";
 import { NextEpisodeCard } from "@/components/dashboard/next-episode-card";
 import { SignOutForm } from "@/components/layout/sign-out-form";
 import { TitleCard } from "@/components/library/title-card";
@@ -57,6 +58,9 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-10">
+      <Suspense fallback={null}>
+        <SignupConversion />
+      </Suspense>
       <div className="space-y-3">
         <h1 className="text-2xl font-semibold tracking-tight">Olá, {name}</h1>
         {hasNothing && (

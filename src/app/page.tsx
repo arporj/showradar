@@ -10,6 +10,8 @@ import { getSiteUrl } from "@/lib/site";
 // ---------------------------------------------------------------------------
 // JSON-LD — WebSite schema para SEO
 // ---------------------------------------------------------------------------
+// Sem SearchAction: a busca (/search) exige login, então um crawler não
+// conseguiria usá-la — reavaliar se um dia existir busca pública.
 const jsonLd = {
   "@context": "https://schema.org",
   "@type": "WebSite",
@@ -17,14 +19,6 @@ const jsonLd = {
   url: getSiteUrl(),
   description:
     "Tracker de séries e filmes para o Brasil. Acompanhe episódios, descubra onde assistir e receba alertas de estreia.",
-  potentialAction: {
-    "@type": "SearchAction",
-    target: {
-      "@type": "EntryPoint",
-      urlTemplate: `${getSiteUrl()}/search?q={search_term_string}`,
-    },
-    "query-input": "required name=search_term_string",
-  },
 };
 
 // ---------------------------------------------------------------------------

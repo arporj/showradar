@@ -10,7 +10,7 @@ export default function OpengraphImage() {
     (
       <div
         style={{
-          background: "#0c141a",
+          background: "#0F172A",
           width: "100%",
           height: "100%",
           display: "flex",
@@ -39,19 +39,57 @@ export default function OpengraphImage() {
                 width: size,
                 height: size,
                 borderRadius: "50%",
-                border: "1px solid rgba(0,240,255,0.08)",
+                border: "1px solid rgba(34,211,238,0.1)",
               }}
             />
           ))}
         </div>
 
-        {/* Logo mark */}
-        <svg width="96" height="96" viewBox="0 0 512 512">
-          <circle cx="256" cy="256" r="164" fill="none" stroke="white" strokeWidth="26" opacity="0.2" />
-          <circle cx="256" cy="256" r="116" fill="none" stroke="white" strokeWidth="26" opacity="0.4" />
-          <circle cx="256" cy="256" r="68" fill="none" stroke="white" strokeWidth="26" opacity="0.65" />
-          <path d="M256 256 L256 92 A164 164 0 0 1 420 256 Z" fill="#00f0ff" opacity="0.9" />
-          <circle cx="256" cy="256" r="34" fill="#00f0ff" />
+        {/* Logo mark — arte oficial "opção 3" (components/layout/logo.tsx) */}
+        <svg width="110" height="110" viewBox="0 0 512 512">
+          <circle
+            cx="256"
+            cy="256"
+            r="200"
+            fill="none"
+            stroke="#64748B"
+            strokeWidth="20"
+            strokeLinecap="round"
+            strokeDasharray="1029.744 226.893"
+            transform="rotate(168 256 256)"
+          />
+          <circle
+            cx="256"
+            cy="256"
+            r="140"
+            fill="none"
+            stroke="#14B8A6"
+            strokeWidth="20"
+            strokeLinecap="round"
+            strokeDasharray="720.821 158.825"
+            transform="rotate(168 256 256)"
+          />
+          <circle
+            cx="256"
+            cy="256"
+            r="80"
+            fill="none"
+            stroke="#22D3EE"
+            strokeWidth="20"
+            strokeLinecap="round"
+            strokeDasharray="411.898 90.757"
+            transform="rotate(168 256 256)"
+          />
+          <polygon
+            points="211,171 211,341 356,256"
+            fill="#22D3EE"
+            stroke="#22D3EE"
+            strokeWidth="20"
+            strokeLinejoin="round"
+            transform="rotate(315 256 256)"
+          />
+          <circle cx="256" cy="256" r="18" fill="#22D3EE" />
+          <line x1="256" y1="256" x2="114" y2="398" stroke="#22D3EE" strokeWidth="20" strokeLinecap="round" />
         </svg>
 
         {/* Wordmark */}
@@ -86,17 +124,17 @@ export default function OpengraphImage() {
             display: "flex",
             alignItems: "center",
             gap: 8,
-            background: "rgba(0,240,255,0.1)",
-            border: "1px solid rgba(0,240,255,0.2)",
+            background: "rgba(34,211,238,0.1)",
+            border: "1px solid rgba(34,211,238,0.2)",
             borderRadius: 6,
             padding: "8px 20px",
-            color: "#00f0ff",
+            color: "#22D3EE",
             fontSize: 18,
             fontWeight: 500,
             letterSpacing: "0.08em",
           }}
         >
-          GRÁTIS · PWA · pt-BR
+          GRÁTIS · INSTALE PELO SITE · pt-BR
         </div>
       </div>
     ),
