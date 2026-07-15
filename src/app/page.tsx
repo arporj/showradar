@@ -159,7 +159,7 @@ export function LogoVariant3({ className }: { className?: string }) {
 
   return (
     <svg viewBox="0 0 512 512" aria-hidden="true" className={className}>
-      {/* 1. Anel Externo - Slate - Gap a 135° */}
+      {/* 1. Anel Externo - Slate - Gap a 135° (superior esquerdo) */}
       <circle
         cx="256"
         cy="256"
@@ -198,15 +198,17 @@ export function LogoVariant3({ className }: { className?: string }) {
         transform="rotate(168 256 256)"
       />
 
-      {/* 4. Play Sólido - Rotacionado para cima (Seta apontando para o topo), tamanho até a metade (r=110) */}
+      {/* 4. Play Sólido - Rotacionado a 315° (-45°) de forma que a bissetriz alinhe com o vetor do radar (135°) */}
+      {/* A ponta do triângulo aponta para a direita-baixo (315°) e a base fica perpendicular a 135° */}
       <polygon
-        points="201,301 311,301 256,156"
+        points="211,171 211,341 356,256"
         className="fill-cyan-500 dark:fill-cyan-400 stroke-cyan-500 dark:stroke-cyan-400"
         strokeWidth="20"
         strokeLinejoin="round"
+        transform="rotate(315 256 256)"
       />
 
-      {/* 5. Círculo Central e Traço (Varredura centralizada no gap a 135°) */}
+      {/* 5. Círculo Central e Traço (Varredura centralizada no gap a 135°, formando a bissetriz do triângulo) */}
       <circle cx="256" cy="256" r="18" className="fill-cyan-500 dark:fill-cyan-400" />
       <line
         x1="256"
@@ -402,7 +404,7 @@ export default function LandingPage() {
                   <span className="mb-4 inline-flex items-center rounded-full bg-teal-100 dark:bg-teal-950/50 px-3 py-1 text-xs font-semibold text-teal-800 dark:text-teal-400">
                     Opção 3
                   </span>
-                  <p className="text-xs text-slate-500 mb-6">Gaps a 135° · Vetor a 135° no gap · Play rotacionado anti-horário apontando para CIMA (▲)</p>
+                  <p className="text-xs text-slate-500 mb-6">Gaps a 135° · Vetor a 135° no gap · Play rotacionado a 315° (bissetriz alinhada, ponta oposta a 315°)</p>
                   <LogoVariant3 className="size-44 text-cyan-500" />
                 </div>
               </div>
