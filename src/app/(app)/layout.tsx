@@ -7,6 +7,8 @@ import { DesktopNav } from "@/components/layout/desktop-nav";
 import { Logo } from "@/components/layout/logo";
 import { TmdbAttribution } from "@/components/layout/tmdb-attribution";
 import { UserMenu } from "@/components/layout/user-menu";
+import { AndroidInstallPrompt } from "@/components/pwa/android-install-prompt";
+import { IosInstallPrompt } from "@/components/pwa/ios-install-prompt";
 import { OfflineIndicator } from "@/components/pwa/offline-indicator";
 import { OfflineSyncManager } from "@/components/pwa/offline-sync-manager";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -71,6 +73,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
       <BottomNav />
       <OfflineSyncManager userId={session.user.id} />
+      <IosInstallPrompt />
+      <AndroidInstallPrompt />
     </div>
   );
 }

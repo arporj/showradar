@@ -12,8 +12,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 
 const DISMISSED_KEY = "showradar:ios-install-dismissed";
+// Mounted inside the authenticated app layout, so this only fires once per
+// tab per login session instead of on every page — sessionStorage (not
+// localStorage) is exactly "once per tab session" without extra bookkeeping.
+const SESSION_SHOWN_KEY = "showradar:ios-install-shown-session";
 
 // iOS Safari has no `beforeinstallprompt` event (Apple's PWA install is
 // manual, via the Share sheet) — this is the only way to prompt those users
@@ -30,17 +36,20 @@ function isIosSafariBrowserTab() {
 
 export function IosInstallPrompt() {
   const [open, setOpen] = useState(false);
+  const [dontShowAgain, setDontShowAgain] = useState(false);
 
   useEffect(() => {
     if (localStorage.getItem(DISMISSED_KEY)) return;
+    if (sessionStorage.getItem(SESSION_SHOWN_KEY)) return;
     if (!isIosSafariBrowserTab()) return;
 
+    sessionStorage.setItem(SESSION_SHOWN_KEY, "1");
     const timeout = setTimeout(() => setOpen(true), 2000);
     return () => clearTimeout(timeout);
   }, []);
 
   function dismiss() {
-    localStorage.setItem(DISMISSED_KEY, "1");
+    if (dontShowAgain) localStorage.setItem(DISMISSED_KEY, "1");
     setOpen(false);
   }
 
@@ -60,6 +69,16 @@ export function IosInstallPrompt() {
             </span>
           </AlertDialogDescription>
         </AlertDialogHeader>
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="ios-install-dont-show-again"
+            checked={dontShowAgain}
+            onCheckedChange={(checked) => setDontShowAgain(checked === true)}
+          />
+          <Label htmlFor="ios-install-dont-show-again" className="font-normal text-muted-foreground">
+            Não mostrar de novo
+          </Label>
+        </div>
         <AlertDialogFooter>
           <AlertDialogAction onClick={dismiss}>Entendi</AlertDialogAction>
         </AlertDialogFooter>
