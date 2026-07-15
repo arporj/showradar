@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
 import { GoogleTag } from "@/components/analytics/google-tag";
+import { AndroidInstallPrompt } from "@/components/pwa/android-install-prompt";
 import { IosInstallPrompt } from "@/components/pwa/ios-install-prompt";
 import { RegisterServiceWorker } from "@/components/pwa/register-service-worker";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -62,6 +63,7 @@ export default function RootLayout({
           <Toaster />
           <RegisterServiceWorker />
           <IosInstallPrompt />
+          <AndroidInstallPrompt />
         </ThemeProvider>
       </body>
     </html>
