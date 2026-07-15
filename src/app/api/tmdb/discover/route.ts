@@ -9,26 +9,13 @@ import {
   type TmdbSearchResponse,
 } from "@/lib/tmdb";
 import { annotateResults } from "@/lib/tmdb-annotate";
+import { normalizeSearchText as normalize } from "@/lib/utils";
 
 type Facet = "genre" | "franchise";
 type MediaFilter = "all" | "movie" | "tv";
 
 function isFacet(value: string | null): value is Facet {
   return value === "genre" || value === "franchise";
-}
-
-// Strips combining diacritical marks (U+0300-U+036F) left behind by NFD
-// normalization, so e.g. "ação" and "acao" compare equal. Written as a
-// codepoint filter rather than a \u-escaped regex literal to sidestep editor
-// tooling that eagerly decodes \u escapes inside string literals.
-function normalize(value: string) {
-  return Array.from(value.normalize("NFD"))
-    .filter((ch) => {
-      const code = ch.codePointAt(0) ?? 0;
-      return code < 0x300 || code > 0x36f;
-    })
-    .join("")
-    .toLowerCase();
 }
 
 export async function GET(req: NextRequest) {

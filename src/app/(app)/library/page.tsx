@@ -1,12 +1,14 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 import Link from "next/link";
 
+import { LibrarySearchInput } from "@/components/library/library-search-input";
 import { TitleCard } from "@/components/library/title-card";
 import { Badge } from "@/components/ui/badge";
 import { titles as titlesTable, userLibrary } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { isLibraryStatus, LIBRARY_STATUS_LABEL, type LibraryStatus } from "@/lib/library-status";
+import { normalizeSearchText } from "@/lib/utils";
 
 const STATUS_FILTERS: { value: LibraryStatus | undefined; label: string }[] = [
   { value: undefined, label: "Tudo" },
@@ -23,10 +25,11 @@ const MEDIA_TABS = [
 
 type MediaTab = (typeof MEDIA_TABS)[number]["value"];
 
-function libraryHref(mediaType: MediaTab, status?: LibraryStatus) {
+function libraryHref(mediaType: MediaTab, status?: LibraryStatus, q?: string) {
   const params = new URLSearchParams();
   if (mediaType === "movie") params.set("type", "movie");
   if (status) params.set("status", status);
+  if (q) params.set("q", q);
   const query = params.toString();
   return query ? `/library?${query}` : "/library";
 }
@@ -34,11 +37,12 @@ function libraryHref(mediaType: MediaTab, status?: LibraryStatus) {
 export default async function LibraryPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; type?: string }>;
+  searchParams: Promise<{ status?: string; type?: string; q?: string }>;
 }) {
-  const { status, type } = await searchParams;
+  const { status, type, q } = await searchParams;
   const statusFilter = isLibraryStatus(status) ? status : undefined;
   const mediaType: MediaTab = type === "movie" ? "movie" : "tv";
+  const search = q?.trim() ?? "";
 
   const session = await auth();
   if (!session?.user) return null;
@@ -61,7 +65,7 @@ export default async function LibraryPage({
     else 4
   end`;
 
-  const rows = await db
+  const allRows = await db
     .select({
       titleId: titlesTable.id,
       tmdbId: titlesTable.tmdbId,
@@ -76,6 +80,13 @@ export default async function LibraryPage({
     .where(and(...conditions))
     .orderBy(statusRank, desc(userLibrary.addedAt));
 
+  // Filtro de texto em JS (a página já carrega a grade inteira do usuário):
+  // normalizado para ignorar acentos e caixa — "percy" acha "Percy", "duna"
+  // acha "Duna", "ficcao" acha "Ficção".
+  const rows = search
+    ? allRows.filter((row) => normalizeSearchText(row.name).includes(normalizeSearchText(search)))
+    : allRows;
+
   return (
     <div className="space-y-6">
       <div>
@@ -87,7 +98,7 @@ export default async function LibraryPage({
         {MEDIA_TABS.map((tab) => (
           <Link
             key={tab.value}
-            href={libraryHref(tab.value, statusFilter)}
+            href={libraryHref(tab.value, statusFilter, search)}
             className={`border-b-2 px-1 pb-2 text-sm font-medium transition-colors ${
               mediaType === tab.value
                 ? "border-foreground text-foreground"
@@ -99,13 +110,15 @@ export default async function LibraryPage({
         ))}
       </div>
 
+      <LibrarySearchInput />
+
       <div className="flex flex-wrap gap-2">
         {STATUS_FILTERS.map((filter) => {
           const isActive = statusFilter === filter.value;
           return (
             <Link
               key={filter.label}
-              href={libraryHref(mediaType, filter.value)}
+              href={libraryHref(mediaType, filter.value, search)}
               className={`rounded-full border px-3 py-1 text-sm transition-colors ${
                 isActive
                   ? "border-foreground bg-foreground text-background"
@@ -119,13 +132,19 @@ export default async function LibraryPage({
       </div>
 
       {rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          {mediaType === "movie" ? "Nenhum filme por aqui ainda." : "Nenhuma série por aqui ainda."}{" "}
-          <Link href="/search" className="underline underline-offset-4">
-            Busque um título
-          </Link>{" "}
-          para adicionar.
-        </p>
+        search ? (
+          <p className="text-sm text-muted-foreground">
+            Nada na sua grade de {mediaType === "movie" ? "filmes" : "séries"} bate com &quot;{search}&quot;.
+          </p>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            {mediaType === "movie" ? "Nenhum filme por aqui ainda." : "Nenhuma série por aqui ainda."}{" "}
+            <Link href="/search" className="underline underline-offset-4">
+              Busque um título
+            </Link>{" "}
+            para adicionar.
+          </p>
+        )
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
           {rows.map((row) => (
