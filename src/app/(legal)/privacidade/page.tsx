@@ -26,7 +26,7 @@ export default function PrivacidadePage() {
         <article className="mx-auto max-w-3xl px-6 py-12 prose prose-neutral dark:prose-invert">
           <h1>Política de Privacidade</h1>
           <p className="lead">
-            Última atualização: julho de 2025
+            Última atualização: julho de 2026
           </p>
 
           <h2>1. Quem somos</h2>

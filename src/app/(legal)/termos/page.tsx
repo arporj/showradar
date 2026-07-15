@@ -25,7 +25,7 @@ export default function TermosPage() {
       <main className="flex-1">
         <article className="mx-auto max-w-3xl px-6 py-12 prose prose-neutral dark:prose-invert">
           <h1>Termos de Uso</h1>
-          <p className="lead">Última atualização: julho de 2025</p>
+          <p className="lead">Última atualização: julho de 2026</p>
 
           <h2>1. Aceitação</h2>
           <p>
@@ -58,7 +58,7 @@ export default function TermosPage() {
 
           <h2>5. Propriedade intelectual</h2>
           <p>
-            O código, design e marca "ShowRadar" são propriedade do operador. Metadados
+            O código, design e marca &ldquo;ShowRadar&rdquo; são propriedade do operador. Metadados
             de filmes e séries são fornecidos pela API do TMDB — consulte os{" "}
             <a href="https://www.themoviedb.org/terms-of-use" target="_blank" rel="noopener noreferrer">
               Termos do TMDB
@@ -69,7 +69,7 @@ export default function TermosPage() {
 
           <h2>6. Isenção de garantias</h2>
           <p>
-            O serviço é fornecido "como está". Não garantimos disponibilidade ininterrupta,
+            O serviço é fornecido &ldquo;como está&rdquo;. Não garantimos disponibilidade ininterrupta,
             ausência de erros ou que as informações de streaming estejam sempre atualizadas.
           </p>
 
