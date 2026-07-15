@@ -4,6 +4,17 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   devIndicators: false,
+  async redirects() {
+    return [
+      // Links tipo "/v=1" compartilhados como cache-bust do preview do
+      // WhatsApp (ele cacheia a imagem OG por URL) — sem isso caem em 404.
+      {
+        source: "/v=:id",
+        destination: "/",
+        permanent: false,
+      },
+    ];
+  },
   turbopack: {
     root: path.join(__dirname),
   },
