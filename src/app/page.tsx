@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { getSiteUrl } from "@/lib/site";
 
 // ---------------------------------------------------------------------------
-// Componentes das Duas Opções de Logo para Comparação Lado a Lado
+// Componentes das Três Opções de Logo para Comparação Lado a Lado
 // ---------------------------------------------------------------------------
 
 export function LogoVariant1({ className }: { className?: string }) {
@@ -63,7 +63,7 @@ export function LogoVariant1({ className }: { className?: string }) {
         transform="rotate(168 256 256)"
       />
 
-      {/* 4. Play Sólido - Tamanho reduzido para ir até a metade (r=110) entre o central e a segunda linha */}
+      {/* 4. Play Sólido - Tamanho reduzido para ir até a metade (r=110) */}
       <polygon
         points="211,171 211,341 356,256"
         className="fill-cyan-500 dark:fill-cyan-400 stroke-cyan-500 dark:stroke-cyan-400"
@@ -131,12 +131,87 @@ export function LogoVariant2({ className }: { className?: string }) {
         strokeLinejoin="round"
       />
 
-      {/* 5. Círculo Central e Traço (Renderizados por último para ficarem POR CIMA do play) */}
+      {/* 5. Círculo Central e Traço (Renderizados por último) */}
       <circle cx="256" cy="256" r="18" className="fill-cyan-500 dark:fill-cyan-400" />
       <line
         x1="256"
         y1="256"
         x2="398"
+        y2="114"
+        className="stroke-cyan-500 dark:stroke-cyan-400"
+        strokeWidth="20"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+export function LogoVariant3({ className }: { className?: string }) {
+  const r1 = 200; // externo
+  const r2 = 140; // médio
+  const r3 = 80;  // interno
+
+  const c1 = 2 * Math.PI * r1;
+  const c2 = 2 * Math.PI * r2;
+  const c3 = 2 * Math.PI * r3;
+
+  const gapFraction = 65 / 360;
+
+  return (
+    <svg viewBox="0 0 512 512" aria-hidden="true" className={className}>
+      {/* 1. Anel Externo - Slate - Gap a 135° */}
+      <circle
+        cx="256"
+        cy="256"
+        r={r1}
+        fill="none"
+        className="stroke-slate-300 dark:stroke-slate-800"
+        strokeWidth="20"
+        strokeLinecap="round"
+        strokeDasharray={`${c1 * (1 - gapFraction)} ${c1 * gapFraction}`}
+        transform="rotate(168 256 256)"
+      />
+
+      {/* 2. Anel Médio - Teal - Gap a 135° */}
+      <circle
+        cx="256"
+        cy="256"
+        r={r2}
+        fill="none"
+        className="stroke-teal-500/80 dark:stroke-teal-700/80"
+        strokeWidth="20"
+        strokeLinecap="round"
+        strokeDasharray={`${c2 * (1 - gapFraction)} ${c2 * gapFraction}`}
+        transform="rotate(168 256 256)"
+      />
+
+      {/* 3. Anel Interno - Ciano - Gap a 135° */}
+      <circle
+        cx="256"
+        cy="256"
+        r={r3}
+        fill="none"
+        className="stroke-cyan-500 dark:stroke-cyan-400"
+        strokeWidth="20"
+        strokeLinecap="round"
+        strokeDasharray={`${c3 * (1 - gapFraction)} ${c3 * gapFraction}`}
+        transform="rotate(168 256 256)"
+      />
+
+      {/* 4. Play Sólido - Rotacionado para cima (Seta apontando para o topo), tamanho até a metade (r=110) */}
+      <polygon
+        points="201,301 311,301 256,156"
+        className="fill-cyan-500 dark:fill-cyan-400 stroke-cyan-500 dark:stroke-cyan-400"
+        strokeWidth="20"
+        strokeLinejoin="round"
+      />
+
+      {/* 5. Círculo Central e Traço (Varredura centralizada no gap a 135°) */}
+      <circle cx="256" cy="256" r="18" className="fill-cyan-500 dark:fill-cyan-400" />
+      <line
+        x1="256"
+        y1="256"
+        x2="114"
         y2="114"
         className="stroke-cyan-500 dark:stroke-cyan-400"
         strokeWidth="20"
@@ -295,22 +370,22 @@ export default function LandingPage() {
           {/* Seção Temporária: Comparação de Logos Lado a Lado               */}
           {/* ---------------------------------------------------------------- */}
           <section className="bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-border/50 py-10">
-            <div className="mx-auto max-w-4xl px-6 text-center">
+            <div className="mx-auto max-w-6xl px-6 text-center">
               <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
                 🔎 Comparação de Logotipos
               </h2>
               <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">
-                Veja as novas alterações aplicadas a cada opção abaixo.
+                Analise os três conceitos de logo abaixo em modo claro e escuro.
               </p>
 
-              <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Opção 1 */}
                 <div className="flex flex-col items-center p-6 border rounded-2xl bg-slate-50/50 dark:bg-slate-900/50 border-slate-200 dark:border-border/60">
                   <span className="mb-4 inline-flex items-center rounded-full bg-cyan-100 dark:bg-cyan-950/50 px-3 py-1 text-xs font-semibold text-cyan-800 dark:text-cyan-400">
                     Opção 1
                   </span>
-                  <p className="text-xs text-slate-500 mb-6">Gap no topo à esquerda (135°) · Play vai até a metade entre a linha central e a segunda linha (r=110)</p>
-                  <LogoVariant1 className="size-48 text-cyan-500" />
+                  <p className="text-xs text-slate-500 mb-6">Gap no topo à esquerda (135°) · Play vai até a metade entre o centro e a segunda linha (r=110) · Vetor a 45°</p>
+                  <LogoVariant1 className="size-44 text-cyan-500" />
                 </div>
 
                 {/* Opção 2 */}
@@ -319,7 +394,16 @@ export default function LandingPage() {
                     Opção 2
                   </span>
                   <p className="text-xs text-slate-500 mb-6">Sem aberturas · Play na cor do anel médio (Teal) · Círculo central POR CIMA do play</p>
-                  <LogoVariant2 className="size-48 text-cyan-500" />
+                  <LogoVariant2 className="size-44 text-cyan-500" />
+                </div>
+
+                {/* Opção 3 */}
+                <div className="flex flex-col items-center p-6 border rounded-2xl bg-slate-50/50 dark:bg-slate-900/50 border-slate-200 dark:border-border/60">
+                  <span className="mb-4 inline-flex items-center rounded-full bg-teal-100 dark:bg-teal-950/50 px-3 py-1 text-xs font-semibold text-teal-800 dark:text-teal-400">
+                    Opção 3
+                  </span>
+                  <p className="text-xs text-slate-500 mb-6">Gaps a 135° · Vetor a 135° no gap · Play rotacionado anti-horário apontando para CIMA (▲)</p>
+                  <LogoVariant3 className="size-44 text-cyan-500" />
                 </div>
               </div>
             </div>
