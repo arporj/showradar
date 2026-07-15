@@ -29,6 +29,9 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#0F172A",
+  // Sem "cover", env(safe-area-inset-*) é sempre 0 e a BottomNav ficaria
+  // atrás da barra de gestos no app instalado (PWA/TWA).
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

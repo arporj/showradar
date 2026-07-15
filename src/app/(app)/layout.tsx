@@ -1,28 +1,17 @@
-import { Menu } from "lucide-react";
+import { and, count, eq } from "drizzle-orm";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { SignOutForm } from "@/components/layout/sign-out-form";
+import { BottomNav } from "@/components/layout/bottom-nav";
+import { DesktopNav } from "@/components/layout/desktop-nav";
 import { TmdbAttribution } from "@/components/layout/tmdb-attribution";
+import { UserMenu } from "@/components/layout/user-menu";
 import { OfflineIndicator } from "@/components/pwa/offline-indicator";
 import { OfflineSyncManager } from "@/components/pwa/offline-sync-manager";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { follows } from "@/db/schema";
 import { auth, signOut } from "@/lib/auth";
-
-const NAV_LINKS = [
-  { href: "/dashboard", label: "Início" },
-  { href: "/feed", label: "Atividade" },
-  { href: "/search", label: "Buscar" },
-  { href: "/library", label: "Minha Grade" },
-  { href: "/upcoming", label: "Em breve" },
-  { href: "/history", label: "Histórico" },
-  { href: "/friends", label: "Amigos" },
-  { href: "/follow-requests", label: "Solicitações" },
-  { href: "/settings", label: "Configurações" },
-];
+import { db } from "@/lib/db";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -34,60 +23,44 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
 
   const name = session.user.name ?? session.user.username ?? "";
-  const navLinks =
-    session.user.role === "admin" ? [...NAV_LINKS, { href: "/admin", label: "Admin" }] : NAV_LINKS;
+
+  const [{ value: pendingRequests }] = await db
+    .select({ value: count() })
+    .from(follows)
+    .where(and(eq(follows.followingId, session.user.id), eq(follows.status, "pending")));
 
   return (
-    <div className="flex min-h-svh flex-col">
-      <header className="border-b">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-6 py-3">
-          <div className="flex items-center gap-6">
+    // O padding inferior no mobile reserva o espaço da BottomNav fixa
+    // (h-16 + barra de gestos do sistema).
+    <div className="flex min-h-svh flex-col pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
+      <header className="sticky top-0 z-40 border-b bg-background/90 pt-[env(safe-area-inset-top)] backdrop-blur">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-2.5 md:px-6">
+          <div className="flex min-w-0 items-center gap-4">
             <Link href="/dashboard" className="text-lg font-semibold tracking-tight">
               ShowRadar
             </Link>
-            <nav className="hidden items-center gap-4 text-sm text-muted-foreground md:flex">
-              {navLinks.map((link) => (
-                <Link key={link.href} href={link.href} className="hover:text-foreground">
-                  {link.label}
-                </Link>
-              ))}
-            </nav>
+            <DesktopNav />
           </div>
 
-          <div className="flex items-center gap-3">
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={<Button type="button" variant="ghost" size="icon" className="md:hidden" aria-label="Abrir menu" />}
-              >
-                <Menu className="size-4" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                {navLinks.map((link) => (
-                  <DropdownMenuItem key={link.href} render={<Link href={link.href} />}>
-                    {link.label}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+          <div className="flex items-center gap-2">
             <OfflineIndicator />
             <ThemeToggle />
-            <Avatar className="size-8">
-              <AvatarImage src={session.user.avatarUrl ?? undefined} alt={name} />
-              <AvatarFallback>{name.slice(0, 2).toUpperCase()}</AvatarFallback>
-            </Avatar>
-            <span className="hidden text-sm text-muted-foreground sm:inline">@{session.user.username}</span>
-            <SignOutForm
-              action={async () => {
+            <UserMenu
+              name={name}
+              username={session.user.username ?? ""}
+              avatarUrl={session.user.avatarUrl ?? null}
+              isAdmin={session.user.role === "admin"}
+              pendingRequests={pendingRequests}
+              signOutAction={async () => {
                 "use server";
                 await signOut({ redirectTo: "/login" });
               }}
-              label="Sair"
             />
           </div>
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-8">{children}</main>
+      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 md:px-6 md:py-8">{children}</main>
 
       <footer className="border-t px-6 py-4">
         <div className="mx-auto max-w-5xl">
@@ -95,6 +68,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
       </footer>
 
+      <BottomNav />
       <OfflineSyncManager userId={session.user.id} />
     </div>
   );
