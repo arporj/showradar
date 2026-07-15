@@ -54,7 +54,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               pendingRequests={pendingRequests}
               signOutAction={async () => {
                 "use server";
-                await signOut({ redirectTo: "/login" });
+                await signOut({ redirectTo: "/" });
               }}
             />
           </div>
