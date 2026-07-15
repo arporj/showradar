@@ -148,6 +148,14 @@ async function getRecentlyCompletedTitles(viewerId: string, limit: number): Prom
     select 1 from ${userLibrary} as viewer_library
     where viewer_library.user_id = ${viewerId} and viewer_library.title_id = ${titlesTable.id}
   )`;
+  // O que o próprio usuário já assistiu nunca aparece nas vitrines de
+  // descoberta — recomendação de algo já visto não tem utilidade.
+  const viewerAlreadyWatched = sql`exists(
+    select 1 from ${userLibrary} as viewer_watched
+    where viewer_watched.user_id = ${viewerId}
+      and viewer_watched.title_id = ${titlesTable.id}
+      and viewer_watched.status = 'completed'
+  )`;
 
   return db
     .select({
@@ -165,7 +173,13 @@ async function getRecentlyCompletedTitles(viewerId: string, limit: number): Prom
     })
     .from(userLibrary)
     .innerJoin(titlesTable, eq(userLibrary.titleId, titlesTable.id))
-    .where(and(eq(userLibrary.status, "completed"), gte(userLibrary.updatedAt, sevenDaysAgo)))
+    .where(
+      and(
+        eq(userLibrary.status, "completed"),
+        gte(userLibrary.updatedAt, sevenDaysAgo),
+        sql`not ${viewerAlreadyWatched}`,
+      ),
+    )
     .groupBy(titlesTable.id)
     .orderBy(desc(sql`count(*)`))
     .limit(limit);
