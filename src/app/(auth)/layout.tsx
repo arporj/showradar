@@ -1,3 +1,6 @@
+import Link from "next/link";
+
+import { Logo } from "@/components/layout/logo";
 import { TmdbAttribution } from "@/components/layout/tmdb-attribution";
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -7,7 +10,10 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       <div className="flex justify-end p-3">
         <ThemeToggle />
       </div>
-      <div className="flex flex-1 items-center justify-center p-6 pt-0">
+      <div className="flex flex-1 flex-col items-center justify-center gap-6 p-6 pt-0">
+        <Link href="/" aria-label="ShowRadar — página inicial">
+          <Logo className="text-xl" />
+        </Link>
         <div className="w-full max-w-sm">{children}</div>
       </div>
       <footer className="p-6 pt-0">

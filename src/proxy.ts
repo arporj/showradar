@@ -42,7 +42,9 @@ export default auth((req) => {
     return NextResponse.redirect(new URL("/dashboard", req.nextUrl));
   }
 
-  if (!needsUsername && (isPublicPath || isOnboardingPath)) {
+  // "/" incluído: logado, a landing (que só oferece "Criar conta"/"Entrar")
+  // não faz sentido — segue direto pro dashboard.
+  if (!needsUsername && (isPublicPath || isOnboardingPath || pathname === "/")) {
     return NextResponse.redirect(new URL("/dashboard", req.nextUrl));
   }
 

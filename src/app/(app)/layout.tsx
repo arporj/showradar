@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { DesktopNav } from "@/components/layout/desktop-nav";
+import { Logo } from "@/components/layout/logo";
 import { TmdbAttribution } from "@/components/layout/tmdb-attribution";
 import { UserMenu } from "@/components/layout/user-menu";
 import { OfflineIndicator } from "@/components/pwa/offline-indicator";
@@ -36,8 +37,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <header className="sticky top-0 z-40 border-b bg-background/90 pt-[env(safe-area-inset-top)] backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-2.5 md:px-6">
           <div className="flex min-w-0 items-center gap-4">
-            <Link href="/dashboard" className="text-lg font-semibold tracking-tight">
-              ShowRadar
+            <Link href="/dashboard" aria-label="ShowRadar — Início">
+              <Logo className="text-lg" />
             </Link>
             <DesktopNav />
           </div>
