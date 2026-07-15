@@ -3,9 +3,17 @@ import Link from "next/link";
 
 import { AddToLibraryButton } from "@/components/search/add-to-library-button";
 import { Badge } from "@/components/ui/badge";
-import { tmdbImageUrl, type TmdbSearchResult } from "@/lib/tmdb";
+import { TMDB_GENRE_NAMES, tmdbImageUrl, type TmdbSearchResult } from "@/lib/tmdb";
 
-export function SearchResultCard({ result }: { result: TmdbSearchResult }) {
+export function SearchResultCard({
+  result,
+  action,
+}: {
+  result: TmdbSearchResult;
+  // Slot renderizado ao lado do badge Filme/Série (ex.: lixeira de descartar
+  // recomendação) — em linha, para nunca sobrepor o badge.
+  action?: React.ReactNode;
+}) {
   if (result.media_type === "person") {
     const photo = tmdbImageUrl(result.profile_path, "w185");
     return (
@@ -29,6 +37,15 @@ export function SearchResultCard({ result }: { result: TmdbSearchResult }) {
   const year = (result.release_date ?? result.first_air_date ?? "").slice(0, 4);
   const poster = tmdbImageUrl(result.poster_path, "w185");
 
+  const genres = (result.genre_ids ?? [])
+    .map((id) => TMDB_GENRE_NAMES[id])
+    .filter(Boolean)
+    .slice(0, 3);
+  const meta = [...genres];
+  if (mediaType === "tv" && result.numberOfSeasons != null) {
+    meta.push(`${result.numberOfSeasons} ${result.numberOfSeasons === 1 ? "temporada" : "temporadas"}`);
+  }
+
   return (
     <div className="flex gap-3 rounded-lg border p-3">
       <Link
@@ -48,15 +65,14 @@ export function SearchResultCard({ result }: { result: TmdbSearchResult }) {
           <Link href={`/title/${mediaType}/${result.id}`} className="font-medium hover:underline">
             {title} {year && <span className="text-muted-foreground">({year})</span>}
           </Link>
-          <Badge variant="secondary">{mediaType === "movie" ? "Filme" : "Série"}</Badge>
+          <div className="flex shrink-0 items-center gap-1">
+            <Badge variant="secondary">{mediaType === "movie" ? "Filme" : "Série"}</Badge>
+            {action}
+          </div>
         </div>
-        {mediaType === "tv" && result.numberOfSeasons != null && (
-          <p className="text-xs text-muted-foreground">
-            {result.numberOfSeasons} {result.numberOfSeasons === 1 ? "temporada" : "temporadas"}
-          </p>
-        )}
+        {meta.length > 0 && <p className="text-xs text-muted-foreground">{meta.join(" · ")}</p>}
         <p className="line-clamp-2 text-sm text-muted-foreground">{result.overview}</p>
-        <div className="mt-auto pt-1">
+        <div className="mt-auto flex flex-wrap gap-2 pt-1">
           <AddToLibraryButton mediaType={mediaType} tmdbId={result.id} initiallyAdded={!!result.inLibrary} />
         </div>
       </div>

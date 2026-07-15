@@ -1,6 +1,6 @@
 "use client";
 
-import { X } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
 
 import { SearchResultCard } from "@/components/search/result-card";
@@ -28,19 +28,22 @@ export function RecommendedSection({ initialRecommended }: { initialRecommended:
       <h2 className="text-lg font-medium">Recomendados para você</h2>
       <div className="space-y-3">
         {recommended.map((result) => (
-          <div key={`${result.media_type}-${result.id}`} className="relative">
-            <SearchResultCard result={result} />
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              className="absolute top-2 right-2 text-muted-foreground hover:text-foreground"
-              aria-label="Não recomendar esse título novamente"
-              onClick={() => dismiss(result)}
-            >
-              <X />
-            </Button>
-          </div>
+          <SearchResultCard
+            key={`${result.media_type}-${result.id}`}
+            result={result}
+            action={
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                className="text-muted-foreground hover:text-destructive"
+                aria-label="Não recomendar esse título novamente"
+                onClick={() => dismiss(result)}
+              >
+                <Trash2 />
+              </Button>
+            }
+          />
         ))}
       </div>
     </section>

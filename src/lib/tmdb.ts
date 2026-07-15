@@ -296,6 +296,44 @@ export const GENRE_FACETS = [
 ] as const satisfies readonly { label: string; movieGenreIds: string; tvGenreId: number | undefined }[];
 
 /**
+ * TMDb genre id → pt-BR name, merging the movie and TV taxonomies (ids don't
+ * collide between them except where the genre is literally the same). Used to
+ * render the `genre_ids` that come with search/discover results without an
+ * extra /genre lookup per request — both lists are static on TMDb's side.
+ */
+export const TMDB_GENRE_NAMES: Record<number, string> = {
+  // Filmes
+  28: "Ação",
+  12: "Aventura",
+  16: "Animação",
+  35: "Comédia",
+  80: "Crime",
+  99: "Documentário",
+  18: "Drama",
+  10751: "Família",
+  14: "Fantasia",
+  36: "História",
+  27: "Terror",
+  10402: "Música",
+  9648: "Mistério",
+  10749: "Romance",
+  878: "Ficção científica",
+  10770: "Cinema TV",
+  53: "Thriller",
+  10752: "Guerra",
+  37: "Faroeste",
+  // Séries (ids exclusivos da taxonomia de TV)
+  10759: "Ação e aventura",
+  10762: "Infantil",
+  10763: "Notícias",
+  10764: "Reality",
+  10765: "Ficção científica e fantasia",
+  10766: "Novela",
+  10767: "Talk show",
+  10768: "Guerra e política",
+};
+
+/**
  * Curated franchise/studio shortcuts, keyed by TMDb company id (looked up via
  * /search/company). There's no generic "franchise" facet in TMDb like there is
  * for genre, so this list is hand-picked rather than fetched.
