@@ -2,10 +2,12 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
+import { GoogleTag } from "@/components/analytics/google-tag";
 import { IosInstallPrompt } from "@/components/pwa/ios-install-prompt";
 import { RegisterServiceWorker } from "@/components/pwa/register-service-worker";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { getSiteUrl } from "@/lib/site";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -18,8 +20,14 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ShowRadar",
-  description: "Controle o que você já assistiu, está assistindo e vai assistir.",
+  metadataBase: new URL(getSiteUrl()),
+  applicationName: "ShowRadar",
+  title: {
+    default: "ShowRadar — suas séries e filmes sob controle",
+    template: "%s | ShowRadar",
+  },
+  description:
+    "Acompanhe episódio por episódio, descubra em qual streaming cada título passa no Brasil, receba alertas de estreia e veja o que seus amigos estão assistindo.",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -45,6 +53,9 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        <GoogleTag />
+      </head>
       <body className="min-h-full flex flex-col">
         <ThemeProvider>
           {children}

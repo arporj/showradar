@@ -12,7 +12,7 @@ const PUBLIC_PATHS = ["/login", "/signup"];
 // a user can request a password reset while logged out on one device but
 // still be logged in on another, and clicking the emailed link there must
 // not get bounced to /dashboard by the "already authenticated" redirect below.
-const ALWAYS_ACCESSIBLE_PATHS = ["/forgot-password", "/reset-password"];
+const ALWAYS_ACCESSIBLE_PATHS = ["/forgot-password", "/reset-password", "/privacidade", "/termos"];
 const ONBOARDING_PATH = "/onboarding";
 const ADMIN_PATH = "/admin";
 
