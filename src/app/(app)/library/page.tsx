@@ -16,18 +16,37 @@ const STATUS_FILTERS: { value: LibraryStatus | undefined; label: string }[] = [
   { value: "dropped", label: LIBRARY_STATUS_LABEL.dropped },
 ];
 
+const MEDIA_TABS = [
+  { value: "tv", label: "Séries" },
+  { value: "movie", label: "Filmes" },
+] as const;
+
+type MediaTab = (typeof MEDIA_TABS)[number]["value"];
+
+function libraryHref(mediaType: MediaTab, status?: LibraryStatus) {
+  const params = new URLSearchParams();
+  if (mediaType === "movie") params.set("type", "movie");
+  if (status) params.set("status", status);
+  const query = params.toString();
+  return query ? `/library?${query}` : "/library";
+}
+
 export default async function LibraryPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; type?: string }>;
 }) {
-  const { status } = await searchParams;
+  const { status, type } = await searchParams;
   const statusFilter = isLibraryStatus(status) ? status : undefined;
+  const mediaType: MediaTab = type === "movie" ? "movie" : "tv";
 
   const session = await auth();
   if (!session?.user) return null;
 
-  const conditions = [eq(userLibrary.userId, session.user.id)];
+  const conditions = [
+    eq(userLibrary.userId, session.user.id),
+    eq(titlesTable.mediaType, mediaType),
+  ];
   if (statusFilter) conditions.push(eq(userLibrary.status, statusFilter));
 
   // "Tudo" groups by status before recency — watching first (what's active
@@ -64,13 +83,29 @@ export default async function LibraryPage({
         <p className="text-muted-foreground">Tudo que você adicionou para assistir.</p>
       </div>
 
+      <div className="flex gap-4 border-b">
+        {MEDIA_TABS.map((tab) => (
+          <Link
+            key={tab.value}
+            href={libraryHref(tab.value, statusFilter)}
+            className={`border-b-2 px-1 pb-2 text-sm font-medium transition-colors ${
+              mediaType === tab.value
+                ? "border-foreground text-foreground"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {tab.label}
+          </Link>
+        ))}
+      </div>
+
       <div className="flex flex-wrap gap-2">
         {STATUS_FILTERS.map((filter) => {
           const isActive = statusFilter === filter.value;
           return (
             <Link
               key={filter.label}
-              href={filter.value ? `/library?status=${filter.value}` : "/library"}
+              href={libraryHref(mediaType, filter.value)}
               className={`rounded-full border px-3 py-1 text-sm transition-colors ${
                 isActive
                   ? "border-foreground bg-foreground text-background"
@@ -85,7 +120,7 @@ export default async function LibraryPage({
 
       {rows.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          Nada por aqui ainda.{" "}
+          {mediaType === "movie" ? "Nenhum filme por aqui ainda." : "Nenhuma série por aqui ainda."}{" "}
           <Link href="/search" className="underline underline-offset-4">
             Busque um título
           </Link>{" "}
