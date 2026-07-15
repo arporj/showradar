@@ -8,6 +8,145 @@ import { Button } from "@/components/ui/button";
 import { getSiteUrl } from "@/lib/site";
 
 // ---------------------------------------------------------------------------
+// Componentes das Duas Opções de Logo para Comparação Lado a Lado
+// ---------------------------------------------------------------------------
+
+export function LogoVariant1({ className }: { className?: string }) {
+  const r1 = 200; // externo
+  const r2 = 140; // médio
+  const r3 = 80;  // interno
+
+  const c1 = 2 * Math.PI * r1;
+  const c2 = 2 * Math.PI * r2;
+  const c3 = 2 * Math.PI * r3;
+
+  const gapFraction = 65 / 360;
+
+  return (
+    <svg viewBox="0 0 512 512" aria-hidden="true" className={className}>
+      {/* 1. Anel Externo - Slate - Gap a 135° (superior esquerdo) */}
+      <circle
+        cx="256"
+        cy="256"
+        r={r1}
+        fill="none"
+        className="stroke-slate-300 dark:stroke-slate-800"
+        strokeWidth="20"
+        strokeLinecap="round"
+        strokeDasharray={`${c1 * (1 - gapFraction)} ${c1 * gapFraction}`}
+        transform="rotate(168 256 256)"
+      />
+
+      {/* 2. Anel Médio - Teal - Gap a 135° */}
+      <circle
+        cx="256"
+        cy="256"
+        r={r2}
+        fill="none"
+        className="stroke-teal-500/80 dark:stroke-teal-700/80"
+        strokeWidth="20"
+        strokeLinecap="round"
+        strokeDasharray={`${c2 * (1 - gapFraction)} ${c2 * gapFraction}`}
+        transform="rotate(168 256 256)"
+      />
+
+      {/* 3. Anel Interno - Ciano - Gap a 135° */}
+      <circle
+        cx="256"
+        cy="256"
+        r={r3}
+        fill="none"
+        className="stroke-cyan-500 dark:stroke-cyan-400"
+        strokeWidth="20"
+        strokeLinecap="round"
+        strokeDasharray={`${c3 * (1 - gapFraction)} ${c3 * gapFraction}`}
+        transform="rotate(168 256 256)"
+      />
+
+      {/* 4. Círculo Central e Traço (Varredura a 45°) */}
+      <circle cx="256" cy="256" r="18" className="fill-cyan-500 dark:fill-cyan-400" />
+      <line
+        x1="256"
+        y1="256"
+        x2="398"
+        y2="114"
+        className="stroke-cyan-500 dark:stroke-cyan-400"
+        strokeWidth="20"
+        strokeLinecap="round"
+      />
+
+      {/* 5. Play Sólido - Encosta no círculo médio (r2 = 140) com cantos arredondados */}
+      <polygon
+        points="196,145 196,367 386,256"
+        className="fill-cyan-500 dark:fill-cyan-400 stroke-cyan-500 dark:stroke-cyan-400"
+        strokeWidth="20"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export function LogoVariant2({ className }: { className?: string }) {
+  const r1 = 200; // externo
+  const r2 = 140; // médio
+  const r3 = 80;  // interno
+
+  return (
+    <svg viewBox="0 0 512 512" aria-hidden="true" className={className}>
+      {/* 1. Anel Externo - Slate completo (Sem gap) */}
+      <circle
+        cx="256"
+        cy="256"
+        r={r1}
+        fill="none"
+        className="stroke-slate-300 dark:stroke-slate-800"
+        strokeWidth="20"
+      />
+
+      {/* 2. Anel Médio - Teal completo (Sem gap) */}
+      <circle
+        cx="256"
+        cy="256"
+        r={r2}
+        fill="none"
+        className="stroke-teal-500/80 dark:stroke-teal-700/80"
+        strokeWidth="20"
+      />
+
+      {/* 3. Anel Interno - Ciano completo (Sem gap) */}
+      <circle
+        cx="256"
+        cy="256"
+        r={r3}
+        fill="none"
+        className="stroke-cyan-500 dark:stroke-cyan-400"
+        strokeWidth="20"
+      />
+
+      {/* 4. Círculo Central e Traço (Varredura a 45°) */}
+      <circle cx="256" cy="256" r="18" className="fill-cyan-500 dark:fill-cyan-400" />
+      <line
+        x1="256"
+        y1="256"
+        x2="398"
+        y2="114"
+        className="stroke-cyan-500 dark:stroke-cyan-400"
+        strokeWidth="20"
+        strokeLinecap="round"
+      />
+
+      {/* 5. Play Sólido - Encosta no círculo médio (r2 = 140) com cantos arredondados */}
+      <polygon
+        points="196,145 196,367 386,256"
+        className="fill-cyan-500 dark:fill-cyan-400 stroke-cyan-500 dark:stroke-cyan-400"
+        strokeWidth="20"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // JSON-LD — WebSite schema para SEO
 // ---------------------------------------------------------------------------
 const jsonLd = {
@@ -152,6 +291,40 @@ export default function LandingPage() {
         </header>
 
         <main className="flex-1">
+          {/* ---------------------------------------------------------------- */}
+          {/* Seção Temporária: Comparação de Logos Lado a Lado               */}
+          {/* ---------------------------------------------------------------- */}
+          <section className="bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-border/50 py-10">
+            <div className="mx-auto max-w-4xl px-6 text-center">
+              <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                🔎 Comparação de Logotipos
+              </h2>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">
+                O triângulo de play agora encosta na segunda linha do radar (anel médio) em ambas as opções.
+              </p>
+
+              <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Opção 1 */}
+                <div className="flex flex-col items-center p-6 border rounded-2xl bg-slate-50/50 dark:bg-slate-900/50 border-slate-200 dark:border-border/60">
+                  <span className="mb-4 inline-flex items-center rounded-full bg-cyan-100 dark:bg-cyan-950/50 px-3 py-1 text-xs font-semibold text-cyan-800 dark:text-cyan-400">
+                    Opção 1
+                  </span>
+                  <p className="text-xs text-slate-500 mb-6">Gap no topo à esquerda (135°)</p>
+                  <LogoVariant1 className="size-48 text-cyan-500" />
+                </div>
+
+                {/* Opção 2 */}
+                <div className="flex flex-col items-center p-6 border rounded-2xl bg-slate-50/50 dark:bg-slate-900/50 border-slate-200 dark:border-border/60">
+                  <span className="mb-4 inline-flex items-center rounded-full bg-blue-100 dark:bg-blue-950/50 px-3 py-1 text-xs font-semibold text-blue-800 dark:text-blue-400">
+                    Opção 2
+                  </span>
+                  <p className="text-xs text-slate-500 mb-6">Sem abertura (anéis fechados)</p>
+                  <LogoVariant2 className="size-48 text-cyan-500" />
+                </div>
+              </div>
+            </div>
+          </section>
+
           {/* ---------------------------------------------------------------- */}
           {/* Hero Section                                                     */}
           {/* ---------------------------------------------------------------- */}
