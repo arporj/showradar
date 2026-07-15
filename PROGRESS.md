@@ -1,6 +1,6 @@
 # ShowRadar — Status do Projeto
 
-_Atualizado em: 2026-07-14 (Fase 12 — Sincronização offline — concluída)_
+_Atualizado em: 2026-07-15 (backlog priorizado após análise competitiva — Trakt, Simkl, Serializd, TV Time)_
 
 Referência do plano completo: `C:\Users\andre\.claude\plans\quero-fazer-um-sistema-magical-kite.md`
 
@@ -17,7 +17,23 @@ Referência do plano completo: `C:\Users\andre\.claude\plans\quero-fazer-um-sist
 - **Complemento — navegação do admin e contraste no modo claro: concluído** — `/admin` virou a própria lista de usuários (antes um dashboard separado, sem volta pra quem entrava em `/admin/users` ou num usuário — o app roda como PWA instalado, sem chrome de navegador), com abas "Usuários"/"Séries" e botão de voltar na página de um usuário; texto cinza (`--muted-foreground`) escurecido no tema claro pra melhor legibilidade (o escuro já estava bom).
 - **Complemento — agrupamento de episódios em "Atividade": concluído** — quando um amigo maratona vários episódios (ou temporadas inteiras) da mesma série, o feed agora colapsa tudo numa única linha expansível (usuário+série), em vez de uma linha por episódio dominando a lista e escondendo a atividade de outros amigos.
 - **Fase 12 (Sincronização offline): concluída** — fila de mutações em IndexedDB (marcar episódio/temporada assistido, mudar status da grade) enfileirada quando offline e sincronizada automaticamente ao reconectar; `/dashboard` e `/library` continuam abrindo offline via cache HTTP no Service Worker (não um snapshot em IndexedDB renderizado à parte, como o rascunho original cogitava — decisão revista nesta rodada, ver detalhes abaixo).
-- **Expansão restante (Fases 11 e 13): não iniciada.**
+- **Expansão restante (Fases 11 e 13): não iniciada** — rank atual de tudo que falta na seção "Backlog priorizado" logo abaixo.
+
+---
+
+## Backlog priorizado (análise competitiva — 2026-07-15)
+
+Comparação do ShowRadar contra Trakt, Simkl e Serializd, feita no dia em que o **TV Time foi descontinuado** (15/07/2026 — 26 milhões de instalações órfãs; usuários só levaram um arquivo de export GDPR com histórico/check-ins/ratings). Rank de importância combinando os 7 gaps identificados na análise com o que já estava especificado e pendente neste arquivo:
+
+1. **Importação de histórico — Fase 13, expandida e promovida** — era "baixa prioridade" cobrindo só IMDb + Letterboxd; o fim do TV Time muda o cálculo: adicionar parser do export GDPR do TV Time e dos exports de Trakt/Simkl/Serializd. Sem porta de entrada, ninguém migra trazendo anos de histórico — é o pré-requisito de aquisição de todos os outros itens. Incluir também **exportação** dos próprios dados (CSV) — recurso de confiança que a morte do TV Time acabou de ensinar ao mercado a exigir. Como o app é web (sem espera de loja), um importador pode ir ao ar em dias.
+2. **Estatísticas + retrospectiva** _(novo)_ — horas assistidas, gêneros dominantes, séries concluídas no ano, "Retrospectiva" compartilhável (efeito Spotify Wrapped; Trakt cobra isso no VIP, TV Time tinha e morreu). Todos os dados já existem no banco (`user_episode_progress` + runtime + gêneros) — melhor custo-benefício do backlog inteiro.
+3. **Rewatch + status "pausado"** _(novo)_ — o índice único de `user_episode_progress` (`userId+episodeId`) impede registrar uma segunda vista, e o enum da biblioteca não tem "pausado/on hold" (Trakt trata rewatch como recurso central; Simkl tem hold). Exige mudança de schema: contagem de plays (ou tabela de eventos de vista) + valor novo no enum.
+4. **Listas personalizadas** _(novo)_ — listas criadas pelo usuário, compartilháveis ("Melhores sci-fi de todos os tempos"); presente nos 3 concorrentes, principal gerador de conteúdo social e SEO. Hoje só temos status + favorito (e `isFavorite` nunca ganhou UI — ver Fase 12).
+5. **Avaliações e discussão por episódio** _(novo)_ — a Fase 9 avalia só por título; Serializd avalia cada episódio (meia estrela + diário) e a discussão pós-episódio era a alma da comunidade do TV Time, agora órfã. É o que cria hábito diário de abrir o app.
+6. **Calendário + iCal** _(novo)_ — visão de calendário das estreias (`/upcoming` hoje é uma lista) + feed iCal assinável pra agenda pessoal do usuário; padrão em Trakt e Simkl.
+7. **Fase 7 — Monetização** — segue especificada e pulada a pedido do usuário; faz mais sentido depois dos itens 1-4 elevarem retenção (mais valor acumulado pra converter em premium — stats/retrospectiva e listas são os candidatos naturais a recurso pago, como no Trakt VIP).
+8. **Fase 11 — Multi-idioma** — especificada; maior esforço mecânico do backlog e o diferencial atual do app é justamente ser BR-first (interface pt-BR + "onde assistir" no Brasil, que Trakt/Serializd não têm). Expandir idioma só depois de consolidar o nicho.
+9. **Auto-tracking / API pública** _(novo, longo prazo)_ — o verdadeiro fosso do Trakt (scrobbling automático via Plex/Kodi e ecossistema de apps de terceiros) e do Simkl (extensão de navegador que detecta o que toca na Netflix/Crunchyroll). Caminho viável pra nós: extensão de navegador que marca episódios sozinha. O mais caro de todos — não iniciar antes do resto.
 
 ---
 
@@ -216,7 +232,7 @@ Pedido avulso do usuário, fora da numeração do plano original — três frent
 | 7 | Monetização (anúncios discretos + assinatura Stripe) | Especificada (só arquitetura — rede de anúncio e preço ficam em aberto); pulada por ora a pedido do usuário |
 | 11 | Multi-idioma (pt-BR + en-US + es, UI e metadados) | Especificada; não iniciada |
 | 12 | Sincronização offline (cache de leitura + fila simples) | **Concluída** — ver seção própria abaixo |
-| 13 | Importação de histórico (IMDb + Letterboxd via CSV) | Especificada; baixa prioridade, sem compromisso de cronograma |
+| 13 | Importação de histórico (IMDb + Letterboxd via CSV) | Especificada; **promovida a item nº 1 do backlog em 2026-07-15** (fim do TV Time) — escopo expandido com TV Time/Trakt/Simkl/Serializd + exportação, ver "Backlog priorizado" |
 
 *(Fora de escopo por enquanto: wrapper nativo Capacitor + push nativo para lojas de app.)*
 
@@ -276,9 +292,9 @@ O que foi construído:
 
 **Como testei:** Playwright headless contra `npm run build && npm start` (porta separada da instância de dev já rodando) e o Supabase real de ponta a ponta — conta de teste nova, adicionou uma série via busca, visitou `/dashboard` e `/library` online (confirmado Service Worker `active` e os dois caches `showradar-pages-v1`/`showradar-static-v1` populados via `caches.keys()`); com o contexto do navegador em modo offline (`context.setOffline(true)`), confirmou que as duas rotas ainda renderizam (não a tela de erro do navegador), que o badge "Offline" aparece, e que marcar um episódio assistido pelo card do dashboard atualiza a UI na hora e grava uma entrada em IndexedDB (`showradar-offline`/`mutation-queue`, inspecionada direto via `indexedDB.open` na página); voltando a ficar online, confirmou que a fila esvazia sozinha (o listener `online`), que o toast de sincronização aparece, e que a query da fila volta a zero; por fim, saiu da conta e confirmou que `showradar-pages-v1` some do Cache Storage enquanto `showradar-static-v1` permanece. Conta de teste removida do banco ao final (via `drizzle`/`tsx`, cascade cuidou das linhas dependentes). `npx tsc --noEmit`, `npm run lint` e `npm run build` sem erros. **Pendente:** não testei num navegador sem `SyncManager` (Safari/iOS) — a recuperação por lá depende só do listener `online`, que foi testado, mas o registro do Background Sync em si (`requestBackgroundSync`) só foi validado por leitura de código garantindo que o feature-detect não lança erro.
 
-### Fase 13 — Importação de histórico (especificação; baixa prioridade)
+### Fase 13 — Importação de histórico (especificação; **item nº 1 do backlog desde 2026-07-15** — ver "Backlog priorizado")
 
-- [ ] Não existe padrão de mercado único de CSV — cada origem exige parser próprio; escopo desta fase cobre só **IMDb** (`Title Type`, `Your Rating`, `Date Rated` — filmes e séries) e **Letterboxd** (ZIP com `ratings.csv`/`watched.csv` — só filmes); outras origens (Trakt via API, SeriePix) ficam pra uma iteração futura, formato de exportação a confirmar quando chegar a vez
+- [ ] Não existe padrão de mercado único de CSV — cada origem exige parser próprio; escopo original cobria só **IMDb** (`Title Type`, `Your Rating`, `Date Rated` — filmes e séries) e **Letterboxd** (ZIP com `ratings.csv`/`watched.csv` — só filmes); **escopo expandido em 2026-07-15**: incluir o export GDPR do **TV Time** (app descontinuado em 15/07/2026 — milhões de usuários com o arquivo na mão procurando destino) e os exports de **Trakt/Simkl/Serializd**, além de **exportação** dos próprios dados do ShowRadar (CSV)
 - [ ] Nova tela `/settings/import` — upload de arquivo (`.csv`/`.zip`), reaproveitando o padrão de upload já existente (`avatar-upload.tsx`, `FormData` + validação de tipo/tamanho)
 - [ ] Parsers dedicados por origem (`lib/import/imdb.ts`, `lib/import/letterboxd.ts`) normalizando cada linha pra um formato comum (`{ title, year, mediaType, rating?, watchedAt? }`)
 - [ ] Casamento com a TMDb via `searchMultiFuzzy` (já existe no cliente TMDb, usado hoje pela busca com correção ortográfica) por título+ano; linhas sem correspondência confiável entram numa lista de revisão manual (usuário escolhe entre os resultados da busca ou pula a linha)
