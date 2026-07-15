@@ -159,7 +159,7 @@ export function LogoVariant3({ className }: { className?: string }) {
 
   return (
     <svg viewBox="0 0 512 512" aria-hidden="true" className={className}>
-      {/* 1. Anel Externo - Slate - Gap a 135° (superior esquerdo) */}
+      {/* 1. Anel Externo - Slate - Gap a 225° (inferior esquerdo / Sudoeste) */}
       <circle
         cx="256"
         cy="256"
@@ -169,10 +169,10 @@ export function LogoVariant3({ className }: { className?: string }) {
         strokeWidth="20"
         strokeLinecap="round"
         strokeDasharray={`${c1 * (1 - gapFraction)} ${c1 * gapFraction}`}
-        transform="rotate(168 256 256)"
+        transform="rotate(258 256 256)"
       />
 
-      {/* 2. Anel Médio - Teal - Gap a 135° */}
+      {/* 2. Anel Médio - Teal - Gap a 225° */}
       <circle
         cx="256"
         cy="256"
@@ -182,10 +182,10 @@ export function LogoVariant3({ className }: { className?: string }) {
         strokeWidth="20"
         strokeLinecap="round"
         strokeDasharray={`${c2 * (1 - gapFraction)} ${c2 * gapFraction}`}
-        transform="rotate(168 256 256)"
+        transform="rotate(258 256 256)"
       />
 
-      {/* 3. Anel Interno - Ciano - Gap a 135° */}
+      {/* 3. Anel Interno - Ciano - Gap a 225° */}
       <circle
         cx="256"
         cy="256"
@@ -195,11 +195,10 @@ export function LogoVariant3({ className }: { className?: string }) {
         strokeWidth="20"
         strokeLinecap="round"
         strokeDasharray={`${c3 * (1 - gapFraction)} ${c3 * gapFraction}`}
-        transform="rotate(168 256 256)"
+        transform="rotate(258 256 256)"
       />
 
-      {/* 4. Play Sólido - Rotacionado a 315° (-45°) de forma que a bissetriz alinhe com o vetor do radar (135°) */}
-      {/* A ponta do triângulo aponta para a direita-baixo (315°) e a base fica perpendicular a 135° */}
+      {/* 4. Play Sólido - Ponta direcionada a 315° (Nordeste, oposta a 225°), base voltada para 135°/225° (Sudoeste) */}
       <polygon
         points="211,171 211,341 356,256"
         className="fill-cyan-500 dark:fill-cyan-400 stroke-cyan-500 dark:stroke-cyan-400"
@@ -208,13 +207,13 @@ export function LogoVariant3({ className }: { className?: string }) {
         transform="rotate(315 256 256)"
       />
 
-      {/* 5. Círculo Central e Traço (Varredura centralizada no gap a 135°, formando a bissetriz do triângulo) */}
+      {/* 5. Círculo Central e Traço (Varredura a 225° / Sudoeste - centralizada no gap) */}
       <circle cx="256" cy="256" r="18" className="fill-cyan-500 dark:fill-cyan-400" />
       <line
         x1="256"
         y1="256"
         x2="114"
-        y2="114"
+        y2="398"
         className="stroke-cyan-500 dark:stroke-cyan-400"
         strokeWidth="20"
         strokeLinecap="round"
@@ -404,7 +403,7 @@ export default function LandingPage() {
                   <span className="mb-4 inline-flex items-center rounded-full bg-teal-100 dark:bg-teal-950/50 px-3 py-1 text-xs font-semibold text-teal-800 dark:text-teal-400">
                     Opção 3
                   </span>
-                  <p className="text-xs text-slate-500 mb-6">Gaps a 135° · Vetor a 135° no gap · Play rotacionado a 315° (bissetriz alinhada, ponta oposta a 315°)</p>
+                  <p className="text-xs text-slate-500 mb-6">Gaps a 225° · Vetor a 225° (embaixo-esquerda) · Play a 315° (ponta para cima-direita, formando bissetriz)</p>
                   <LogoVariant3 className="size-44 text-cyan-500" />
                 </div>
               </div>
