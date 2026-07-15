@@ -1,5 +1,7 @@
 "use client";
 
+import { Info } from "lucide-react";
+
 import { SearchResultCard } from "@/components/search/result-card";
 import { SearchResultCardSkeleton } from "@/components/search/result-card-skeleton";
 import { Button } from "@/components/ui/button";
@@ -31,6 +33,16 @@ export function DiscoverResultsTab({
 
   return (
     <div className="space-y-3">
+      {results.length > 0 && (
+        <div className="flex items-start gap-2.5 rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
+          <Info className="mt-0.5 size-4 shrink-0 text-primary" />
+          <p>
+            <span className="font-semibold">Lista limitada:</span> mostramos os títulos mais populares{" "}
+            {facet === "genre" ? "deste gênero" : "desta franquia"}, em ordem de popularidade — nem tudo aparece
+            aqui. Para encontrar um título específico, troque a busca para <span className="font-semibold">Nome</span>.
+          </p>
+        </div>
+      )}
       {isLoading &&
         results.length === 0 &&
         Array.from({ length: 4 }).map((_, i) => <SearchResultCardSkeleton key={i} />)}
