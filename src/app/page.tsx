@@ -33,20 +33,20 @@ const jsonLd = {
 export const metadata: Metadata = {
   title: "ShowRadar — suas séries e filmes sob controle",
   description:
-    "Acompanhe episódio por episódio, descubra em qual streaming cada título passa no Brasil, receba alertas de estreia e veja o que seus amigos estão assistindo. Grátis, PWA.",
+    "Acompanhe episódio por episódio, descubra em qual streaming cada título passa no Brasil, receba alertas de estreia e veja o que seus amigos estão assistindo. Grátis e sem baixar aplicativo.",
   alternates: { canonical: "/" },
   openGraph: {
     type: "website",
     title: "ShowRadar — suas séries e filmes sob controle",
     description:
-      "O tracker de séries e filmes definitivo para o Brasil. Grátis e sem instalar — funciona como PWA no celular.",
+      "O tracker de séries e filmes definitivo para o Brasil. Grátis, seguro e sem precisar baixar aplicativo — instale direto pelo site.",
     locale: "pt_BR",
   },
   twitter: {
     card: "summary_large_image",
     title: "ShowRadar — suas séries e filmes sob controle",
     description:
-      "Tracker de séries e filmes para o Brasil. Grátis, PWA, feito em pt-BR.",
+      "Tracker de séries e filmes para o Brasil. Grátis, instalável direto pelo site, feito em pt-BR.",
   },
 };
 
@@ -178,7 +178,7 @@ export default function LandingPage() {
             <div className="relative mx-auto max-w-3xl">
               {/* Badge */}
               <div className="mb-6 inline-flex items-center gap-1.5 rounded-full border border-cyan-100 bg-cyan-50/50 px-4 py-1 text-xs font-semibold tracking-wider text-cyan-700 uppercase dark:border-cyan-900/30 dark:bg-cyan-950/20 dark:text-cyan-400">
-                Grátis · PWA · pt-BR
+                Grátis · Instale pelo site · pt-BR
               </div>
 
               <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl md:text-6xl lg:text-7xl dark:text-white leading-tight">
@@ -321,7 +321,7 @@ export default function LandingPage() {
                 Pronto para colocar suas séries no radar?
               </h2>
               <p className="mx-auto mt-4 max-w-xl text-slate-600 dark:text-slate-400 md:text-lg">
-                Gratuito para sempre. Funciona direto no navegador do celular como PWA instalável.
+                Gratuito para sempre. Funciona direto no navegador ou instalado no celular pelo próprio site.
               </p>
               <Button
                 id="bottom-cta-signup"
