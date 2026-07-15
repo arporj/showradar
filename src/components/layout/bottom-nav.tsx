@@ -2,8 +2,8 @@
 
 import { Ellipsis } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 
+import { NavPendingBar, useNavTransition } from "@/components/layout/nav-transition";
 import { BOTTOM_TAB_COUNT, MAIN_LINKS, isActive } from "@/components/layout/nav-links";
 import {
   DropdownMenu,
@@ -25,24 +25,27 @@ function tabClass(active: boolean) {
 
 // Barra de abas fixa no rodapé (mobile). O padding inferior via
 // env(safe-area-inset-bottom) evita colisão com a barra de gestos do
-// Android/iOS quando o app roda instalado (PWA/TWA).
+// Android/iOS quando o app roda instalado (PWA/TWA). A aba clicada acende
+// otimisticamente (ver nav-transition.tsx).
 export function BottomNav() {
-  const pathname = usePathname();
-  const moreActive = MORE_LINKS.some((link) => isActive(pathname, link.href));
+  const { optimisticPath, isPending, navigate } = useNavTransition();
+  const moreActive = MORE_LINKS.some((link) => isActive(optimisticPath, link.href));
 
   return (
     <nav
       aria-label="Navegação principal"
       className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
     >
+      <NavPendingBar show={isPending} />
       <div className="mx-auto grid h-16 max-w-lg grid-cols-5">
         {TAB_LINKS.map((link) => {
-          const active = isActive(pathname, link.href);
+          const active = isActive(optimisticPath, link.href);
           return (
             <Link
               key={link.href}
               href={link.href}
               aria-current={active ? "page" : undefined}
+              onClick={(event) => navigate(event, link.href)}
               className={tabClass(active)}
             >
               <link.icon className="size-5" />
@@ -57,7 +60,10 @@ export function BottomNav() {
           </DropdownMenuTrigger>
           <DropdownMenuContent side="top" align="end" sideOffset={8} className="min-w-44">
             {MORE_LINKS.map((link) => (
-              <DropdownMenuItem key={link.href} render={<Link href={link.href} />}>
+              <DropdownMenuItem
+                key={link.href}
+                render={<Link href={link.href} onClick={(event) => navigate(event, link.href)} />}
+              >
                 <link.icon /> {link.label}
               </DropdownMenuItem>
             ))}

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useTransition } from "react";
 
 import { accountLinks } from "@/components/layout/nav-links";
+import { NavPendingBar, useNavTransition } from "@/components/layout/nav-transition";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -35,6 +36,7 @@ export function UserMenu({
   signOutAction: () => Promise<void>;
 }) {
   const [isPending, startTransition] = useTransition();
+  const { isPending: isNavigating, navigate } = useNavTransition();
 
   function handleSignOut() {
     startTransition(async () => {
@@ -45,6 +47,7 @@ export function UserMenu({
 
   return (
     <DropdownMenu>
+      <NavPendingBar show={isNavigating} />
       <DropdownMenuTrigger
         render={
           <button
@@ -76,7 +79,10 @@ export function UserMenu({
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         {accountLinks(isAdmin).map((link) => (
-          <DropdownMenuItem key={link.href} render={<Link href={link.href} />}>
+          <DropdownMenuItem
+            key={link.href}
+            render={<Link href={link.href} onClick={(event) => navigate(event, link.href)} />}
+          >
             <link.icon /> {link.label}
             {link.href === "/follow-requests" && pendingRequests > 0 && (
               <span className="ml-auto flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] leading-none font-semibold text-white">
