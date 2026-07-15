@@ -63,7 +63,15 @@ export function LogoVariant1({ className }: { className?: string }) {
         transform="rotate(168 256 256)"
       />
 
-      {/* 4. Círculo Central e Traço (Varredura a 45°) */}
+      {/* 4. Play Sólido - Tamanho reduzido para ir até a metade (r=110) entre o central e a segunda linha */}
+      <polygon
+        points="211,171 211,341 356,256"
+        className="fill-cyan-500 dark:fill-cyan-400 stroke-cyan-500 dark:stroke-cyan-400"
+        strokeWidth="20"
+        strokeLinejoin="round"
+      />
+
+      {/* 5. Círculo Central e Traço (Varredura a 45°) */}
       <circle cx="256" cy="256" r="18" className="fill-cyan-500 dark:fill-cyan-400" />
       <line
         x1="256"
@@ -73,14 +81,6 @@ export function LogoVariant1({ className }: { className?: string }) {
         className="stroke-cyan-500 dark:stroke-cyan-400"
         strokeWidth="20"
         strokeLinecap="round"
-      />
-
-      {/* 5. Play Sólido - Encosta no círculo médio (r2 = 140) com cantos arredondados */}
-      <polygon
-        points="196,145 196,367 386,256"
-        className="fill-cyan-500 dark:fill-cyan-400 stroke-cyan-500 dark:stroke-cyan-400"
-        strokeWidth="20"
-        strokeLinejoin="round"
       />
     </svg>
   );
@@ -93,7 +93,7 @@ export function LogoVariant2({ className }: { className?: string }) {
 
   return (
     <svg viewBox="0 0 512 512" aria-hidden="true" className={className}>
-      {/* 1. Anel Externo - Slate completo (Sem gap) */}
+      {/* 1. Anel Externo - Slate completo */}
       <circle
         cx="256"
         cy="256"
@@ -103,7 +103,7 @@ export function LogoVariant2({ className }: { className?: string }) {
         strokeWidth="20"
       />
 
-      {/* 2. Anel Médio - Teal completo (Sem gap) */}
+      {/* 2. Anel Médio - Teal completo */}
       <circle
         cx="256"
         cy="256"
@@ -113,7 +113,7 @@ export function LogoVariant2({ className }: { className?: string }) {
         strokeWidth="20"
       />
 
-      {/* 3. Anel Interno - Ciano completo (Sem gap) */}
+      {/* 3. Anel Interno - Ciano completo */}
       <circle
         cx="256"
         cy="256"
@@ -123,7 +123,15 @@ export function LogoVariant2({ className }: { className?: string }) {
         strokeWidth="20"
       />
 
-      {/* 4. Círculo Central e Traço (Varredura a 45°) */}
+      {/* 4. Play Sólido - Encosta no círculo médio (r2 = 140) com a mesma cor da segunda linha (Teal) */}
+      <polygon
+        points="196,145 196,367 386,256"
+        className="fill-teal-500/85 dark:fill-teal-700/85 stroke-teal-500/85 dark:stroke-teal-700/85"
+        strokeWidth="20"
+        strokeLinejoin="round"
+      />
+
+      {/* 5. Círculo Central e Traço (Renderizados por último para ficarem POR CIMA do play) */}
       <circle cx="256" cy="256" r="18" className="fill-cyan-500 dark:fill-cyan-400" />
       <line
         x1="256"
@@ -133,14 +141,6 @@ export function LogoVariant2({ className }: { className?: string }) {
         className="stroke-cyan-500 dark:stroke-cyan-400"
         strokeWidth="20"
         strokeLinecap="round"
-      />
-
-      {/* 5. Play Sólido - Encosta no círculo médio (r2 = 140) com cantos arredondados */}
-      <polygon
-        points="196,145 196,367 386,256"
-        className="fill-cyan-500 dark:fill-cyan-400 stroke-cyan-500 dark:stroke-cyan-400"
-        strokeWidth="20"
-        strokeLinejoin="round"
       />
     </svg>
   );
@@ -300,7 +300,7 @@ export default function LandingPage() {
                 🔎 Comparação de Logotipos
               </h2>
               <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">
-                O triângulo de play agora encosta na segunda linha do radar (anel médio) em ambas as opções.
+                Veja as novas alterações aplicadas a cada opção abaixo.
               </p>
 
               <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -309,7 +309,7 @@ export default function LandingPage() {
                   <span className="mb-4 inline-flex items-center rounded-full bg-cyan-100 dark:bg-cyan-950/50 px-3 py-1 text-xs font-semibold text-cyan-800 dark:text-cyan-400">
                     Opção 1
                   </span>
-                  <p className="text-xs text-slate-500 mb-6">Gap no topo à esquerda (135°)</p>
+                  <p className="text-xs text-slate-500 mb-6">Gap no topo à esquerda (135°) · Play vai até a metade entre a linha central e a segunda linha (r=110)</p>
                   <LogoVariant1 className="size-48 text-cyan-500" />
                 </div>
 
@@ -318,7 +318,7 @@ export default function LandingPage() {
                   <span className="mb-4 inline-flex items-center rounded-full bg-blue-100 dark:bg-blue-950/50 px-3 py-1 text-xs font-semibold text-blue-800 dark:text-blue-400">
                     Opção 2
                   </span>
-                  <p className="text-xs text-slate-500 mb-6">Sem abertura (anéis fechados)</p>
+                  <p className="text-xs text-slate-500 mb-6">Sem aberturas · Play na cor do anel médio (Teal) · Círculo central POR CIMA do play</p>
                   <LogoVariant2 className="size-48 text-cyan-500" />
                 </div>
               </div>
