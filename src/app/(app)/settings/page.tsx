@@ -66,6 +66,18 @@ export default async function SettingsPage() {
           }}
         />
       </div>
+
+      <div className="space-y-3">
+        <h2 className="text-sm font-medium text-muted-foreground">Importar / exportar dados</h2>
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+          <Link href="/settings/import" className="underline underline-offset-4">
+            Importar histórico de outro app
+          </Link>
+          <a href="/api/export/library" className="underline underline-offset-4">
+            Exportar minha biblioteca (CSV)
+          </a>
+        </div>
+      </div>
     </div>
   );
 }

@@ -40,8 +40,8 @@ function tabLabel(tab: (typeof TABS)[number], counts: SearchCounts | null) {
   return count === null ? tab.label : `${tab.label} (${count})`;
 }
 
-export function SearchBox({ discovery }: { discovery: DiscoveryData }) {
-  const [query, setQuery] = useState("");
+export function SearchBox({ discovery, initialQuery = "" }: { discovery: DiscoveryData; initialQuery?: string }) {
+  const [query, setQuery] = useState(initialQuery);
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [activeTab, setActiveTab] = useState<TabValue>("all");
 

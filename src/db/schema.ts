@@ -2,6 +2,7 @@ import { relations } from "drizzle-orm";
 import {
   boolean,
   date,
+  index,
   integer,
   jsonb,
   numeric,
@@ -46,6 +47,23 @@ export const notificationStatusEnum = appSchema.enum("notification_status", [
 export const followStatusEnum = appSchema.enum("follow_status", ["pending", "accepted"]);
 export const userRoleEnum = appSchema.enum("user_role", ["user", "admin"]);
 export const userPlanEnum = appSchema.enum("user_plan", ["free", "premium"]);
+// Single value today (TV Time) — kept as an enum, not a bare column, so
+// Trakt/Simkl/Serializd can be appended later without touching any other
+// table or query shape.
+export const importSourceEnum = appSchema.enum("import_source", ["tv_time"]);
+export const importJobStatusEnum = appSchema.enum("import_job_status", [
+  "processing",
+  "completed",
+  "completed_with_errors",
+  "failed",
+]);
+export const importItemStatusEnum = appSchema.enum("import_item_status", [
+  "pending",
+  "processing",
+  "matched",
+  "unmatched",
+  "error",
+]);
 
 // Auth.js adapter requires these exact JS property names (id/name/email/emailVerified/image)
 // on the users table it's handed; everything else here is app-specific.
@@ -255,6 +273,56 @@ export const dismissedRecommendations = appSchema.table(
   (t) => [uniqueIndex("dismissed_recommendations_user_id_tmdb_id_media_type_idx").on(t.userId, t.tmdbId, t.mediaType)],
 );
 
+export const importJobs = appSchema.table("import_jobs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  source: importSourceEnum("source").notNull().default("tv_time"),
+  status: importJobStatusEnum("status").notNull().default("processing"),
+  totalItems: integer("total_items").notNull().default(0),
+  processedItems: integer("processed_items").notNull().default(0),
+  matchedItems: integer("matched_items").notNull().default(0),
+  unmatchedItems: integer("unmatched_items").notNull().default(0),
+  errorItems: integer("error_items").notNull().default(0),
+  // Top-level failure only (e.g. "not a TV Time export") — per-item failures
+  // live on import_job_items.error_message instead.
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
+  completedAt: timestamp("completed_at", { mode: "date" }),
+});
+
+// One row per distinct show/movie found while parsing the source export —
+// episodesJson carries the raw (season, episode, watchedAt) tuples for a TV
+// item so matching+writing can happen in small client-driven batches
+// (processImportBatch) instead of one long-running action.
+export const importJobItems = appSchema.table(
+  "import_job_items",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => importJobs.id, { onDelete: "cascade" }),
+    rawTitle: text("raw_title").notNull(),
+    canonicalKey: text("canonical_key").notNull(),
+    mediaType: mediaTypeEnum("media_type").notNull(),
+    yearHint: integer("year_hint"),
+    episodesJson: jsonb("episodes_json").$type<{ seasonNumber: number; episodeNumber: number; watchedAt: string }[]>(),
+    movieWatchedAt: timestamp("movie_watched_at", { mode: "date" }),
+    status: importItemStatusEnum("status").notNull().default("pending"),
+    tmdbId: integer("tmdb_id"),
+    titleId: uuid("title_id").references(() => titles.id, { onDelete: "set null" }),
+    errorMessage: text("error_message"),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+    processedAt: timestamp("processed_at", { mode: "date" }),
+  },
+  (t) => [
+    uniqueIndex("import_job_items_job_id_canonical_key_media_type_idx").on(t.jobId, t.canonicalKey, t.mediaType),
+    index("import_job_items_job_id_status_idx").on(t.jobId, t.status),
+  ],
+);
+
 export const pushSubscriptions = appSchema.table("push_subscriptions", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: uuid("user_id")
@@ -302,10 +370,21 @@ export const notificationLog = appSchema.table("notification_log", {
   createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
 });
 
+export const importJobsRelations = relations(importJobs, ({ one, many }) => ({
+  user: one(users, { fields: [importJobs.userId], references: [users.id] }),
+  items: many(importJobItems),
+}));
+
+export const importJobItemsRelations = relations(importJobItems, ({ one }) => ({
+  job: one(importJobs, { fields: [importJobItems.jobId], references: [importJobs.id] }),
+  title: one(titles, { fields: [importJobItems.titleId], references: [titles.id] }),
+}));
+
 export const usersRelations = relations(users, ({ many, one }) => ({
   accounts: many(accounts),
   library: many(userLibrary),
   episodeProgress: many(userEpisodeProgress),
+  importJobs: many(importJobs),
   notificationPreferences: one(notificationPreferences, {
     fields: [users.id],
     references: [notificationPreferences.userId],

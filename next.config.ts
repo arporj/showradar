@@ -7,6 +7,13 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.join(__dirname),
   },
+  experimental: {
+    serverActions: {
+      // TV Time GDPR export ZIPs are usually a few MB but can grow with years
+      // of comments/reactions we never even read (src/lib/import/tv-time.ts).
+      bodySizeLimit: "15mb",
+    },
+  },
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "image.tmdb.org" },

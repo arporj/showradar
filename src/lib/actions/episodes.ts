@@ -30,7 +30,7 @@ function airedCondition() {
 // moves it to "completed", and clearing every watched episode drops it back
 // to "plan_to_watch". "Abandonei" is the one exception — it's a deliberate,
 // sticky choice that episode activity should never silently override.
-async function syncLibraryStatusFromProgress(userId: string, titleId: string) {
+export async function syncLibraryStatusFromProgress(userId: string, titleId: string) {
   const seasonRows = await db
     .select({ id: seasons.id, seasonNumber: seasons.seasonNumber, episodeCount: seasons.episodeCount })
     .from(seasons)
