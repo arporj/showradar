@@ -15,6 +15,8 @@ export interface UpcomingItem {
   nextDate: string;
   episodeLabel: string | null;
   episodeName: string | null;
+  seasonNumber: number | null;
+  episodeNumber: number | null;
   stillPath: string | null;
 }
 
@@ -61,6 +63,8 @@ export async function getUpcomingItems(userId: string): Promise<UpcomingItem[]> 
       nextDate: row.releaseDate,
       episodeLabel: null,
       episodeName: null,
+      seasonNumber: null,
+      episodeNumber: null,
       stillPath: null,
     }));
 
@@ -104,6 +108,8 @@ export async function getUpcomingItems(userId: string): Promise<UpcomingItem[]> 
           nextDate: ep.airDate!,
           episodeLabel: `T${ep.seasonNumber}E${ep.episodeNumber}`,
           episodeName: ep.episodeName,
+          seasonNumber: ep.seasonNumber,
+          episodeNumber: ep.episodeNumber,
           stillPath: ep.stillPath,
         });
       }
@@ -122,6 +128,8 @@ export async function getUpcomingItems(userId: string): Promise<UpcomingItem[]> 
         nextDate: nextEpisode.air_date,
         episodeLabel: `T${nextEpisode.season_number}E${nextEpisode.episode_number}`,
         episodeName: nextEpisode.name ?? null,
+        seasonNumber: nextEpisode.season_number,
+        episodeNumber: nextEpisode.episode_number,
         stillPath: null,
       });
     }

@@ -16,6 +16,7 @@ export function NextEpisodeCard({ item }: { item: NextEpisodeItem }) {
   const [celebration, setCelebration] = useState<{ title: string; description: string } | null>(null);
   const [isPending, startTransition] = useTransition();
   const image = tmdbImageUrl(item.stillPath ?? item.posterPath, item.stillPath ? "w300" : "w185");
+  const episodeHref = `/title/tv/${item.tmdbId}/season/${item.seasonNumber}/episode/${item.episodeNumber}`;
 
   function handleMarkWatched() {
     setJustMarked(true);
@@ -40,13 +41,10 @@ export function NextEpisodeCard({ item }: { item: NextEpisodeItem }) {
 
   return (
     <div className="flex items-center gap-3 rounded-lg border p-3">
-      <Link
-        href={`/title/tv/${item.tmdbId}`}
-        className="relative h-16 w-28 shrink-0 overflow-hidden rounded bg-muted"
-      >
+      <Link href={episodeHref} className="relative h-16 w-28 shrink-0 overflow-hidden rounded bg-muted">
         {image && <Image src={image} alt="" fill sizes="112px" className="object-cover" />}
       </Link>
-      <Link href={`/title/tv/${item.tmdbId}`} className="min-w-0 flex-1">
+      <Link href={episodeHref} className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">{item.showName}</p>
         <p className="truncate text-xs text-muted-foreground">
           T{item.seasonNumber}E{item.episodeNumber}

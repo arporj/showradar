@@ -8,12 +8,13 @@ import { tmdbImageUrl } from "@/lib/tmdb";
 
 export function UpcomingRow({ item }: { item: UpcomingItem }) {
   const image = tmdbImageUrl(item.stillPath ?? item.posterPath, item.stillPath ? "w300" : "w185");
+  const href =
+    item.seasonNumber != null && item.episodeNumber != null
+      ? `/title/${item.mediaType}/${item.tmdbId}/season/${item.seasonNumber}/episode/${item.episodeNumber}`
+      : `/title/${item.mediaType}/${item.tmdbId}`;
 
   return (
-    <Link
-      href={`/title/${item.mediaType}/${item.tmdbId}`}
-      className="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/50"
-    >
+    <Link href={href} className="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/50">
       <div className="relative h-16 w-28 shrink-0 overflow-hidden rounded bg-muted">
         {image && <Image src={image} alt="" fill sizes="112px" className="object-cover" />}
       </div>
