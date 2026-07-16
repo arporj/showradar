@@ -159,6 +159,19 @@ export default async function TitleDetailPage({
         </div>
       </div>
 
+      <TitleRatingsSection
+        titleId={titleId}
+        mediaType={mediaType}
+        tmdbId={tmdbIdNum}
+        voteAverage={title.voteAverage}
+        summary={ratingSummary}
+        reviews={reviews}
+        currentUserId={session?.user?.id}
+        currentUserRating={libraryEntry?.personalRating ?? null}
+        currentUserReviewText={libraryEntry?.reviewText ?? null}
+        canRate={currentStatus === "completed"}
+      />
+
       {mediaType === "tv" && seasonRows.length > 0 && (
         <div className="space-y-2">
           <h2 className="text-lg font-semibold">Temporadas</h2>
@@ -172,19 +185,6 @@ export default async function TitleDetailPage({
           />
         </div>
       )}
-
-      <TitleRatingsSection
-        titleId={titleId}
-        mediaType={mediaType}
-        tmdbId={tmdbIdNum}
-        voteAverage={title.voteAverage}
-        summary={ratingSummary}
-        reviews={reviews}
-        currentUserId={session?.user?.id}
-        currentUserRating={libraryEntry?.personalRating ?? null}
-        currentUserReviewText={libraryEntry?.reviewText ?? null}
-        canRate={currentStatus === "completed"}
-      />
 
       {similarTitles.length > 0 && (
         <section className="space-y-3">
