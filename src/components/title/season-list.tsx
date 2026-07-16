@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import { EpisodeDetailDialog } from "@/components/title/episode-detail-dialog";
 import { WatchToggleButton } from "@/components/title/episode-watch-button";
 import type { seasons as seasonsTable } from "@/db/schema";
 import {
@@ -342,31 +343,39 @@ function SeasonItem({
 function EpisodeRowItem({ episode, onToggle }: { episode: EpisodeRow; onToggle: () => void }) {
   const aired = isAired(episode.airDate);
   const still = tmdbImageUrl(episode.stillPath, "w300");
+  const [detailOpen, setDetailOpen] = useState(false);
 
   return (
     <div className="flex items-center gap-3 rounded-md p-2 transition-colors hover:bg-muted/50">
-      <div className="relative h-11 w-20 shrink-0 overflow-hidden rounded bg-muted">
-        {still && <Image src={still} alt="" fill sizes="80px" className="object-cover" />}
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm">
-          <span className="text-muted-foreground">{episode.episodeNumber}. </span>
-          {episode.name}
-        </p>
-        <p className="text-xs text-muted-foreground">
-          {episode.airDate
-            ? aired
-              ? formatDate(episode.airDate)
-              : `Estreia em ${formatDate(episode.airDate)}`
-            : "Data a definir"}
-        </p>
-      </div>
+      <button
+        type="button"
+        onClick={() => setDetailOpen(true)}
+        className="flex min-w-0 flex-1 items-center gap-3 text-left"
+      >
+        <div className="relative h-11 w-20 shrink-0 overflow-hidden rounded bg-muted">
+          {still && <Image src={still} alt="" fill sizes="80px" className="object-cover" />}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm">
+            <span className="text-muted-foreground">{episode.episodeNumber}. </span>
+            {episode.name}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {episode.airDate
+              ? aired
+                ? formatDate(episode.airDate)
+                : `Estreia em ${formatDate(episode.airDate)}`
+              : "Data a definir"}
+          </p>
+        </div>
+      </button>
       <WatchToggleButton
         watched={episode.watched}
         disabled={!aired}
         onToggle={onToggle}
         label={episode.watched ? `Desmarcar episódio ${episode.episodeNumber}` : `Marcar episódio ${episode.episodeNumber} como assistido`}
       />
+      <EpisodeDetailDialog episode={episode} open={detailOpen} onOpenChange={setDetailOpen} />
     </div>
   );
 }

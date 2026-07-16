@@ -190,6 +190,8 @@ export const episodes = appSchema.table(
     airDate: date("air_date", { mode: "string" }),
     runtime: integer("runtime"),
     stillPath: text("still_path"),
+    voteAverage: numeric("vote_average", { precision: 3, scale: 1 }),
+    voteCount: integer("vote_count"),
     lastSyncedAt: timestamp("last_synced_at", { mode: "date" }),
   },
   (t) => [uniqueIndex("episodes_season_id_episode_number_idx").on(t.seasonId, t.episodeNumber)],

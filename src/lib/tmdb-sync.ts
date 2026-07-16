@@ -166,6 +166,8 @@ export async function syncSeasonEpisodes(
         airDate: episode.air_date ? shiftDateString(episode.air_date, delayDays) : null,
         runtime: episode.runtime,
         stillPath: episode.still_path,
+        voteAverage: toNumericStringOrNull(episode.vote_average || null),
+        voteCount: episode.vote_count || null,
         lastSyncedAt: new Date(),
       };
 
