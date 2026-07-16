@@ -2,7 +2,15 @@ import { eq, and } from "drizzle-orm";
 
 import { episodes, seasons, titles } from "@/db/schema";
 import { db } from "@/lib/db";
-import { getMovieDetail, getTvDetail, getTvSeason, type TmdbMediaType, type TmdbWatchProviders } from "@/lib/tmdb";
+import { hasDelayedBrRelease, shiftDateString } from "@/lib/release-dates";
+import {
+  getMovieDetail,
+  getTvDetail,
+  getTvSeason,
+  type TmdbEpisodeRef,
+  type TmdbMediaType,
+  type TmdbWatchProviders,
+} from "@/lib/tmdb";
 
 function toDateOrNull(value: string | null | undefined) {
   return value ? value : null;
@@ -14,6 +22,19 @@ function toNumericStringOrNull(value: number | null | undefined) {
 
 function watchProvidersBr(detail: { "watch/providers"?: TmdbWatchProviders }) {
   return detail["watch/providers"]?.results?.BR ?? null;
+}
+
+// Este cache guarda a data de disponibilidade *no Brasil*, não o air_date cru
+// do TMDb: para títulos de rede com drop na madrugada seguinte (Apple TV+ —
+// ver release-dates.ts), tudo que é data de episódio entra com +1 dia. O
+// deslocamento acontece aqui na escrita, e não nas leituras, para que todos
+// os consumidores (dashboard, checklist, "Em breve", cron de notificações e
+// as datas exibidas) concordem sem lógica condicional espalhada — e como o
+// sync roda a cada visita/cron, uma mudança de provedor se autocorrige.
+function shiftEpisodeRef(ref: TmdbEpisodeRef | null | undefined, days: number): TmdbEpisodeRef | null {
+  if (!ref) return null;
+  if (!ref.air_date || days === 0) return ref;
+  return { ...ref, air_date: shiftDateString(ref.air_date, days) };
 }
 
 /**
@@ -54,6 +75,8 @@ export async function syncTitleFromTmdb(mediaType: TmdbMediaType, tmdbId: number
   }
 
   const detail = await getTvDetail(tmdbId);
+  const providersBr = watchProvidersBr(detail);
+  const delayDays = hasDelayedBrRelease(providersBr) ? 1 : 0;
   const values = {
     tmdbId: detail.id,
     mediaType: "tv" as const,
@@ -70,9 +93,9 @@ export async function syncTitleFromTmdb(mediaType: TmdbMediaType, tmdbId: number
     status: detail.status,
     inProduction: detail.in_production,
     originCountry: detail.origin_country,
-    nextEpisodeToAir: detail.next_episode_to_air,
-    lastEpisodeToAir: detail.last_episode_to_air,
-    watchProvidersBr: watchProvidersBr(detail),
+    nextEpisodeToAir: shiftEpisodeRef(detail.next_episode_to_air, delayDays),
+    lastEpisodeToAir: shiftEpisodeRef(detail.last_episode_to_air, delayDays),
+    watchProvidersBr: providersBr,
     lastSyncedAt: new Date(),
     updatedAt: new Date(),
   };
@@ -93,7 +116,7 @@ export async function syncTitleFromTmdb(mediaType: TmdbMediaType, tmdbId: number
         seasonNumber: season.season_number,
         name: season.name,
         overview: season.overview,
-        airDate: toDateOrNull(season.air_date),
+        airDate: season.air_date ? shiftDateString(season.air_date, delayDays) : null,
         posterPath: season.poster_path,
         episodeCount: season.episode_count,
         lastSyncedAt: new Date(),
@@ -121,6 +144,15 @@ export async function syncSeasonEpisodes(
   tmdbTvId: number,
   seasonNumber: number,
 ) {
+  // O flag de atraso vem do jsonb já cacheado no título (sempre gravado antes
+  // de qualquer sync de temporada) — o payload de temporada do TMDb não traz
+  // watch providers.
+  const [titleRow] = await db
+    .select({ watchProvidersBr: titles.watchProvidersBr })
+    .from(titles)
+    .where(eq(titles.id, titleId));
+  const delayDays = hasDelayedBrRelease(titleRow?.watchProvidersBr) ? 1 : 0;
+
   const detail = await getTvSeason(tmdbTvId, seasonNumber);
 
   await Promise.all(
@@ -131,7 +163,7 @@ export async function syncSeasonEpisodes(
         episodeNumber: episode.episode_number,
         name: episode.name,
         overview: episode.overview,
-        airDate: toDateOrNull(episode.air_date),
+        airDate: episode.air_date ? shiftDateString(episode.air_date, delayDays) : null,
         runtime: episode.runtime,
         stillPath: episode.still_path,
         lastSyncedAt: new Date(),

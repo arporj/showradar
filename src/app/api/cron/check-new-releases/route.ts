@@ -13,6 +13,7 @@ import { db } from "@/lib/db";
 import { notificationEmailHtml, sendEmail } from "@/lib/email";
 import { sendPushNotification } from "@/lib/push";
 import { isWithinQuietHours } from "@/lib/quiet-hours";
+import { todayBrDateString } from "@/lib/release-dates";
 import type { TmdbEpisodeRef } from "@/lib/tmdb";
 import { syncTitleFromTmdb } from "@/lib/tmdb-sync";
 
@@ -33,17 +34,16 @@ interface ReleaseEvent {
   dedupSuffix: string;
 }
 
-function todayDateString() {
-  return new Date().toISOString().slice(0, 10);
-}
-
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
   if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const today = todayDateString();
+  // As datas comparadas aqui já saem do sync como disponibilidade no Brasil
+  // (ver tmdb-sync.ts) — para redes com atraso, o cron das 9h dispara na
+  // manhã em que o episódio ficou assistível de madrugada, não um dia antes.
+  const today = todayBrDateString();
 
   const trackedTitles = await db
     .selectDistinct({

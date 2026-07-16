@@ -2,6 +2,7 @@ import { and, eq, gt, inArray, ne } from "drizzle-orm";
 
 import { episodes, seasons as seasonsTable, titles as titlesTable, userLibrary } from "@/db/schema";
 import { db } from "@/lib/db";
+import { todayBrDateString } from "@/lib/release-dates";
 import type { TmdbEpisodeRef, TmdbMediaType } from "@/lib/tmdb";
 
 export interface UpcomingItem {
@@ -15,10 +16,6 @@ export interface UpcomingItem {
   episodeLabel: string | null;
   episodeName: string | null;
   stillPath: string | null;
-}
-
-function todayDateString() {
-  return new Date().toISOString().slice(0, 10);
 }
 
 /**
@@ -36,7 +33,7 @@ function todayDateString() {
  * episode as both "upcoming" and "already out" at once.
  */
 export async function getUpcomingItems(userId: string): Promise<UpcomingItem[]> {
-  const today = todayDateString();
+  const today = todayBrDateString();
 
   const libraryRows = await db
     .select({
@@ -135,7 +132,7 @@ export async function getUpcomingItems(userId: string): Promise<UpcomingItem[]> 
 
 export function daysUntil(dateString: string): number {
   const msPerDay = 86_400_000;
-  const today = new Date(`${todayDateString()}T00:00:00Z`).getTime();
+  const today = new Date(`${todayBrDateString()}T00:00:00Z`).getTime();
   const target = new Date(`${dateString}T00:00:00Z`).getTime();
   return Math.round((target - today) / msPerDay);
 }

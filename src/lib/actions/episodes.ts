@@ -9,19 +9,14 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import type { LibraryStatus } from "@/lib/library-status";
 import { getWatchedEpisodeCounts } from "@/lib/progress";
+import { todayBrDateString } from "@/lib/release-dates";
 import { syncSeasonEpisodes } from "@/lib/tmdb-sync";
-
-// Today as a plain date string (no time), matching how episode air_date is
-// stored — avoids timezone edge cases from comparing against a Date/Instant.
-function todayDateString() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 // Many specials/extras (season 0) come back from TMDb with no air_date at
 // all — treated as already aired (rather than excluded) so bulk actions
 // don't silently skip them; only a *known* future date holds an episode back.
 function airedCondition() {
-  return or(isNull(episodes.airDate), lte(episodes.airDate, todayDateString()));
+  return or(isNull(episodes.airDate), lte(episodes.airDate, todayBrDateString()));
 }
 
 // Keeps `user_library.status` in lockstep with actual episode progress, so

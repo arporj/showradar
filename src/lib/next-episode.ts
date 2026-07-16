@@ -3,6 +3,7 @@ import { and, asc, desc, eq, inArray, lte } from "drizzle-orm";
 import { episodes, seasons, titles as titlesTable, userEpisodeProgress, userLibrary } from "@/db/schema";
 import { db } from "@/lib/db";
 import { getWatchedEpisodeCounts } from "@/lib/progress";
+import { todayBrDateString } from "@/lib/release-dates";
 import { syncSeasonEpisodes } from "@/lib/tmdb-sync";
 
 export interface NextEpisodeItem {
@@ -15,10 +16,6 @@ export interface NextEpisodeItem {
   episodeNumber: number;
   episodeName: string | null;
   stillPath: string | null;
-}
-
-function todayDateString() {
-  return new Date().toISOString().slice(0, 10);
 }
 
 /**
@@ -77,7 +74,7 @@ export async function getNextEpisodesToWatch(
     const airedEpisodes = await db
       .select()
       .from(episodes)
-      .where(and(eq(episodes.seasonId, candidateSeason.id), lte(episodes.airDate, todayDateString())))
+      .where(and(eq(episodes.seasonId, candidateSeason.id), lte(episodes.airDate, todayBrDateString())))
       .orderBy(asc(episodes.episodeNumber));
     if (airedEpisodes.length === 0) continue;
 

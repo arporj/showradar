@@ -29,6 +29,7 @@ import {
 import { formatDate } from "@/lib/format-date";
 import { isOffline } from "@/lib/offline/network-status";
 import { runOrQueue } from "@/lib/offline/run-or-queue";
+import { todayBrDateString } from "@/lib/release-dates";
 import { tmdbImageUrl } from "@/lib/tmdb";
 import { cn } from "@/lib/utils";
 
@@ -36,7 +37,7 @@ type SeasonRow = typeof seasonsTable.$inferSelect;
 type EpisodeRow = Awaited<ReturnType<typeof loadSeasonEpisodes>>[number];
 type ConfirmState = { type: "episode"; episode: EpisodeRow } | { type: "season" };
 
-const todayDateString = new Date().toISOString().slice(0, 10);
+const todayDateString = todayBrDateString();
 
 // Many specials/extras (season 0) come back from TMDb with no air_date at
 // all — treated as already aired (mirrors lib/actions/episodes.ts::airedCondition)
