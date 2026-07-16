@@ -11,3 +11,22 @@ export function formatDate(value: Date | string): string {
   const date = value instanceof Date ? value : new Date(value);
   return date.toLocaleDateString("pt-BR");
 }
+
+// "há 4 horas" / "há 2 dias" style relative time for episode comments — falls
+// back to the absolute pt-BR date past a week, so old comments don't render
+// as "há 34 dias".
+export function formatRelativeTime(value: Date): string {
+  const diffMs = Date.now() - value.getTime();
+  const minutes = Math.floor(diffMs / 60_000);
+
+  if (minutes < 1) return "agora mesmo";
+  if (minutes < 60) return `há ${minutes} ${minutes === 1 ? "minuto" : "minutos"}`;
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `há ${hours} ${hours === 1 ? "hora" : "horas"}`;
+
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `há ${days} ${days === 1 ? "dia" : "dias"}`;
+
+  return formatDate(value);
+}

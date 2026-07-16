@@ -2,6 +2,7 @@
 
 import { CheckCheck, ChevronDown } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { useState, useTransition } from "react";
 
 import {
@@ -18,7 +19,6 @@ import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { EpisodeDetailDialog } from "@/components/title/episode-detail-dialog";
 import { WatchToggleButton } from "@/components/title/episode-watch-button";
 import type { seasons as seasonsTable } from "@/db/schema";
 import {
@@ -299,7 +299,12 @@ function SeasonItem({
         {!loading && episodeRows && (
           <div className="space-y-1 pt-3">
             {episodeRows.map((episode) => (
-              <EpisodeRowItem key={episode.id} episode={episode} onToggle={() => handleToggleEpisode(episode)} />
+              <EpisodeRowItem
+                key={episode.id}
+                episode={episode}
+                href={`/title/tv/${tmdbId}/season/${season.seasonNumber}/episode/${episode.episodeNumber}`}
+                onToggle={() => handleToggleEpisode(episode)}
+              />
             ))}
           </div>
         )}
@@ -340,18 +345,13 @@ function SeasonItem({
   );
 }
 
-function EpisodeRowItem({ episode, onToggle }: { episode: EpisodeRow; onToggle: () => void }) {
+function EpisodeRowItem({ episode, href, onToggle }: { episode: EpisodeRow; href: string; onToggle: () => void }) {
   const aired = isAired(episode.airDate);
   const still = tmdbImageUrl(episode.stillPath, "w300");
-  const [detailOpen, setDetailOpen] = useState(false);
 
   return (
     <div className="flex items-center gap-3 rounded-md p-2 transition-colors hover:bg-muted/50">
-      <button
-        type="button"
-        onClick={() => setDetailOpen(true)}
-        className="flex min-w-0 flex-1 items-center gap-3 text-left"
-      >
+      <Link href={href} className="flex min-w-0 flex-1 items-center gap-3 text-left">
         <div className="relative h-11 w-20 shrink-0 overflow-hidden rounded bg-muted">
           {still && <Image src={still} alt="" fill sizes="80px" className="object-cover" />}
         </div>
@@ -368,14 +368,13 @@ function EpisodeRowItem({ episode, onToggle }: { episode: EpisodeRow; onToggle: 
               : "Data a definir"}
           </p>
         </div>
-      </button>
+      </Link>
       <WatchToggleButton
         watched={episode.watched}
         disabled={!aired}
         onToggle={onToggle}
         label={episode.watched ? `Desmarcar episódio ${episode.episodeNumber}` : `Marcar episódio ${episode.episodeNumber} como assistido`}
       />
-      <EpisodeDetailDialog episode={episode} open={detailOpen} onOpenChange={setDetailOpen} />
     </div>
   );
 }

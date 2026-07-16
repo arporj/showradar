@@ -57,6 +57,13 @@
       "when": 1784231807912,
       "tag": "0007_ambitious_frank_castle",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1784235943357,
+      "tag": "0008_parched_frank_castle",
+      "breakpoints": true
     }
   ]
 }

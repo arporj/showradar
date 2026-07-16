@@ -114,7 +114,14 @@ export async function loadSeasonEpisodes(input: {
   return episodeRows.map((episode) => ({ ...episode, watched: watchedIds.has(episode.id) }));
 }
 
-export async function toggleEpisodeWatched(episodeId: string, watched: boolean, titleId: string, tmdbTvId: number) {
+export async function toggleEpisodeWatched(
+  episodeId: string,
+  watched: boolean,
+  titleId: string,
+  tmdbTvId: number,
+  seasonNumber?: number,
+  episodeNumber?: number,
+) {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
@@ -134,6 +141,9 @@ export async function toggleEpisodeWatched(episodeId: string, watched: boolean, 
   revalidatePath(`/title/tv/${tmdbTvId}`);
   revalidatePath("/library");
   revalidatePath("/dashboard");
+  if (seasonNumber != null && episodeNumber != null) {
+    revalidatePath(`/title/tv/${tmdbTvId}/season/${seasonNumber}/episode/${episodeNumber}`);
+  }
 
   return { seriesCompleted };
 }

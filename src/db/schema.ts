@@ -2,6 +2,7 @@ import { relations } from "drizzle-orm";
 import {
   boolean,
   date,
+  foreignKey,
   index,
   integer,
   jsonb,
@@ -195,6 +196,48 @@ export const episodes = appSchema.table(
     lastSyncedAt: timestamp("last_synced_at", { mode: "date" }),
   },
   (t) => [uniqueIndex("episodes_season_id_episode_number_idx").on(t.seasonId, t.episodeNumber)],
+);
+
+// One row per post — a user can comment on the same episode more than once
+// (unlike user_library's one-row-per-title rating), each post optionally
+// carrying its own rating snapshot. "Nota média" for an episode is computed
+// from each user's most recent non-null rating (DISTINCT ON), not a raw
+// average of every row, so repeat commenters don't skew it — see
+// lib/episode-comments.ts::getEpisodeRatingSummary.
+export const episodeComments = appSchema.table(
+  "episode_comments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    episodeId: uuid("episode_id")
+      .notNull()
+      .references(() => episodes.id, { onDelete: "cascade" }),
+    body: text("body").notNull(),
+    rating: smallint("rating"),
+    replyToId: uuid("reply_to_id"),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("episode_comments_episode_id_created_at_idx").on(t.episodeId, t.createdAt),
+    foreignKey({ columns: [t.replyToId], foreignColumns: [t.id] }).onDelete("set null"),
+  ],
+);
+
+export const episodeCommentLikes = appSchema.table(
+  "episode_comment_likes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    commentId: uuid("comment_id")
+      .notNull()
+      .references(() => episodeComments.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("episode_comment_likes_comment_id_user_id_idx").on(t.commentId, t.userId)],
 );
 
 export const userLibrary = appSchema.table(
