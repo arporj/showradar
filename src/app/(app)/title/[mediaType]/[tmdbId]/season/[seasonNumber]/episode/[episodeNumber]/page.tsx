@@ -6,11 +6,13 @@ import { notFound } from "next/navigation";
 
 import { EpisodeCommentsPreview } from "@/components/title/episode-comments-preview";
 import { EpisodePageWatchToggle } from "@/components/title/episode-page-watch-toggle";
+import { EpisodeRatingForm } from "@/components/title/episode-rating-form";
 import { titles } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getEpisodeByNumbers } from "@/lib/episode-detail";
-import { getEpisodeCommentPreview, getEpisodeCommentCount, getEpisodeRatingSummary } from "@/lib/episode-comments";
+import { getEpisodeCommentPreview, getEpisodeCommentCount } from "@/lib/episode-comments";
+import { getEpisodeRatingSummary, getUserEpisodeRating } from "@/lib/episode-ratings";
 import { formatDate } from "@/lib/format-date";
 import { shiftDateString, todayBrDateString } from "@/lib/release-dates";
 import { syncTitleFromTmdb } from "@/lib/tmdb-sync";
@@ -61,10 +63,11 @@ export default async function EpisodeDetailPage({
   if (!result) notFound();
   const { episode, watched } = result;
 
-  const [commentPreview, commentCount, ratingSummary] = await Promise.all([
+  const [commentPreview, commentCount, ratingSummary, userRating] = await Promise.all([
     getEpisodeCommentPreview(episode.id, session?.user?.id),
     getEpisodeCommentCount(episode.id),
     getEpisodeRatingSummary(episode.id),
+    session?.user ? getUserEpisodeRating(episode.id, session.user.id) : Promise.resolve(null),
   ]);
 
   const aired = !episode.airDate || episode.airDate <= todayBrDateString();
@@ -115,15 +118,29 @@ export default async function EpisodeDetailPage({
           {episode.overview || "Sem sinopse disponível."}
         </p>
 
-        {ratingSummary && (
-          <div>
-            <p className="text-xs text-muted-foreground">Nota ShowRadar</p>
-            <p className="text-sm font-medium">
-              {(ratingSummary.average / 2).toFixed(1)}/5 ({ratingSummary.count}{" "}
-              {ratingSummary.count === 1 ? "avaliação" : "avaliações"})
-            </p>
-          </div>
-        )}
+        <div className="flex flex-wrap items-end gap-6">
+          {ratingSummary && (
+            <div>
+              <p className="text-xs text-muted-foreground">Nota ShowRadar</p>
+              <p className="text-sm font-medium">
+                {(ratingSummary.average / 2).toFixed(1)}/5 ({ratingSummary.count}{" "}
+                {ratingSummary.count === 1 ? "avaliação" : "avaliações"})
+              </p>
+            </div>
+          )}
+
+          {watched ? (
+            <EpisodeRatingForm
+              episodeId={episode.id}
+              tmdbTvId={tmdbIdNum}
+              seasonNumber={seasonNumberNum}
+              episodeNumber={episodeNumberNum}
+              initialRating={userRating}
+            />
+          ) : (
+            <p className="text-xs text-muted-foreground">Marque como assistido para avaliar.</p>
+          )}
+        </div>
 
         <EpisodeCommentsPreview
           comments={commentPreview}

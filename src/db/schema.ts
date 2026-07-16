@@ -199,11 +199,9 @@ export const episodes = appSchema.table(
 );
 
 // One row per post — a user can comment on the same episode more than once
-// (unlike user_library's one-row-per-title rating), each post optionally
-// carrying its own rating snapshot. "Nota média" for an episode is computed
-// from each user's most recent non-null rating (DISTINCT ON), not a raw
-// average of every row, so repeat commenters don't skew it — see
-// lib/episode-comments.ts::getEpisodeRatingSummary.
+// (unlike user_library's one-row-per-title rating). Rating lives separately
+// in episode_ratings (one per user per episode, like the title-level rating
+// in Fase 9) — a comment is pure discussion, never carries a score itself.
 export const episodeComments = appSchema.table(
   "episode_comments",
   {
@@ -215,7 +213,6 @@ export const episodeComments = appSchema.table(
       .notNull()
       .references(() => episodes.id, { onDelete: "cascade" }),
     body: text("body").notNull(),
-    rating: smallint("rating"),
     replyToId: uuid("reply_to_id"),
     createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
   },
@@ -223,6 +220,28 @@ export const episodeComments = appSchema.table(
     index("episode_comments_episode_id_created_at_idx").on(t.episodeId, t.createdAt),
     foreignKey({ columns: [t.replyToId], foreignColumns: [t.id] }).onDelete("set null"),
   ],
+);
+
+// One rating per user per episode, same shape as user_library's personal
+// rating at the title level (Fase 9) — decoupled from both comments (a
+// comment is never scored) and from user_episode_progress (unwatching an
+// episode doesn't erase a rating already given, mirroring how a title
+// rating survives a status change away from "completed").
+export const episodeRatings = appSchema.table(
+  "episode_ratings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    episodeId: uuid("episode_id")
+      .notNull()
+      .references(() => episodes.id, { onDelete: "cascade" }),
+    rating: smallint("rating").notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("episode_ratings_user_id_episode_id_idx").on(t.userId, t.episodeId)],
 );
 
 export const episodeCommentLikes = appSchema.table(

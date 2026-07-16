@@ -2,7 +2,6 @@ import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { RatingStars } from "@/components/title/rating-stars";
 import { SpoilerBlur } from "@/components/title/spoiler-blur";
 import type { EpisodeComment } from "@/lib/episode-comments";
 import { formatRelativeTime } from "@/lib/format-date";
@@ -43,7 +42,6 @@ export function EpisodeCommentsPreview({
                       <span className="text-sm font-medium">{displayName}</span>
                       <span className="text-xs text-muted-foreground">{formatRelativeTime(comment.createdAt)}</span>
                     </div>
-                    {comment.rating != null && <RatingStars value={comment.rating} readOnly size="sm" />}
                     <p className="truncate text-sm text-muted-foreground">{comment.body}</p>
                   </div>
                 </div>

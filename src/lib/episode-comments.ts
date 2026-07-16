@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 
 import { episodeCommentLikes, episodeComments, users } from "@/db/schema";
 import { db } from "@/lib/db";
@@ -17,20 +17,14 @@ export interface EpisodeComment {
   name: string | null;
   avatarUrl: string | null;
   body: string;
-  rating: number | null;
   createdAt: Date;
   likeCount: number;
   likedByMe: boolean;
   replyTo: EpisodeCommentReplyTo | null;
 }
 
-export interface EpisodeRatingSummary {
-  average: number;
-  count: number;
-}
-
 async function attachDetails(
-  rows: { id: string; userId: string; username: string | null; name: string | null; avatarUrl: string | null; image: string | null; body: string; rating: number | null; replyToId: string | null; createdAt: Date }[],
+  rows: { id: string; userId: string; username: string | null; name: string | null; avatarUrl: string | null; image: string | null; body: string; replyToId: string | null; createdAt: Date }[],
   currentUserId: string | undefined,
 ): Promise<EpisodeComment[]> {
   if (rows.length === 0) return [];
@@ -75,7 +69,6 @@ async function attachDetails(
     name: row.name,
     avatarUrl: row.avatarUrl ?? row.image,
     body: row.body,
-    rating: row.rating,
     createdAt: row.createdAt,
     likeCount: likeCountMap.get(row.id) ?? 0,
     likedByMe: likedByMeSet.has(row.id),
@@ -93,7 +86,6 @@ function baseCommentQuery() {
       avatarUrl: users.avatarUrl,
       image: users.image,
       body: episodeComments.body,
-      rating: episodeComments.rating,
       replyToId: episodeComments.replyToId,
       createdAt: episodeComments.createdAt,
     })
@@ -133,28 +125,4 @@ export async function getEpisodeCommentCount(episodeId: string): Promise<number>
     .from(episodeComments)
     .where(eq(episodeComments.episodeId, episodeId));
   return row?.count ?? 0;
-}
-
-// Each user's most recent rated comment on the episode counts once — someone
-// who comments (and re-rates) five times shouldn't skew the average 5x.
-export async function getEpisodeRatingSummary(episodeId: string): Promise<EpisodeRatingSummary | null> {
-  const latestPerUser = db
-    .selectDistinctOn([episodeComments.userId], {
-      userId: episodeComments.userId,
-      rating: episodeComments.rating,
-    })
-    .from(episodeComments)
-    .where(and(eq(episodeComments.episodeId, episodeId), isNotNull(episodeComments.rating)))
-    .orderBy(episodeComments.userId, desc(episodeComments.createdAt))
-    .as("latest_per_user");
-
-  const [row] = await db
-    .select({
-      average: sql<string>`avg(${latestPerUser.rating})`,
-      count: sql<number>`count(*)::int`,
-    })
-    .from(latestPerUser);
-
-  if (!row || row.count === 0) return null;
-  return { average: Number(row.average), count: row.count };
 }

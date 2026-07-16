@@ -6,7 +6,6 @@ import { useRef, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { RatingStars } from "@/components/title/rating-stars";
 import type { EpisodeComment } from "@/lib/episode-comments";
 import type { Friend } from "@/lib/friends";
 
@@ -27,10 +26,9 @@ export function EpisodeCommentComposer({
   friends: Friend[];
   replyTarget: EpisodeComment | null;
   onCancelReply: () => void;
-  onSubmit: (input: { body: string; rating: number | null; replyToId: string | null }) => void;
+  onSubmit: (input: { body: string; replyToId: string | null }) => void;
 }) {
   const [body, setBody] = useState("");
-  const [rating, setRating] = useState<number | null>(null);
   const [mention, setMention] = useState<{ start: number; query: string } | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -56,9 +54,8 @@ export function EpisodeCommentComposer({
   function handleSubmit() {
     const trimmed = body.trim();
     if (!trimmed) return;
-    onSubmit({ body: trimmed, rating, replyToId: replyTarget?.id ?? null });
+    onSubmit({ body: trimmed, replyToId: replyTarget?.id ?? null });
     setBody("");
-    setRating(null);
   }
 
   return (
@@ -73,8 +70,6 @@ export function EpisodeCommentComposer({
           </button>
         </div>
       )}
-
-      <RatingStars value={rating ?? 0} onChange={setRating} size="sm" />
 
       <div className="relative">
         <Textarea

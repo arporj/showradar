@@ -13,12 +13,19 @@ import {
 import type { EpisodeComment } from "@/lib/episode-comments";
 import type { Friend } from "@/lib/friends";
 
+interface CurrentUser {
+  id: string;
+  username: string | null;
+  name: string | null;
+  avatarUrl: string | null;
+}
+
 export function EpisodeCommentsClient({
   episodeId,
   tmdbTvId,
   seasonNumber,
   episodeNumber,
-  currentUserId,
+  currentUser,
   canComment,
   comments,
   friends,
@@ -27,7 +34,7 @@ export function EpisodeCommentsClient({
   tmdbTvId: number;
   seasonNumber: number;
   episodeNumber: number;
-  currentUserId: string | undefined;
+  currentUser: CurrentUser | undefined;
   canComment: boolean;
   comments: EpisodeComment[];
   friends: Friend[];
@@ -37,10 +44,31 @@ export function EpisodeCommentsClient({
   const [optimisticComments, setOptimisticComments] = useState(comments);
   const [, startTransition] = useTransition();
 
-  function handleSubmit(input: { body: string; rating: number | null; replyToId: string | null }) {
+  function handleSubmit(input: { body: string; replyToId: string | null }) {
+    const replySnapshot = replyTarget
+      ? { id: replyTarget.id, username: replyTarget.username, name: replyTarget.name, body: replyTarget.body }
+      : null;
     setReplyTarget(null);
+
     startTransition(async () => {
-      await postEpisodeComment({ episodeId, tmdbTvId, seasonNumber, episodeNumber, ...input });
+      const created = await postEpisodeComment({ episodeId, tmdbTvId, seasonNumber, episodeNumber, ...input });
+      if (created && currentUser) {
+        setOptimisticComments((prev) => [
+          {
+            id: created.id,
+            userId: currentUser.id,
+            username: currentUser.username,
+            name: currentUser.name,
+            avatarUrl: currentUser.avatarUrl,
+            body: input.body,
+            createdAt: created.createdAt,
+            likeCount: 0,
+            likedByMe: false,
+            replyTo: replySnapshot,
+          },
+          ...prev,
+        ]);
+      }
       router.refresh();
     });
   }
@@ -88,7 +116,7 @@ export function EpisodeCommentsClient({
             <EpisodeCommentItem
               key={comment.id}
               comment={comment}
-              currentUserId={currentUserId}
+              currentUserId={currentUser?.id}
               onReply={setReplyTarget}
               onToggleLike={handleToggleLike}
               onDelete={handleDelete}

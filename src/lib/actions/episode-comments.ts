@@ -17,39 +17,43 @@ function revalidateEpisodePaths(tmdbTvId: number, seasonNumber: number, episodeN
 // Posting is gated on having watched the episode (checked here, not just
 // hidden in the UI) — same spirit as the "completed" guard on title ratings
 // (lib/actions/ratings.ts::submitRating), and keeps the comments section from
-// filling with pre-air noise. Unlike a title rating, `rating` here is
-// optional per post — a pure text comment (no stars) is a normal case.
+// filling with pre-air noise. Returns the created row's id/createdAt (not
+// the full joined shape — the caller already knows the author, since it's
+// always the current user) so the client can show the comment immediately
+// instead of waiting on a revalidated round-trip.
 export async function postEpisodeComment(input: {
   episodeId: string;
   tmdbTvId: number;
   seasonNumber: number;
   episodeNumber: number;
   body: string;
-  rating: number | null;
   replyToId: string | null;
 }) {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
   const body = input.body.trim();
-  if (!body) return;
-  if (input.rating != null && (!Number.isInteger(input.rating) || input.rating < 1 || input.rating > 10)) return;
+  if (!body) return null;
 
   const [watched] = await db
     .select({ episodeId: userEpisodeProgress.episodeId })
     .from(userEpisodeProgress)
     .where(and(eq(userEpisodeProgress.userId, session.user.id), eq(userEpisodeProgress.episodeId, input.episodeId)));
-  if (!watched) return;
+  if (!watched) return null;
 
-  await db.insert(episodeComments).values({
-    userId: session.user.id,
-    episodeId: input.episodeId,
-    body,
-    rating: input.rating,
-    replyToId: input.replyToId,
-  });
+  const [created] = await db
+    .insert(episodeComments)
+    .values({
+      userId: session.user.id,
+      episodeId: input.episodeId,
+      body,
+      replyToId: input.replyToId,
+    })
+    .returning({ id: episodeComments.id, createdAt: episodeComments.createdAt });
 
   revalidateEpisodePaths(input.tmdbTvId, input.seasonNumber, input.episodeNumber);
+
+  return created;
 }
 
 export async function deleteEpisodeComment(input: {

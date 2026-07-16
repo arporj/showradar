@@ -80,7 +80,16 @@ export default async function EpisodeCommentsPage({
         tmdbTvId={tmdbIdNum}
         seasonNumber={seasonNumberNum}
         episodeNumber={episodeNumberNum}
-        currentUserId={session?.user?.id}
+        currentUser={
+          session?.user
+            ? {
+                id: session.user.id,
+                username: session.user.username,
+                name: session.user.name ?? null,
+                avatarUrl: session.user.avatarUrl ?? session.user.image ?? null,
+              }
+            : undefined
+        }
         canComment={watched}
         comments={comments}
         friends={friends}

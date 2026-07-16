@@ -5,7 +5,6 @@ import Link from "next/link";
 import { Fragment } from "react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { RatingStars } from "@/components/title/rating-stars";
 import type { EpisodeComment } from "@/lib/episode-comments";
 import { formatRelativeTime } from "@/lib/format-date";
 import { cn } from "@/lib/utils";
@@ -58,8 +57,6 @@ export function EpisodeCommentItem({
           </Link>
           <span className="text-xs text-muted-foreground">{formatRelativeTime(comment.createdAt)}</span>
         </div>
-
-        {comment.rating != null && <RatingStars value={comment.rating} readOnly size="sm" />}
 
         {comment.replyTo && (
           <div className="rounded-md border-l-2 border-muted-foreground/30 bg-muted/40 px-2 py-1 text-xs text-muted-foreground">
