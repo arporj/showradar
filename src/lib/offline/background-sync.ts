@@ -4,7 +4,7 @@
 export const SYNC_TAG = "showradar-mutation-queue";
 
 // Best-effort only — Safari/iOS has no SyncManager at all (this app
-// explicitly supports iOS via ios-install-prompt.tsx), so this must never
+// explicitly supports iOS via install-banner.tsx), so this must never
 // throw there. The 'online' listener in offline-sync-manager.tsx is the
 // mechanism this app actually relies on; this just wakes the queue up
 // sooner on browsers that support it.

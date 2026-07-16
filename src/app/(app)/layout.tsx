@@ -7,8 +7,7 @@ import { DesktopNav } from "@/components/layout/desktop-nav";
 import { Logo } from "@/components/layout/logo";
 import { TmdbAttribution } from "@/components/layout/tmdb-attribution";
 import { UserMenu } from "@/components/layout/user-menu";
-import { AndroidInstallPrompt } from "@/components/pwa/android-install-prompt";
-import { IosInstallPrompt } from "@/components/pwa/ios-install-prompt";
+import { InstallBanner } from "@/components/pwa/install-banner";
 import { OfflineIndicator } from "@/components/pwa/offline-indicator";
 import { OfflineSyncManager } from "@/components/pwa/offline-sync-manager";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -36,6 +35,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     // O padding inferior no mobile reserva o espaço da BottomNav fixa
     // (h-16 + barra de gestos do sistema).
     <div className="flex min-h-svh flex-col pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
+      {/* Fora do header sticky de propósito: a barra rola junto com o
+          conteúdo, como um aviso do navegador, não como parte do app. */}
+      <InstallBanner />
       <header className="sticky top-0 z-40 border-b bg-background/90 pt-[env(safe-area-inset-top)] backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-2.5 md:px-6">
           <div className="flex min-w-0 items-center gap-4">
@@ -73,8 +75,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
       <BottomNav />
       <OfflineSyncManager userId={session.user.id} />
-      <IosInstallPrompt />
-      <AndroidInstallPrompt />
     </div>
   );
 }
