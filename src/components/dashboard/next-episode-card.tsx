@@ -56,6 +56,7 @@ export function NextEpisodeCard({ item }: { item: NextEpisodeItem }) {
       <WatchToggleButton
         watched={justMarked}
         disabled={isPending || justMarked}
+        loading={isPending}
         onToggle={handleMarkWatched}
         label={`Marcar T${item.seasonNumber}E${item.episodeNumber} como assistido`}
         size="lg"

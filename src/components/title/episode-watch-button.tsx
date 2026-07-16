@@ -1,12 +1,13 @@
 "use client";
 
-import { Check, type LucideIcon } from "lucide-react";
+import { Check, Loader2, type LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
 export function WatchToggleButton({
   watched,
   disabled,
+  loading,
   onToggle,
   label,
   icon: Icon = Check,
@@ -14,6 +15,7 @@ export function WatchToggleButton({
 }: {
   watched: boolean;
   disabled?: boolean;
+  loading?: boolean;
   onToggle: () => void;
   label: string;
   icon?: LucideIcon;
@@ -24,6 +26,7 @@ export function WatchToggleButton({
       type="button"
       role="checkbox"
       aria-checked={watched}
+      aria-busy={loading}
       aria-label={label}
       title={label}
       disabled={disabled}
@@ -37,17 +40,25 @@ export function WatchToggleButton({
         !disabled && "cursor-pointer active:scale-90",
       )}
     >
-      {watched && (
+      {watched && !loading && (
         <span aria-hidden className="animate-episode-check-ring absolute inset-0 rounded-full bg-primary" />
       )}
-      <Icon
-        key={watched ? "checked" : "unchecked"}
-        className={cn(
-          "relative stroke-[3] transition-opacity",
-          size === "lg" ? "size-4.5" : "size-4",
-          watched ? "animate-episode-check-pop opacity-100" : "opacity-0 group-hover/watch:opacity-30",
-        )}
-      />
+      {loading ? (
+        <Loader2
+          key="loading"
+          aria-hidden
+          className={cn("relative animate-spin stroke-[3]", size === "lg" ? "size-4.5" : "size-4")}
+        />
+      ) : (
+        <Icon
+          key={watched ? "checked" : "unchecked"}
+          className={cn(
+            "relative stroke-[3] transition-opacity",
+            size === "lg" ? "size-4.5" : "size-4",
+            watched ? "animate-episode-check-pop opacity-100" : "opacity-0 group-hover/watch:opacity-30",
+          )}
+        />
+      )}
     </button>
   );
 }
