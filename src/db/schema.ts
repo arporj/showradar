@@ -39,7 +39,11 @@ export const notificationTypeEnum = appSchema.enum("notification_type", [
   "new_episode",
   "new_season",
   "new_movie_release",
+  "mention",
+  "reply",
+  "reaction",
 ]);
+export const commentReactionEnum = appSchema.enum("comment_reaction_type", ["like", "dislike"]);
 export const notificationStatusEnum = appSchema.enum("notification_status", [
   "pending",
   "sent",
@@ -244,8 +248,11 @@ export const episodeRatings = appSchema.table(
   (t) => [uniqueIndex("episode_ratings_user_id_episode_id_idx").on(t.userId, t.episodeId)],
 );
 
-export const episodeCommentLikes = appSchema.table(
-  "episode_comment_likes",
+// One reaction per user per comment — setting a new type is an upsert
+// (onConflictDoUpdate), not a delete+insert, so switching like->dislike is a
+// single statement.
+export const episodeCommentReactions = appSchema.table(
+  "episode_comment_reactions",
   {
     id: uuid("id").primaryKey().defaultRandom(),
     commentId: uuid("comment_id")
@@ -254,9 +261,49 @@ export const episodeCommentLikes = appSchema.table(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    type: commentReactionEnum("type").notNull(),
     createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
   },
-  (t) => [uniqueIndex("episode_comment_likes_comment_id_user_id_idx").on(t.commentId, t.userId)],
+  (t) => [uniqueIndex("episode_comment_reactions_comment_id_user_id_idx").on(t.commentId, t.userId)],
+);
+
+// Mirrors episodeComments exactly, but for a title as a whole (movie or
+// series) instead of a single episode — no rating column here either;
+// rating stays on user_library.personal_rating, one per user per title.
+export const titleComments = appSchema.table(
+  "title_comments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    titleId: uuid("title_id")
+      .notNull()
+      .references(() => titles.id, { onDelete: "cascade" }),
+    body: text("body").notNull(),
+    replyToId: uuid("reply_to_id"),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("title_comments_title_id_created_at_idx").on(t.titleId, t.createdAt),
+    foreignKey({ columns: [t.replyToId], foreignColumns: [t.id] }).onDelete("set null"),
+  ],
+);
+
+export const titleCommentReactions = appSchema.table(
+  "title_comment_reactions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    commentId: uuid("comment_id")
+      .notNull()
+      .references(() => titleComments.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    type: commentReactionEnum("type").notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("title_comment_reactions_comment_id_user_id_idx").on(t.commentId, t.userId)],
 );
 
 export const userLibrary = appSchema.table(
@@ -272,10 +319,12 @@ export const userLibrary = appSchema.table(
     status: libraryStatusEnum("status").notNull().default("plan_to_watch"),
     isFavorite: boolean("is_favorite").notNull().default(false),
     personalRating: smallint("personal_rating"),
-    reviewText: text("review_text"),
-    // Bumped on every save (create or edit) — drives "most recent first" in
-    // the public reviews list. reviewCreatedAt below is set once and never
-    // touched again, so the feed can tell "first rating" from "edited it
+    // Free text used to live here (review_text) — removed once title_comments
+    // took over as the one place to write anything, same split as episodes
+    // (episode_ratings vs episode_comments). reviewUpdatedAt/reviewCreatedAt
+    // still track the rating itself: bumped on every save (create or edit),
+    // drives "most recent first" ordering. reviewCreatedAt is set once and
+    // never touched again, so the feed can tell "first rating" from "edited it
     // again" without the two colliding.
     reviewUpdatedAt: timestamp("review_updated_at", { mode: "date" }),
     reviewCreatedAt: timestamp("review_created_at", { mode: "date" }),
@@ -411,6 +460,9 @@ export const notificationPreferences = appSchema.table(
     pushEnabled: boolean("push_enabled").notNull().default(true),
     notifyNewEpisode: boolean("notify_new_episode").notNull().default(true),
     notifyNewSeason: boolean("notify_new_season").notNull().default(true),
+    notifyMentions: boolean("notify_mentions").notNull().default(true),
+    notifyReplies: boolean("notify_replies").notNull().default(true),
+    notifyReactions: boolean("notify_reactions").notNull().default(true),
     quietHoursStart: time("quiet_hours_start"),
     quietHoursEnd: time("quiet_hours_end"),
     timezone: text("timezone").notNull().default("UTC"),

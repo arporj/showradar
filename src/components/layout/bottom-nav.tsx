@@ -44,6 +44,7 @@ export function BottomNav() {
             <Link
               key={link.href}
               href={link.href}
+              prefetch={false}
               aria-current={active ? "page" : undefined}
               onClick={(event) => navigate(event, link.href)}
               className={tabClass(active)}
@@ -62,7 +63,7 @@ export function BottomNav() {
             {MORE_LINKS.map((link) => (
               <DropdownMenuItem
                 key={link.href}
-                render={<Link href={link.href} onClick={(event) => navigate(event, link.href)} />}
+                render={<Link href={link.href} prefetch={false} onClick={(event) => navigate(event, link.href)} />}
               >
                 <link.icon /> {link.label}
               </DropdownMenuItem>

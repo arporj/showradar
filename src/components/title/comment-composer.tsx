@@ -6,7 +6,7 @@ import { useRef, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import type { EpisodeComment } from "@/lib/episode-comments";
+import type { Comment } from "@/lib/comments";
 import type { Friend } from "@/lib/friends";
 
 // Looks for an unfinished "@fragment" ending exactly at the caret — used to
@@ -17,14 +17,14 @@ function mentionFragmentAt(text: string, caret: number) {
   return match ? { start: caret - match[0].length, query: match[1].toLowerCase() } : null;
 }
 
-export function EpisodeCommentComposer({
+export function CommentComposer({
   friends,
   replyTarget,
   onCancelReply,
   onSubmit,
 }: {
   friends: Friend[];
-  replyTarget: EpisodeComment | null;
+  replyTarget: Comment | null;
   onCancelReply: () => void;
   onSubmit: (input: { body: string; replyToId: string | null }) => void;
 }) {

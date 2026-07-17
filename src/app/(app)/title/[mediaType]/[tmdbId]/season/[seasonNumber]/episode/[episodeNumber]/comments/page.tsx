@@ -3,9 +3,10 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { notFound } from "next/navigation";
 
-import { EpisodeCommentsClient } from "@/components/title/episode-comments-client";
+import { CommentsClient } from "@/components/title/comments-client";
 import { titles } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { deleteEpisodeComment, postEpisodeComment, setEpisodeCommentReaction } from "@/lib/actions/episode-comments";
 import { db } from "@/lib/db";
 import { getEpisodeByNumbers } from "@/lib/episode-detail";
 import { getEpisodeComments, getEpisodeCommentCount } from "@/lib/episode-comments";
@@ -75,11 +76,7 @@ export default async function EpisodeCommentsPage({
         </p>
       </div>
 
-      <EpisodeCommentsClient
-        episodeId={episode.id}
-        tmdbTvId={tmdbIdNum}
-        seasonNumber={seasonNumberNum}
-        episodeNumber={episodeNumberNum}
+      <CommentsClient
         currentUser={
           session?.user
             ? {
@@ -93,6 +90,35 @@ export default async function EpisodeCommentsPage({
         canComment={watched}
         comments={comments}
         friends={friends}
+        onPost={async (input) => {
+          "use server";
+          return postEpisodeComment({
+            episodeId: episode.id,
+            tmdbTvId: tmdbIdNum,
+            seasonNumber: seasonNumberNum,
+            episodeNumber: episodeNumberNum,
+            ...input,
+          });
+        }}
+        onDelete={async (commentId) => {
+          "use server";
+          await deleteEpisodeComment({
+            commentId,
+            tmdbTvId: tmdbIdNum,
+            seasonNumber: seasonNumberNum,
+            episodeNumber: episodeNumberNum,
+          });
+        }}
+        onSetReaction={async (commentId, reaction) => {
+          "use server";
+          await setEpisodeCommentReaction({
+            commentId,
+            reaction,
+            tmdbTvId: tmdbIdNum,
+            seasonNumber: seasonNumberNum,
+            episodeNumber: episodeNumberNum,
+          });
+        }}
       />
     </div>
   );

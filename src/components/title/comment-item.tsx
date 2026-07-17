@@ -1,11 +1,11 @@
 "use client";
 
-import { Heart } from "lucide-react";
+import { ThumbsDown, ThumbsUp } from "lucide-react";
 import Link from "next/link";
 import { Fragment } from "react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import type { EpisodeComment } from "@/lib/episode-comments";
+import type { Comment, CommentReaction } from "@/lib/comments";
 import { formatRelativeTime } from "@/lib/format-date";
 import { cn } from "@/lib/utils";
 
@@ -26,18 +26,18 @@ function renderBodyWithMentions(body: string) {
   );
 }
 
-export function EpisodeCommentItem({
+export function CommentItem({
   comment,
   currentUserId,
   onReply,
-  onToggleLike,
+  onSetReaction,
   onDelete,
 }: {
-  comment: EpisodeComment;
+  comment: Comment;
   currentUserId: string | undefined;
-  onReply: (comment: EpisodeComment) => void;
-  onToggleLike: (comment: EpisodeComment) => void;
-  onDelete: (comment: EpisodeComment) => void;
+  onReply: (comment: Comment) => void;
+  onSetReaction: (comment: Comment, reaction: CommentReaction | null) => void;
+  onDelete: (comment: Comment) => void;
 }) {
   const displayName = comment.name ?? comment.username ?? "";
 
@@ -70,11 +70,19 @@ export function EpisodeCommentItem({
         <div className="flex items-center gap-4 pt-0.5 text-xs text-muted-foreground">
           <button
             type="button"
-            onClick={() => onToggleLike(comment)}
-            className={cn("flex items-center gap-1 hover:text-foreground", comment.likedByMe && "text-primary")}
+            onClick={() => onSetReaction(comment, comment.myReaction === "like" ? null : "like")}
+            className={cn("flex items-center gap-1 hover:text-foreground", comment.myReaction === "like" && "text-primary")}
           >
-            <Heart className={cn("size-3.5", comment.likedByMe && "fill-primary")} />
+            <ThumbsUp className={cn("size-3.5", comment.myReaction === "like" && "fill-primary")} />
             {comment.likeCount > 0 && comment.likeCount}
+          </button>
+          <button
+            type="button"
+            onClick={() => onSetReaction(comment, comment.myReaction === "dislike" ? null : "dislike")}
+            className={cn("flex items-center gap-1 hover:text-foreground", comment.myReaction === "dislike" && "text-destructive")}
+          >
+            <ThumbsDown className={cn("size-3.5", comment.myReaction === "dislike" && "fill-destructive")} />
+            {comment.dislikeCount > 0 && comment.dislikeCount}
           </button>
           <button type="button" onClick={() => onReply(comment)} className="hover:text-foreground">
             Responder

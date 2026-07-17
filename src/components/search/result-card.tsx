@@ -8,17 +8,23 @@ import { TMDB_GENRE_NAMES, tmdbImageUrl, type TmdbSearchResult } from "@/lib/tmd
 export function SearchResultCard({
   result,
   action,
+  prefetch,
 }: {
   result: TmdbSearchResult;
   // Slot renderizado ao lado do badge Filme/Série (ex.: lixeira de descartar
   // recomendação) — em linha, para nunca sobrepor o badge.
   action?: React.ReactNode;
+  // Default (undefined) keeps Link's own default (hover/viewport prefetch) —
+  // pass false for long lists (e.g. "Títulos parecidos") where prefetching
+  // every card at once floods the connection pool.
+  prefetch?: boolean;
 }) {
   if (result.media_type === "person") {
     const photo = tmdbImageUrl(result.profile_path, "w185");
     return (
       <Link
         href={`/person/${result.id}`}
+        prefetch={prefetch}
         className="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/50"
       >
         <div className="relative size-14 shrink-0 overflow-hidden rounded-full bg-muted">
@@ -50,6 +56,7 @@ export function SearchResultCard({
     <div className="flex gap-3 rounded-lg border p-3">
       <Link
         href={`/title/${mediaType}/${result.id}`}
+        prefetch={prefetch}
         className="relative h-28 w-20 shrink-0 overflow-hidden rounded-md bg-muted"
       >
         {poster ? (
@@ -62,7 +69,7 @@ export function SearchResultCard({
       </Link>
       <div className="flex flex-1 flex-col gap-1">
         <div className="flex items-start justify-between gap-2">
-          <Link href={`/title/${mediaType}/${result.id}`} className="font-medium hover:underline">
+          <Link href={`/title/${mediaType}/${result.id}`} prefetch={prefetch} className="font-medium hover:underline">
             {title} {year && <span className="text-muted-foreground">({year})</span>}
           </Link>
           <div className="flex shrink-0 items-center gap-1">

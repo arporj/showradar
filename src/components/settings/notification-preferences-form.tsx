@@ -9,6 +9,9 @@ interface Prefs {
   emailEnabled: boolean;
   notifyNewEpisode: boolean;
   notifyNewSeason: boolean;
+  notifyMentions: boolean;
+  notifyReplies: boolean;
+  notifyReactions: boolean;
 }
 
 export function NotificationPreferencesForm({ initial }: { initial: Prefs }) {
@@ -63,6 +66,42 @@ export function NotificationPreferencesForm({ initial }: { initial: Prefs }) {
           checked={prefs.notifyNewSeason}
           disabled={isPending}
           onCheckedChange={(checked) => toggle("notifyNewSeason", checked)}
+        />
+      </label>
+
+      <label className="flex items-center justify-between gap-4 rounded-lg border p-4">
+        <div>
+          <p className="text-sm font-medium">Fui mencionado</p>
+          <p className="text-xs text-muted-foreground">Avisar quando alguém mencionar você (@você) num comentário.</p>
+        </div>
+        <Switch
+          checked={prefs.notifyMentions}
+          disabled={isPending}
+          onCheckedChange={(checked) => toggle("notifyMentions", checked)}
+        />
+      </label>
+
+      <label className="flex items-center justify-between gap-4 rounded-lg border p-4">
+        <div>
+          <p className="text-sm font-medium">Responderam meu comentário</p>
+          <p className="text-xs text-muted-foreground">Avisar quando alguém responder um comentário seu.</p>
+        </div>
+        <Switch
+          checked={prefs.notifyReplies}
+          disabled={isPending}
+          onCheckedChange={(checked) => toggle("notifyReplies", checked)}
+        />
+      </label>
+
+      <label className="flex items-center justify-between gap-4 rounded-lg border p-4">
+        <div>
+          <p className="text-sm font-medium">Reagiram ao meu comentário</p>
+          <p className="text-xs text-muted-foreground">Avisar quando alguém curtir ou dar deslike num comentário seu.</p>
+        </div>
+        <Switch
+          checked={prefs.notifyReactions}
+          disabled={isPending}
+          onCheckedChange={(checked) => toggle("notifyReactions", checked)}
         />
       </label>
     </div>

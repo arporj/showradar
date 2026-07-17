@@ -1,21 +1,11 @@
-import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
 
-import { userLibrary, users } from "@/db/schema";
+import { userLibrary } from "@/db/schema";
 import { db } from "@/lib/db";
 
 export interface RatingSummary {
   average: number;
   count: number;
-}
-
-export interface TitleReview {
-  userId: string;
-  username: string | null;
-  name: string | null;
-  avatarUrl: string | null;
-  rating: number;
-  reviewText: string | null;
-  reviewUpdatedAt: Date;
 }
 
 export async function getTitleRatingSummary(titleId: string): Promise<RatingSummary | null> {
@@ -29,34 +19,6 @@ export async function getTitleRatingSummary(titleId: string): Promise<RatingSumm
 
   if (!row || row.count === 0) return null;
   return { average: Number(row.average), count: row.count };
-}
-
-export async function getTitleReviews(titleId: string): Promise<TitleReview[]> {
-  const rows = await db
-    .select({
-      userId: users.id,
-      username: users.username,
-      name: users.name,
-      avatarUrl: users.avatarUrl,
-      image: users.image,
-      rating: userLibrary.personalRating,
-      reviewText: userLibrary.reviewText,
-      reviewUpdatedAt: userLibrary.reviewUpdatedAt,
-    })
-    .from(userLibrary)
-    .innerJoin(users, eq(userLibrary.userId, users.id))
-    .where(and(eq(userLibrary.titleId, titleId), isNotNull(userLibrary.personalRating)))
-    .orderBy(desc(userLibrary.reviewUpdatedAt));
-
-  return rows.map((row) => ({
-    userId: row.userId,
-    username: row.username,
-    name: row.name,
-    avatarUrl: row.avatarUrl ?? row.image,
-    rating: row.rating!,
-    reviewText: row.reviewText,
-    reviewUpdatedAt: row.reviewUpdatedAt!,
-  }));
 }
 
 // Batch version for the discovery engine's "top rated this week" widget —

@@ -11,13 +11,22 @@ import { WatchProgress } from "@/components/title/watch-progress";
 import { WatchProviders } from "@/components/title/watch-providers";
 import { seasons as seasonsTable, titles, userLibrary } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { deleteRating, submitRating } from "@/lib/actions/ratings";
 import { db } from "@/lib/db";
 import { getSimilarTitles } from "@/lib/discovery";
 import { LIBRARY_STATUSES } from "@/lib/library-status";
 import { getWatchedEpisodeCounts } from "@/lib/progress";
-import { getTitleRatingSummary, getTitleReviews } from "@/lib/ratings";
-import { tmdbImageUrl, type TmdbCastMember, type TmdbWatchProviderRegion } from "@/lib/tmdb";
+import { getTitleRatingSummary } from "@/lib/ratings";
+import { shiftDateString, todayBrDateString } from "@/lib/release-dates";
+import { getTitleCommentPreview, getTitleCommentCount } from "@/lib/title-comments";
+import { tmdbImageUrl, type TmdbCastMember, type TmdbEpisodeRef, type TmdbWatchProviderRegion } from "@/lib/tmdb";
 import { syncTitleFromTmdb } from "@/lib/tmdb-sync";
+
+// Same window as the episode page's preview — a movie's release date is
+// clear-cut; a series (which can have aired for years) uses the most
+// recently aired episode already cached on the title, same field "Em breve"
+// reads (titles.last_episode_to_air).
+const SPOILER_PREVIEW_WINDOW_DAYS = 2;
 
 export default async function TitleDetailPage({
   params,
@@ -53,7 +62,7 @@ export default async function TitleDetailPage({
   ]);
   if (!title) notFound();
 
-  const [libraryRows, watchedCounts, ratingSummary, reviews, similarTitles] = await Promise.all([
+  const [libraryRows, watchedCounts, ratingSummary, commentPreview, commentCount, similarTitles] = await Promise.all([
     session?.user
       ? db
           .select()
@@ -65,12 +74,20 @@ export default async function TitleDetailPage({
       seasonRows.map((s) => s.id),
     ),
     getTitleRatingSummary(titleId),
-    getTitleReviews(titleId),
+    getTitleCommentPreview(titleId, session?.user?.id),
+    getTitleCommentCount(titleId),
     getSimilarTitles(session?.user?.id, mediaType, tmdbIdNum),
   ]);
   const libraryEntry = libraryRows[0];
   const currentStatus =
     libraryEntry && LIBRARY_STATUSES.includes(libraryEntry.status) ? libraryEntry.status : null;
+
+  const spoilerAnchorDate =
+    mediaType === "movie"
+      ? title.releaseDate
+      : ((title.lastEpisodeToAir as TmdbEpisodeRef | null)?.air_date ?? null);
+  const spoilerCutoff = spoilerAnchorDate ? shiftDateString(spoilerAnchorDate, SPOILER_PREVIEW_WINDOW_DAYS) : null;
+  const commentsBlurred = spoilerCutoff != null && todayBrDateString() < spoilerCutoff;
 
   const watchedCountsObj = Object.fromEntries(watchedCounts);
   // Season 0 (specials) is excluded from the overall total — mirrors
@@ -142,7 +159,12 @@ export default async function TitleDetailPage({
                 {cast.slice(0, 10).map((member) => {
                   const photo = tmdbImageUrl(member.profile_path, "w185");
                   return (
-                    <Link key={member.id} href={`/person/${member.id}`} className="w-20 shrink-0 text-center">
+                    <Link
+                      key={member.id}
+                      href={`/person/${member.id}`}
+                      prefetch={false}
+                      className="w-20 shrink-0 text-center"
+                    >
                       <div className="relative mx-auto h-20 w-20 overflow-hidden rounded-full bg-muted">
                         {photo && (
                           <Image src={photo} alt={member.name} fill sizes="80px" className="object-cover" />
@@ -160,16 +182,16 @@ export default async function TitleDetailPage({
       </div>
 
       <TitleRatingsSection
-        titleId={titleId}
-        mediaType={mediaType}
-        tmdbId={tmdbIdNum}
         voteAverage={title.voteAverage}
         summary={ratingSummary}
-        reviews={reviews}
-        currentUserId={session?.user?.id}
         currentUserRating={libraryEntry?.personalRating ?? null}
-        currentUserReviewText={libraryEntry?.reviewText ?? null}
         canRate={currentStatus === "completed"}
+        onRatingChange={submitRating.bind(null, titleId, mediaType, tmdbIdNum)}
+        onRatingDelete={deleteRating.bind(null, titleId, mediaType, tmdbIdNum)}
+        commentPreview={commentPreview}
+        commentCount={commentCount}
+        commentsBlurred={commentsBlurred}
+        commentsHref={`/title/${mediaType}/${tmdbIdNum}/comments`}
       />
 
       {mediaType === "tv" && seasonRows.length > 0 && (
@@ -191,7 +213,7 @@ export default async function TitleDetailPage({
           <h2 className="text-lg font-semibold">Títulos parecidos</h2>
           <div className="space-y-3">
             {similarTitles.map((result) => (
-              <SearchResultCard key={`${result.media_type}-${result.id}`} result={result} />
+              <SearchResultCard key={`${result.media_type}-${result.id}`} result={result} prefetch={false} />
             ))}
           </div>
         </section>

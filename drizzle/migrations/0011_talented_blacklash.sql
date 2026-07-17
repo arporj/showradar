@@ -1,0 +1,1 @@
+DROP TABLE "showradar"."episode_comment_likes" CASCADE;

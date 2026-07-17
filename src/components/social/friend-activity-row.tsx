@@ -44,9 +44,6 @@ export function FriendActivityRow({ item }: { item: FriendActivityItem }) {
         {item.type === "rating" && item.rating != null && (
           <div className="flex items-center gap-2">
             <RatingStars value={item.rating} readOnly size="sm" />
-            {item.reviewText && (
-              <p className="line-clamp-1 text-xs italic text-muted-foreground">&ldquo;{item.reviewText}&rdquo;</p>
-            )}
           </div>
         )}
         <p className="text-xs text-muted-foreground">{formatDate(item.watchedAt)}</p>

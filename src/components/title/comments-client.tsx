@@ -3,14 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
-import { EpisodeCommentComposer } from "@/components/title/episode-comment-composer";
-import { EpisodeCommentItem } from "@/components/title/episode-comment-item";
-import {
-  deleteEpisodeComment,
-  postEpisodeComment,
-  toggleEpisodeCommentLike,
-} from "@/lib/actions/episode-comments";
-import type { EpisodeComment } from "@/lib/episode-comments";
+import { CommentComposer } from "@/components/title/comment-composer";
+import { CommentItem } from "@/components/title/comment-item";
+import type { Comment, CommentReaction } from "@/lib/comments";
 import type { Friend } from "@/lib/friends";
 
 interface CurrentUser {
@@ -20,27 +15,27 @@ interface CurrentUser {
   avatarUrl: string | null;
 }
 
-export function EpisodeCommentsClient({
-  episodeId,
-  tmdbTvId,
-  seasonNumber,
-  episodeNumber,
+export function CommentsClient({
   currentUser,
   canComment,
+  disabledHint = "Marque como assistido para poder comentar.",
   comments,
   friends,
+  onPost,
+  onDelete,
+  onSetReaction,
 }: {
-  episodeId: string;
-  tmdbTvId: number;
-  seasonNumber: number;
-  episodeNumber: number;
   currentUser: CurrentUser | undefined;
   canComment: boolean;
-  comments: EpisodeComment[];
+  disabledHint?: string;
+  comments: Comment[];
   friends: Friend[];
+  onPost: (input: { body: string; replyToId: string | null }) => Promise<{ id: string; createdAt: Date } | null>;
+  onDelete: (commentId: string) => Promise<void>;
+  onSetReaction: (commentId: string, reaction: CommentReaction | null) => Promise<void>;
 }) {
   const router = useRouter();
-  const [replyTarget, setReplyTarget] = useState<EpisodeComment | null>(null);
+  const [replyTarget, setReplyTarget] = useState<Comment | null>(null);
   const [optimisticComments, setOptimisticComments] = useState(comments);
   const [, startTransition] = useTransition();
 
@@ -51,7 +46,7 @@ export function EpisodeCommentsClient({
     setReplyTarget(null);
 
     startTransition(async () => {
-      const created = await postEpisodeComment({ episodeId, tmdbTvId, seasonNumber, episodeNumber, ...input });
+      const created = await onPost(input);
       if (created && currentUser) {
         setOptimisticComments((prev) => [
           {
@@ -63,7 +58,8 @@ export function EpisodeCommentsClient({
             body: input.body,
             createdAt: created.createdAt,
             likeCount: 0,
-            likedByMe: false,
+            dislikeCount: 0,
+            myReaction: null,
             replyTo: replySnapshot,
           },
           ...prev,
@@ -73,39 +69,39 @@ export function EpisodeCommentsClient({
     });
   }
 
-  function handleDelete(comment: EpisodeComment) {
+  function handleDelete(comment: Comment) {
     setOptimisticComments((prev) => prev.filter((c) => c.id !== comment.id));
     startTransition(async () => {
-      await deleteEpisodeComment({ commentId: comment.id, tmdbTvId, seasonNumber, episodeNumber });
+      await onDelete(comment.id);
       router.refresh();
     });
   }
 
-  function handleToggleLike(comment: EpisodeComment) {
-    const liked = !comment.likedByMe;
+  function handleSetReaction(comment: Comment, reaction: CommentReaction | null) {
     setOptimisticComments((prev) =>
-      prev.map((c) =>
-        c.id === comment.id ? { ...c, likedByMe: liked, likeCount: c.likeCount + (liked ? 1 : -1) } : c,
-      ),
+      prev.map((c) => {
+        if (c.id !== comment.id) return c;
+        const likeCount = c.likeCount - (c.myReaction === "like" ? 1 : 0) + (reaction === "like" ? 1 : 0);
+        const dislikeCount = c.dislikeCount - (c.myReaction === "dislike" ? 1 : 0) + (reaction === "dislike" ? 1 : 0);
+        return { ...c, myReaction: reaction, likeCount, dislikeCount };
+      }),
     );
     startTransition(async () => {
-      await toggleEpisodeCommentLike({ commentId: comment.id, liked, tmdbTvId, seasonNumber, episodeNumber });
+      await onSetReaction(comment.id, reaction);
     });
   }
 
   return (
     <div className="space-y-4">
       {canComment ? (
-        <EpisodeCommentComposer
+        <CommentComposer
           friends={friends}
           replyTarget={replyTarget}
           onCancelReply={() => setReplyTarget(null)}
           onSubmit={handleSubmit}
         />
       ) : (
-        <p className="rounded-lg border p-3 text-sm text-muted-foreground">
-          Marque o episódio como assistido para poder comentar.
-        </p>
+        <p className="rounded-lg border p-3 text-sm text-muted-foreground">{disabledHint}</p>
       )}
 
       {optimisticComments.length === 0 ? (
@@ -113,12 +109,12 @@ export function EpisodeCommentsClient({
       ) : (
         <div className="space-y-3">
           {optimisticComments.map((comment) => (
-            <EpisodeCommentItem
+            <CommentItem
               key={comment.id}
               comment={comment}
               currentUserId={currentUser?.id}
               onReply={setReplyTarget}
-              onToggleLike={handleToggleLike}
+              onSetReaction={handleSetReaction}
               onDelete={handleDelete}
             />
           ))}

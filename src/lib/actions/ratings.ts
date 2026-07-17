@@ -18,14 +18,11 @@ function revalidateRatingPaths(mediaType: TmdbMediaType, tmdbId: number) {
 // Ratings are gated on status "completed" (checked here, not just hidden in
 // the UI — the form only renders for completed titles, but this is the real
 // enforcement). Editing an existing rating doesn't touch reviewCreatedAt,
-// so the feed can tell a first-time rating from a later edit.
-export async function submitRating(
-  titleId: string,
-  mediaType: TmdbMediaType,
-  tmdbId: number,
-  rating: number,
-  reviewText: string | null,
-) {
+// so the feed can tell a first-time rating from a later edit. Text used to
+// live here too (reviewText) — removed once title_comments took over as the
+// one place to write anything, same split as episodes (episode_ratings vs
+// episode_comments).
+export async function submitRating(titleId: string, mediaType: TmdbMediaType, tmdbId: number, rating: number) {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
@@ -43,7 +40,6 @@ export async function submitRating(
     .update(userLibrary)
     .set({
       personalRating: rating,
-      reviewText: reviewText?.trim() || null,
       reviewUpdatedAt: now,
       ...(existing.personalRating == null ? { reviewCreatedAt: now } : {}),
     })
@@ -58,7 +54,7 @@ export async function deleteRating(titleId: string, mediaType: TmdbMediaType, tm
 
   await db
     .update(userLibrary)
-    .set({ personalRating: null, reviewText: null, reviewUpdatedAt: null, reviewCreatedAt: null })
+    .set({ personalRating: null, reviewUpdatedAt: null, reviewCreatedAt: null })
     .where(and(eq(userLibrary.userId, session.user.id), eq(userLibrary.titleId, titleId)));
 
   revalidateRatingPaths(mediaType, tmdbId);

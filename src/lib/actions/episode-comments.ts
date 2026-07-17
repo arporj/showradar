@@ -4,14 +4,20 @@ import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { episodeCommentLikes, episodeComments, userEpisodeProgress } from "@/db/schema";
+import { episodeCommentReactions, episodeComments, userEpisodeProgress } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { notifyCommentEvent, resolveMentions } from "@/lib/comment-notifications";
+import type { CommentReaction } from "@/lib/comments";
 import { db } from "@/lib/db";
 
 function revalidateEpisodePaths(tmdbTvId: number, seasonNumber: number, episodeNumber: number) {
   const base = `/title/tv/${tmdbTvId}/season/${seasonNumber}/episode/${episodeNumber}`;
   revalidatePath(base);
   revalidatePath(`${base}/comments`);
+}
+
+function episodeCommentsUrl(tmdbTvId: number, seasonNumber: number, episodeNumber: number) {
+  return `${process.env.NEXT_PUBLIC_APP_URL}/title/tv/${tmdbTvId}/season/${seasonNumber}/episode/${episodeNumber}/comments`;
 }
 
 // Posting is gated on having watched the episode (checked here, not just
@@ -53,6 +59,43 @@ export async function postEpisodeComment(input: {
 
   revalidateEpisodePaths(input.tmdbTvId, input.seasonNumber, input.episodeNumber);
 
+  const actorLabel = session.user.name ?? session.user.username ?? "Alguém";
+  const url = episodeCommentsUrl(input.tmdbTvId, input.seasonNumber, input.episodeNumber);
+  const snippet = body.length > 100 ? `${body.slice(0, 100)}…` : body;
+
+  if (input.replyToId) {
+    const [original] = await db
+      .select({ userId: episodeComments.userId })
+      .from(episodeComments)
+      .where(eq(episodeComments.id, input.replyToId));
+    if (original) {
+      await notifyCommentEvent({
+        recipientUserId: original.userId,
+        actorUserId: session.user.id,
+        type: "reply",
+        title: "Responderam seu comentário",
+        body: `${actorLabel} respondeu: "${snippet}"`,
+        url,
+        episodeId: input.episodeId,
+        dedupSuffix: created.id,
+      });
+    }
+  }
+
+  const mentioned = await resolveMentions(body);
+  for (const user of mentioned) {
+    await notifyCommentEvent({
+      recipientUserId: user.id,
+      actorUserId: session.user.id,
+      type: "mention",
+      title: "Você foi mencionado num comentário",
+      body: `${actorLabel} mencionou você: "${snippet}"`,
+      url,
+      episodeId: input.episodeId,
+      dedupSuffix: created.id,
+    });
+  }
+
   return created;
 }
 
@@ -72,9 +115,9 @@ export async function deleteEpisodeComment(input: {
   revalidateEpisodePaths(input.tmdbTvId, input.seasonNumber, input.episodeNumber);
 }
 
-export async function toggleEpisodeCommentLike(input: {
+export async function setEpisodeCommentReaction(input: {
   commentId: string;
-  liked: boolean;
+  reaction: CommentReaction | null;
   tmdbTvId: number;
   seasonNumber: number;
   episodeNumber: number;
@@ -82,18 +125,45 @@ export async function toggleEpisodeCommentLike(input: {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  if (input.liked) {
+  if (input.reaction === null) {
     await db
-      .insert(episodeCommentLikes)
-      .values({ commentId: input.commentId, userId: session.user.id })
-      .onConflictDoNothing({ target: [episodeCommentLikes.commentId, episodeCommentLikes.userId] });
+      .delete(episodeCommentReactions)
+      .where(
+        and(
+          eq(episodeCommentReactions.commentId, input.commentId),
+          eq(episodeCommentReactions.userId, session.user.id),
+        ),
+      );
   } else {
     await db
-      .delete(episodeCommentLikes)
-      .where(
-        and(eq(episodeCommentLikes.commentId, input.commentId), eq(episodeCommentLikes.userId, session.user.id)),
-      );
+      .insert(episodeCommentReactions)
+      .values({ commentId: input.commentId, userId: session.user.id, type: input.reaction })
+      .onConflictDoUpdate({
+        target: [episodeCommentReactions.commentId, episodeCommentReactions.userId],
+        set: { type: input.reaction },
+      });
   }
 
   revalidateEpisodePaths(input.tmdbTvId, input.seasonNumber, input.episodeNumber);
+
+  if (input.reaction !== null) {
+    const [original] = await db
+      .select({ userId: episodeComments.userId })
+      .from(episodeComments)
+      .where(eq(episodeComments.id, input.commentId));
+    if (original) {
+      const actorLabel = session.user.name ?? session.user.username ?? "Alguém";
+      const verb = input.reaction === "like" ? "curtiu" : "reagiu com deslike a";
+      await notifyCommentEvent({
+        recipientUserId: original.userId,
+        actorUserId: session.user.id,
+        type: "reaction",
+        title: "Reagiram ao seu comentário",
+        body: `${actorLabel} ${verb} seu comentário`,
+        url: episodeCommentsUrl(input.tmdbTvId, input.seasonNumber, input.episodeNumber),
+        episodeId: undefined,
+        dedupSuffix: `${input.commentId}:${session.user.id}:${input.reaction}`,
+      });
+    }
+  }
 }

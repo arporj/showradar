@@ -21,6 +21,7 @@ export function DesktopNav() {
           <Link
             key={link.href}
             href={link.href}
+            prefetch={false}
             title={link.label}
             aria-current={active ? "page" : undefined}
             onClick={(event) => navigate(event, link.href)}

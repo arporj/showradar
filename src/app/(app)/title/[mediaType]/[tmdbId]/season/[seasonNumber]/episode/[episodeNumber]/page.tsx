@@ -4,11 +4,12 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { notFound } from "next/navigation";
 
-import { EpisodeCommentsPreview } from "@/components/title/episode-comments-preview";
+import { CommentsPreview } from "@/components/title/comments-preview";
 import { EpisodePageWatchToggle } from "@/components/title/episode-page-watch-toggle";
-import { EpisodeRatingForm } from "@/components/title/episode-rating-form";
+import { RatingForm } from "@/components/title/rating-form";
 import { titles } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { deleteEpisodeRating, submitEpisodeRating } from "@/lib/actions/episode-ratings";
 import { db } from "@/lib/db";
 import { getEpisodeByNumbers } from "@/lib/episode-detail";
 import { getEpisodeCommentPreview, getEpisodeCommentCount } from "@/lib/episode-comments";
@@ -130,24 +131,34 @@ export default async function EpisodeDetailPage({
           )}
 
           {watched ? (
-            <EpisodeRatingForm
-              episodeId={episode.id}
-              tmdbTvId={tmdbIdNum}
-              seasonNumber={seasonNumberNum}
-              episodeNumber={episodeNumberNum}
+            <RatingForm
               initialRating={userRating}
+              onChange={async (rating) => {
+                "use server";
+                await submitEpisodeRating({
+                  episodeId: episode.id,
+                  tmdbTvId: tmdbIdNum,
+                  seasonNumber: seasonNumberNum,
+                  episodeNumber: episodeNumberNum,
+                  rating,
+                });
+              }}
+              onDelete={async () => {
+                "use server";
+                await deleteEpisodeRating({
+                  episodeId: episode.id,
+                  tmdbTvId: tmdbIdNum,
+                  seasonNumber: seasonNumberNum,
+                  episodeNumber: episodeNumberNum,
+                });
+              }}
             />
           ) : (
             <p className="text-xs text-muted-foreground">Marque como assistido para avaliar.</p>
           )}
         </div>
 
-        <EpisodeCommentsPreview
-          comments={commentPreview}
-          count={commentCount}
-          blurred={previewBlurred}
-          href={commentsHref}
-        />
+        <CommentsPreview comments={commentPreview} count={commentCount} blurred={previewBlurred} href={commentsHref} />
       </div>
     </div>
   );

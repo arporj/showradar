@@ -5,8 +5,8 @@ import { useState } from "react";
 
 import { cn } from "@/lib/utils";
 
-// Whether to blur is decided by the caller (episode-comments-preview.tsx —
-// based on days since air date), not by this component — it only knows how
+// Whether to blur is decided by the caller (comments-preview.tsx — based on
+// days since air/release date), not by this component — it only knows how
 // to render the blur/reveal interaction itself.
 export function SpoilerBlur({ blurred, children }: { blurred: boolean; children: React.ReactNode }) {
   const [revealed, setRevealed] = useState(false);

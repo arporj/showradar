@@ -3,70 +3,74 @@
 import { useOptimistic, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { RatingStars } from "@/components/title/rating-stars";
-import { deleteRating, submitRating } from "@/lib/actions/ratings";
-import type { TmdbMediaType } from "@/lib/tmdb";
+import { withTimeout } from "@/lib/with-timeout";
 
+// Shared by the title page and the episode page — neither the value nor the
+// delete action care which entity is being rated, that's baked into the
+// callbacks the caller closes over (submitRating/submitEpisodeRating etc.).
 export function RatingForm({
-  titleId,
-  mediaType,
-  tmdbId,
   initialRating,
-  initialReviewText,
+  onChange,
+  onDelete,
+  label = "Sua avaliação",
 }: {
-  titleId: string;
-  mediaType: TmdbMediaType;
-  tmdbId: number;
   initialRating: number | null;
-  initialReviewText: string | null;
+  onChange: (rating: number) => Promise<void>;
+  onDelete: () => Promise<void>;
+  label?: string;
 }) {
   const [optimisticRating, setOptimisticRating] = useOptimistic(
     initialRating,
     (_state: number | null, next: number | null) => next,
   );
-  const [reviewText, setReviewText] = useState(initialReviewText ?? "");
-  const [isPending, startTransition] = useTransition();
+  // useTransition's own isPending has been observed to stay stuck at true
+  // even after the transition callback fully returns (seen against this
+  // Next/React canary pairing) — tracked independently here instead of
+  // trusting it, with withTimeout as a backstop against a hung/aborted call.
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [, startTransition] = useTransition();
 
-  function handleRatingChange(value: number) {
-    startTransition(async () => {
+  function handleChange(value: number) {
+    setIsSubmitting(true);
+    startTransition(() => {
       setOptimisticRating(value);
-      await submitRating(titleId, mediaType, tmdbId, value, reviewText);
     });
-  }
-
-  function handleSaveText() {
-    if (!optimisticRating) return;
-    startTransition(async () => {
-      await submitRating(titleId, mediaType, tmdbId, optimisticRating, reviewText);
-    });
+    (async () => {
+      try {
+        await withTimeout(onChange(value));
+      } catch (error) {
+        console.error("Failed to submit rating", error);
+      } finally {
+        setIsSubmitting(false);
+      }
+    })();
   }
 
   function handleDelete() {
-    startTransition(async () => {
+    setIsSubmitting(true);
+    startTransition(() => {
       setOptimisticRating(null);
-      setReviewText("");
-      await deleteRating(titleId, mediaType, tmdbId);
     });
+    (async () => {
+      try {
+        await withTimeout(onDelete());
+      } catch (error) {
+        console.error("Failed to delete rating", error);
+      } finally {
+        setIsSubmitting(false);
+      }
+    })();
   }
 
   return (
-    <div className="space-y-2 rounded-lg border p-3">
-      <p className="text-sm font-medium">Sua avaliação</p>
-      <RatingStars value={optimisticRating ?? 0} onChange={handleRatingChange} />
-      <Textarea
-        placeholder="Escreva uma resenha (opcional)"
-        value={reviewText}
-        onChange={(e) => setReviewText(e.target.value)}
-        disabled={!optimisticRating || isPending}
-      />
-      <div className="flex gap-2">
-        <Button type="button" size="sm" disabled={!optimisticRating || isPending} onClick={handleSaveText}>
-          Salvar
-        </Button>
-        {optimisticRating != null && (
-          <Button type="button" variant="ghost" size="sm" disabled={isPending} onClick={handleDelete}>
-            Remover avaliação
+    <div className="space-y-2">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <div className="flex items-center gap-2">
+        <RatingStars value={optimisticRating ?? 0} onChange={handleChange} disabled={isSubmitting} />
+        {optimisticRating != null && !isSubmitting && (
+          <Button type="button" variant="ghost" size="sm" onClick={handleDelete}>
+            Remover
           </Button>
         )}
       </div>

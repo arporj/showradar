@@ -33,7 +33,6 @@ export interface FriendActivityItem {
   episodeNumber: number | null;
   episodeName: string | null;
   rating: number | null;
-  reviewText: string | null;
   // Only non-empty for type "episode": the rest of this user's watched
   // episodes of this same title within the fetched window (excludes the one
   // already shown above, the most recent), most recent first — a marathon
@@ -132,7 +131,6 @@ export async function getFriendActivity(userId: string, limit = 30): Promise<Fri
         titleName: titlesTable.name,
         posterPath: titlesTable.posterPath,
         rating: userLibrary.personalRating,
-        reviewText: userLibrary.reviewText,
       })
       .from(userLibrary)
       .innerJoin(users, eq(userLibrary.userId, users.id))
@@ -174,7 +172,6 @@ export async function getFriendActivity(userId: string, limit = 30): Promise<Fri
       episodeNumber: primary.episodeNumber,
       episodeName: primary.episodeName,
       rating: null,
-      reviewText: null,
       moreEpisodes: rest.map((row) => ({
         key: `episode-${row.userId}-${row.titleId}-${row.seasonNumber}-${row.episodeNumber}`,
         watchedAt: row.watchedAt,
@@ -201,7 +198,6 @@ export async function getFriendActivity(userId: string, limit = 30): Promise<Fri
       episodeNumber: null,
       episodeName: null,
       rating: null,
-      reviewText: null,
       moreEpisodes: [],
     })),
     ...ratingRows.map((row) => ({
@@ -218,7 +214,6 @@ export async function getFriendActivity(userId: string, limit = 30): Promise<Fri
       episodeNumber: null,
       episodeName: null,
       rating: row.rating,
-      reviewText: row.reviewText,
       moreEpisodes: [],
     })),
   ];

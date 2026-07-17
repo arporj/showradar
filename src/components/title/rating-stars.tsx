@@ -1,6 +1,6 @@
 "use client";
 
-import { Star } from "lucide-react";
+import { Loader2, Star } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -15,55 +15,69 @@ export function RatingStars({
   value,
   onChange,
   readOnly = false,
+  disabled = false,
   size = "default",
 }: {
   value: number;
   onChange?: (value: number) => void;
   readOnly?: boolean;
+  // Distinct from readOnly: this is an interactive widget temporarily
+  // waiting on a server round-trip, not a plain display of someone else's
+  // rating — shows a spinner and blocks further clicks until it resolves.
+  disabled?: boolean;
   size?: "sm" | "default";
 }) {
   const iconSize = size === "sm" ? "size-4" : "size-6";
+  // Buttons stay mounted (not conditionally rendered) even while disabled —
+  // only inert via pointer-events-none on the wrapper — so a click doesn't
+  // unmount its own event target mid-handler.
+  const interactive = !readOnly && onChange;
 
   return (
-    <div className={cn("flex items-center gap-0.5", readOnly && "pointer-events-none")}>
-      {[0, 1, 2, 3, 4].map((i) => {
-        const starValue = value - i * 2;
-        const fillPercent = starValue >= 2 ? 100 : starValue === 1 ? 50 : 0;
+    <div className="flex items-center gap-2">
+      <div className={cn("flex items-center gap-0.5", (readOnly || disabled) && "pointer-events-none", disabled && "opacity-50")}>
+        {[0, 1, 2, 3, 4].map((i) => {
+          const starValue = value - i * 2;
+          const fillPercent = starValue >= 2 ? 100 : starValue === 1 ? 50 : 0;
 
-        return (
-          <div key={i} className={cn("relative", iconSize)}>
-            <Star className={cn(iconSize, "stroke-[1.5] text-muted-foreground/30")} />
-            <div
-              key={fillPercent}
-              className={cn(
-                "absolute inset-0 overflow-hidden",
-                fillPercent > 0 && "animate-episode-check-pop",
+          return (
+            <div key={i} className={cn("relative", iconSize)}>
+              <Star className={cn(iconSize, "stroke-[1.5] text-muted-foreground/30")} />
+              <div
+                key={fillPercent}
+                className={cn(
+                  "absolute inset-0 overflow-hidden",
+                  fillPercent > 0 && "animate-episode-check-pop",
+                )}
+                style={{ width: `${fillPercent}%` }}
+                aria-hidden
+              >
+                <Star className={cn(iconSize, "shrink-0 fill-primary stroke-primary stroke-[1.5]")} />
+              </div>
+
+              {interactive && (
+                <>
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    aria-label={starLabel(i * 2 + 1)}
+                    className="absolute inset-y-0 left-0 w-1/2 cursor-pointer"
+                    onClick={() => onChange(i * 2 + 1)}
+                  />
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    aria-label={starLabel(i * 2 + 2)}
+                    className="absolute inset-y-0 right-0 w-1/2 cursor-pointer"
+                    onClick={() => onChange(i * 2 + 2)}
+                  />
+                </>
               )}
-              style={{ width: `${fillPercent}%` }}
-              aria-hidden
-            >
-              <Star className={cn(iconSize, "shrink-0 fill-primary stroke-primary stroke-[1.5]")} />
             </div>
-
-            {!readOnly && onChange && (
-              <>
-                <button
-                  type="button"
-                  aria-label={starLabel(i * 2 + 1)}
-                  className="absolute inset-y-0 left-0 w-1/2 cursor-pointer"
-                  onClick={() => onChange(i * 2 + 1)}
-                />
-                <button
-                  type="button"
-                  aria-label={starLabel(i * 2 + 2)}
-                  className="absolute inset-y-0 right-0 w-1/2 cursor-pointer"
-                  onClick={() => onChange(i * 2 + 2)}
-                />
-              </>
-            )}
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
+      {disabled && <Loader2 aria-hidden className="size-4 animate-spin text-muted-foreground" />}
     </div>
   );
 }

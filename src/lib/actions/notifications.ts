@@ -63,6 +63,9 @@ export async function updateNotificationPreferences(input: {
   emailEnabled: boolean;
   notifyNewEpisode: boolean;
   notifyNewSeason: boolean;
+  notifyMentions: boolean;
+  notifyReplies: boolean;
+  notifyReactions: boolean;
 }) {
   const session = await auth();
   if (!session?.user) redirect("/login");

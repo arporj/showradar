@@ -3,23 +3,23 @@ import { ChevronRight } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SpoilerBlur } from "@/components/title/spoiler-blur";
-import type { EpisodeComment } from "@/lib/episode-comments";
+import type { Comment } from "@/lib/comments";
 import { formatRelativeTime } from "@/lib/format-date";
 
-export function EpisodeCommentsPreview({
+export function CommentsPreview({
   comments,
   count,
   blurred,
   href,
 }: {
-  comments: EpisodeComment[];
+  comments: Comment[];
   count: number;
   blurred: boolean;
   href: string;
 }) {
   return (
     <div className="space-y-3">
-      <Link href={href} className="flex items-center justify-between text-sm font-medium hover:underline">
+      <Link href={href} prefetch={false} className="flex items-center justify-between text-sm font-medium hover:underline">
         Comentários ({count})
         <ChevronRight className="size-4" />
       </Link>

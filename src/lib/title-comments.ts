@@ -1,6 +1,6 @@
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 
-import { episodeCommentReactions, episodeComments, users } from "@/db/schema";
+import { titleCommentReactions, titleComments, users } from "@/db/schema";
 import { db } from "@/lib/db";
 import type { Comment } from "@/lib/comments";
 
@@ -17,31 +17,29 @@ async function attachDetails(
     replyToIds.length > 0
       ? db
           .select({
-            id: episodeComments.id,
+            id: titleComments.id,
             username: users.username,
             name: users.name,
-            body: episodeComments.body,
+            body: titleComments.body,
           })
-          .from(episodeComments)
-          .innerJoin(users, eq(episodeComments.userId, users.id))
-          .where(inArray(episodeComments.id, replyToIds))
+          .from(titleComments)
+          .innerJoin(users, eq(titleComments.userId, users.id))
+          .where(inArray(titleComments.id, replyToIds))
       : Promise.resolve([]),
     db
       .select({
-        commentId: episodeCommentReactions.commentId,
-        type: episodeCommentReactions.type,
+        commentId: titleCommentReactions.commentId,
+        type: titleCommentReactions.type,
         count: sql<number>`count(*)::int`,
       })
-      .from(episodeCommentReactions)
-      .where(inArray(episodeCommentReactions.commentId, ids))
-      .groupBy(episodeCommentReactions.commentId, episodeCommentReactions.type),
+      .from(titleCommentReactions)
+      .where(inArray(titleCommentReactions.commentId, ids))
+      .groupBy(titleCommentReactions.commentId, titleCommentReactions.type),
     currentUserId
       ? db
-          .select({ commentId: episodeCommentReactions.commentId, type: episodeCommentReactions.type })
-          .from(episodeCommentReactions)
-          .where(
-            and(inArray(episodeCommentReactions.commentId, ids), eq(episodeCommentReactions.userId, currentUserId)),
-          )
+          .select({ commentId: titleCommentReactions.commentId, type: titleCommentReactions.type })
+          .from(titleCommentReactions)
+          .where(and(inArray(titleCommentReactions.commentId, ids), eq(titleCommentReactions.userId, currentUserId)))
       : Promise.resolve([]),
   ]);
 
@@ -71,50 +69,47 @@ async function attachDetails(
 function baseCommentQuery() {
   return db
     .select({
-      id: episodeComments.id,
-      userId: episodeComments.userId,
+      id: titleComments.id,
+      userId: titleComments.userId,
       username: users.username,
       name: users.name,
       avatarUrl: users.avatarUrl,
       image: users.image,
-      body: episodeComments.body,
-      replyToId: episodeComments.replyToId,
-      createdAt: episodeComments.createdAt,
+      body: titleComments.body,
+      replyToId: titleComments.replyToId,
+      createdAt: titleComments.createdAt,
     })
-    .from(episodeComments)
-    .innerJoin(users, eq(episodeComments.userId, users.id));
+    .from(titleComments)
+    .innerJoin(users, eq(titleComments.userId, users.id));
 }
 
-// Latest N comments for the episode page's blurred preview block.
-export async function getEpisodeCommentPreview(
-  episodeId: string,
+// Latest N comments for the title page's blurred preview block.
+export async function getTitleCommentPreview(
+  titleId: string,
   currentUserId: string | undefined,
   limit = 3,
 ): Promise<Comment[]> {
   const rows = await baseCommentQuery()
-    .where(eq(episodeComments.episodeId, episodeId))
-    .orderBy(desc(episodeComments.createdAt))
+    .where(eq(titleComments.titleId, titleId))
+    .orderBy(desc(titleComments.createdAt))
     .limit(limit);
 
   return attachDetails(rows, currentUserId);
 }
 
 // Full, unblurred list for the dedicated /comments page.
-export async function getEpisodeComments(
-  episodeId: string,
-  currentUserId: string | undefined,
-): Promise<Comment[]> {
+export async function getTitleComments(titleId: string, currentUserId: string | undefined): Promise<Comment[]> {
   const rows = await baseCommentQuery()
-    .where(eq(episodeComments.episodeId, episodeId))
-    .orderBy(desc(episodeComments.createdAt));
+    .where(eq(titleComments.titleId, titleId))
+    .orderBy(desc(titleComments.createdAt));
 
   return attachDetails(rows, currentUserId);
 }
 
-export async function getEpisodeCommentCount(episodeId: string): Promise<number> {
+export async function getTitleCommentCount(titleId: string): Promise<number> {
   const [row] = await db
     .select({ count: sql<number>`count(*)::int` })
-    .from(episodeComments)
-    .where(eq(episodeComments.episodeId, episodeId));
+    .from(titleComments)
+    .where(eq(titleComments.titleId, titleId));
   return row?.count ?? 0;
 }

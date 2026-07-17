@@ -52,6 +52,9 @@ export default async function SettingsPage() {
             emailEnabled: prefs?.emailEnabled ?? true,
             notifyNewEpisode: prefs?.notifyNewEpisode ?? true,
             notifyNewSeason: prefs?.notifyNewSeason ?? true,
+            notifyMentions: prefs?.notifyMentions ?? true,
+            notifyReplies: prefs?.notifyReplies ?? true,
+            notifyReactions: prefs?.notifyReactions ?? true,
           }}
         />
       </div>

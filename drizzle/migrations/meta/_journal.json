@@ -71,6 +71,20 @@
       "when": 1784239155231,
       "tag": "0009_sad_adam_warlock",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1784286497232,
+      "tag": "0010_green_nehzno",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1784286547252,
+      "tag": "0011_talented_blacklash",
+      "breakpoints": true
     }
   ]
 }
