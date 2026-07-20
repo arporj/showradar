@@ -113,11 +113,33 @@ self.addEventListener("push", (event) => {
   const options = {
     body: payload.body || "",
     icon: "/icons/icon-192.png",
+    badge: "/icons/icon-192.png",
     data: { url: payload.url || "/dashboard" },
   };
 
-  event.waitUntil(self.registration.showNotification(title, options));
+  event.waitUntil(Promise.all([self.registration.showNotification(title, options), setAppBadge()]));
 });
+
+// navigator.setAppBadge/clearAppBadge live on WorkerNavigator too (Chromium),
+// so the SW can badge the installed app icon without any open page/client —
+// unsupported browsers just don't have the method, so this is a no-op there.
+async function setAppBadge() {
+  if (!self.navigator?.setAppBadge) return;
+  try {
+    await self.navigator.setAppBadge();
+  } catch {
+    // Best-effort only — a Badging API failure shouldn't block the notification itself.
+  }
+}
+
+async function clearAppBadge() {
+  if (!self.navigator?.clearAppBadge) return;
+  try {
+    await self.navigator.clearAppBadge();
+  } catch {
+    // Best-effort only, same as setAppBadge above.
+  }
+}
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
@@ -125,6 +147,7 @@ self.addEventListener("notificationclick", (event) => {
 
   event.waitUntil(
     (async () => {
+      await clearAppBadge();
       const clientsList = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
       const existing = clientsList.find((client) => client.url.includes(targetUrl));
       if (existing) {
@@ -138,6 +161,38 @@ self.addEventListener("notificationclick", (event) => {
         return;
       }
       await self.clients.openWindow(targetUrl);
+    })(),
+  );
+});
+
+// The browser (Chrome/Android especially) can rotate a push subscription's
+// endpoint on its own — expired keys, FCM token refresh — with no page open
+// to notice via the normal subscribeToPush Server Action. Left unhandled,
+// the DB keeps sending to the dead old endpoint forever and every push from
+// then on silently fails server-side. This re-subscribes and re-links the
+// new endpoint through a plain API route (not a Server Action — the SW has
+// no way to speak Next's Server Action POST protocol).
+self.addEventListener("pushsubscriptionchange", (event) => {
+  event.waitUntil(
+    (async () => {
+      const newSubscription =
+        event.newSubscription ??
+        (await self.registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: event.oldSubscription?.options?.applicationServerKey,
+        }));
+
+      const json = newSubscription.toJSON();
+      if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) return;
+
+      await fetch("/api/push/resubscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          oldEndpoint: event.oldSubscription?.endpoint ?? null,
+          subscription: { endpoint: json.endpoint, keys: { p256dh: json.keys.p256dh, auth: json.keys.auth } },
+        }),
+      });
     })(),
   );
 });
