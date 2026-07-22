@@ -2,12 +2,14 @@ import { and, desc, eq } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
 
 import { FollowButton } from "@/components/social/follow-button";
+import { FriendTitleRating } from "@/components/social/friend-title-rating";
 import { TitleCard } from "@/components/library/title-card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { follows, titles as titlesTable, userLibrary, users } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getUserProvisionalRatingSummaries } from "@/lib/episode-ratings";
 import { formatDate } from "@/lib/format-date";
 import { LIBRARY_STATUS_LABEL } from "@/lib/library-status";
 import type { FollowStatus } from "@/lib/user-search";
@@ -42,12 +44,20 @@ export default async function UserProfilePage({ params }: { params: Promise<{ us
           name: titlesTable.name,
           posterPath: titlesTable.posterPath,
           status: userLibrary.status,
+          personalRating: userLibrary.personalRating,
         })
         .from(userLibrary)
         .innerJoin(titlesTable, eq(userLibrary.titleId, titlesTable.id))
         .where(eq(userLibrary.userId, targetUser.id))
         .orderBy(desc(userLibrary.addedAt))
     : [];
+
+  // Series mid-watch don't have a final rating yet — episodes already rated
+  // stand in as a provisional one (see getUserProvisionalRatingSummaries).
+  const watchingTvTitleIds = libraryRows
+    .filter((row) => row.status === "watching" && row.mediaType === "tv")
+    .map((row) => row.titleId);
+  const provisionalRatings = await getUserProvisionalRatingSummaries(targetUser.id, watchingTvTitleIds);
 
   const displayName = targetUser.name ?? targetUser.username ?? "";
 
@@ -84,9 +94,13 @@ export default async function UserProfilePage({ params }: { params: Promise<{ us
                 posterPath={row.posterPath}
                 name={row.name}
               >
-                <Badge variant="secondary" className="mt-1">
-                  {LIBRARY_STATUS_LABEL[row.status]}
-                </Badge>
+                <div className="mt-1 flex flex-col items-start gap-1">
+                  <Badge variant="secondary">{LIBRARY_STATUS_LABEL[row.status]}</Badge>
+                  <FriendTitleRating
+                    finalRating={row.status === "completed" || row.status === "dropped" ? row.personalRating : null}
+                    provisional={row.status === "watching" ? (provisionalRatings.get(row.titleId) ?? null) : null}
+                  />
+                </div>
               </TitleCard>
             ))}
           </div>
