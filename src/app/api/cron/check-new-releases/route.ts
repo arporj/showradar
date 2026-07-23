@@ -60,8 +60,9 @@ export async function GET(request: NextRequest) {
   for (const title of trackedTitles) {
     try {
       await syncTitleFromTmdb(title.mediaType, title.tmdbId);
-    } catch {
+    } catch (error) {
       // One title's TMDb hiccup shouldn't block every other title's check.
+      console.error(`[cron] sync failed for title ${title.titleId} (tmdb ${title.tmdbId})`, error);
       continue;
     }
 
@@ -160,6 +161,7 @@ export async function GET(request: NextRequest) {
 
           if (subscriptions.length > 0) {
             let anySent = false;
+            const errors: string[] = [];
             for (const subscription of subscriptions) {
               const result = await sendPushNotification(
                 { endpoint: subscription.endpoint, keys: { p256dh: subscription.p256dh, auth: subscription.auth } },
@@ -167,8 +169,15 @@ export async function GET(request: NextRequest) {
               );
               if (result.ok) {
                 anySent = true;
-              } else if (result.expired) {
-                await db.delete(pushSubscriptions).where(eq(pushSubscriptions.id, subscription.id));
+              } else {
+                errors.push(result.error);
+                console.error(
+                  `[cron] push failed for user ${user.userId} title ${event.titleId} (expired=${result.expired})`,
+                  result.error,
+                );
+                if (result.expired) {
+                  await db.delete(pushSubscriptions).where(eq(pushSubscriptions.id, subscription.id));
+                }
               }
             }
 
@@ -182,11 +191,14 @@ export async function GET(request: NextRequest) {
                 status: anySent ? "sent" : "failed",
                 dedupKey: pushDedupKey,
                 sentAt: anySent ? new Date() : null,
+                error: anySent ? null : errors.join("; ") || null,
               })
               .onConflictDoNothing({ target: [notificationLog.dedupKey] });
 
             if (anySent) sent++;
             else failed++;
+          } else {
+            console.log(`[cron] user ${user.userId} has pushEnabled but no push_subscriptions row for title ${event.titleId}`);
           }
         } else {
           skippedDuplicate++;
@@ -206,11 +218,13 @@ export async function GET(request: NextRequest) {
         }
 
         let emailSent = false;
+        let emailError: string | null = null;
         try {
           await sendEmail({ to: user.email, subject: title, htmlContent: notificationEmailHtml({ title, body, url }) });
           emailSent = true;
         } catch (error) {
-          console.error("Failed to send notification email", error);
+          emailError = error instanceof Error ? error.message : "unknown_error";
+          console.error(`[cron] email failed for user ${user.userId} title ${event.titleId}`, error);
         }
 
         await db
@@ -223,6 +237,7 @@ export async function GET(request: NextRequest) {
             status: emailSent ? "sent" : "failed",
             dedupKey: emailDedupKey,
             sentAt: emailSent ? new Date() : null,
+            error: emailError,
           })
           .onConflictDoNothing({ target: [notificationLog.dedupKey] });
 
@@ -232,12 +247,16 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({
+  const summary = {
     titlesChecked: trackedTitles.length,
     eventsFound: events.length,
+    events: events.map((e) => ({ name: e.name, type: e.notificationType, label: e.episodeLabel })),
     notificationsSent: sent,
     notificationsFailed: failed,
     duplicatesSkipped: skippedDuplicate,
     skippedQuietHours,
-  });
+  };
+  console.log("[cron] check-new-releases summary", summary);
+
+  return NextResponse.json(summary);
 }
