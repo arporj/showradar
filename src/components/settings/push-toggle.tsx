@@ -3,68 +3,23 @@
 import { useEffect, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
-import { subscribeToPush, unsubscribeFromPush } from "@/lib/actions/notifications";
+import { unsubscribeFromPush } from "@/lib/actions/notifications";
+import { checkPushStatus, subscribeBrowserToPush, type PushStatus } from "@/lib/push-client";
 
-function urlBase64ToUint8Array(base64String: string) {
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-  const rawData = atob(base64);
-  return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)));
-}
-
-type Status = "checking" | "unsupported" | "subscribed" | "unsubscribed" | "denied";
+type Status = "checking" | PushStatus;
 
 export function PushToggle() {
   const [status, setStatus] = useState<Status>("checking");
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
-    async function checkStatus() {
-      if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-        setStatus("unsupported");
-        return;
-      }
-      if (Notification.permission === "denied") {
-        setStatus("denied");
-        return;
-      }
-
-      try {
-        const registration = await navigator.serviceWorker.register("/sw.js");
-        const existing = await registration.pushManager.getSubscription();
-        setStatus(existing ? "subscribed" : "unsubscribed");
-      } catch {
-        setStatus("unsupported");
-      }
-    }
-
-    checkStatus();
+    checkPushStatus().then(setStatus);
   }, []);
 
   function handleEnable() {
     startTransition(async () => {
-      const permission = await Notification.requestPermission();
-      if (permission !== "granted") {
-        setStatus(permission === "denied" ? "denied" : "unsubscribed");
-        return;
-      }
-
-      const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-      if (!publicKey) return;
-
-      const registration = await navigator.serviceWorker.ready;
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicKey),
-      });
-      const json = subscription.toJSON();
-      if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) return;
-
-      await subscribeToPush(
-        { endpoint: json.endpoint, keys: { p256dh: json.keys.p256dh, auth: json.keys.auth } },
-        navigator.userAgent,
-      );
-      setStatus("subscribed");
+      const outcome = await subscribeBrowserToPush();
+      setStatus(outcome === "subscribed" ? "subscribed" : outcome === "denied" ? "denied" : "unsubscribed");
     });
   }
 

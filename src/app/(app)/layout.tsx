@@ -10,6 +10,7 @@ import { UserMenu } from "@/components/layout/user-menu";
 import { InstallBanner } from "@/components/pwa/install-banner";
 import { OfflineIndicator } from "@/components/pwa/offline-indicator";
 import { OfflineSyncManager } from "@/components/pwa/offline-sync-manager";
+import { PushPromptDialog } from "@/components/pwa/push-prompt-dialog";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { follows } from "@/db/schema";
 import { auth, signOut } from "@/lib/auth";
@@ -75,6 +76,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
       <BottomNav />
       <OfflineSyncManager userId={session.user.id} />
+      <PushPromptDialog />
     </div>
   );
 }
