@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 
 import {
   AlertDialog,
@@ -12,20 +12,24 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { checkPushStatus, subscribeBrowserToPush } from "@/lib/push-client";
 
-// Igual ao convite de instalação do PWA: fechar vale só pela sessão da aba
-// (gravado apenas no fechamento, nunca ao exibir), então recarregar antes de
-// interagir não some com o convite, e ele volta em toda visita nova até a
-// pessoa ativar de vez ou negar a permissão no navegador.
+// Fechar sem marcar o checkbox vale só pela sessão da aba (igual ao convite
+// de instalação do PWA) — reaparece em toda visita nova até a pessoa ativar,
+// negar a permissão no navegador, ou marcar "não mostrar novamente" (aí vira
+// permanente, em localStorage, mesmo sem ela ter ativado nada).
 const SESSION_DISMISSED_KEY = "showradar:push-prompt-dismissed";
+const PERMANENT_DISMISSED_KEY = "showradar:push-prompt-dismissed-forever";
 
 export function PushPromptDialog() {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [dontShowAgain, setDontShowAgain] = useState(false);
+  const checkboxId = useId();
 
   useEffect(() => {
-    if (sessionStorage.getItem(SESSION_DISMISSED_KEY)) return;
+    if (localStorage.getItem(PERMANENT_DISMISSED_KEY) || sessionStorage.getItem(SESSION_DISMISSED_KEY)) return;
 
     // Pequeno atraso para não competir com o primeiro paint da página.
     const timeout = setTimeout(async () => {
@@ -37,7 +41,11 @@ export function PushPromptDialog() {
   }, []);
 
   function dismiss() {
-    sessionStorage.setItem(SESSION_DISMISSED_KEY, "1");
+    if (dontShowAgain) {
+      localStorage.setItem(PERMANENT_DISMISSED_KEY, "1");
+    } else {
+      sessionStorage.setItem(SESSION_DISMISSED_KEY, "1");
+    }
     setOpen(false);
   }
 
@@ -48,7 +56,7 @@ export function PushPromptDialog() {
     } catch {
       // Concedida, negada ou falha (inclusive uma rejeição inesperada do
       // navegador): nos três casos não há mais nada a pedir agora, então o
-      // convite fecha e não insiste de novo nesta sessão.
+      // convite fecha (respeitando o checkbox como qualquer outro fechamento).
     } finally {
       setIsSubmitting(false);
       dismiss();
@@ -62,9 +70,18 @@ export function PushPromptDialog() {
           <AlertDialogTitle>Ative as notificações</AlertDialogTitle>
           <AlertDialogDescription>
             Receba um aviso assim que um episódio novo ou lançamento de um título que você acompanha ficar
-            disponível — direto no navegador, sem precisar checar o app.
+            disponível — direto no navegador, sem precisar checar o app. Você pode ativar isso a qualquer momento
+            clicando na sua foto, no canto superior, e indo em &quot;Configurações&quot;.
           </AlertDialogDescription>
         </AlertDialogHeader>
+        <label htmlFor={checkboxId} className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Checkbox
+            id={checkboxId}
+            checked={dontShowAgain}
+            onCheckedChange={(checked) => setDontShowAgain(checked === true)}
+          />
+          Não mostrar novamente
+        </label>
         <AlertDialogFooter>
           <AlertDialogCancel onClick={dismiss} disabled={isSubmitting}>
             Agora não
