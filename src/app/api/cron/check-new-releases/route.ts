@@ -84,10 +84,19 @@ export async function GET(request: NextRequest) {
       continue;
     }
 
+    // O TMDb às vezes ainda não rolou o episódio de `next_episode_to_air` para
+    // `last_episode_to_air` no horário em que o cron das 9h roda, mesmo que a
+    // data de disponibilidade já seja hoje — daí checar os dois campos. Sem
+    // isso, o episódio nunca dispara: no dia seguinte `last_episode_to_air`
+    // já aponta pra ontem, então a checagem de igualdade a `today` nunca mais
+    // bate (visto em "A Casa do Dragão" T3E5 e T3E6).
     const lastEpisode = fresh.lastEpisodeToAir as TmdbEpisodeRef | null;
-    if (lastEpisode?.air_date !== today) continue;
+    const nextEpisode = fresh.nextEpisodeToAir as TmdbEpisodeRef | null;
+    const airedEpisode =
+      lastEpisode?.air_date === today ? lastEpisode : nextEpisode?.air_date === today ? nextEpisode : null;
+    if (!airedEpisode) continue;
 
-    const notificationType: NotificationType = lastEpisode.episode_number === 1 ? "new_season" : "new_episode";
+    const notificationType: NotificationType = airedEpisode.episode_number === 1 ? "new_season" : "new_episode";
     if (notificationType === "new_episode") {
       const genres = (fresh.genres as { id: number; name: string }[] | null) ?? [];
       if (genres.some((g) => TALK_OR_NEWS_GENRE_IDS.has(g.id))) continue;
@@ -99,8 +108,8 @@ export async function GET(request: NextRequest) {
       mediaType: "tv",
       name: fresh.name,
       notificationType,
-      episodeLabel: `T${lastEpisode.season_number}E${lastEpisode.episode_number}`,
-      dedupSuffix: `${lastEpisode.season_number}-${lastEpisode.episode_number}`,
+      episodeLabel: `T${airedEpisode.season_number}E${airedEpisode.episode_number}`,
+      dedupSuffix: `${airedEpisode.season_number}-${airedEpisode.episode_number}`,
     });
   }
 
