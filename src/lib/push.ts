@@ -41,7 +41,11 @@ export async function sendPushNotification(
   ensureConfigured();
 
   try {
-    await webpush.sendNotification(subscription, JSON.stringify(payload));
+    // Sem "urgency: high" o Android/Chrome entrega a mensagem com prioridade
+    // normal do FCM, que fica sujeita a atraso (às vezes de horas) quando o
+    // app está no modo de bateria "Otimizado" — a config padrão de quase
+    // todo aparelho, não dá pra depender do usuário mudar isso.
+    await webpush.sendNotification(subscription, JSON.stringify(payload), { urgency: "high" });
     return { ok: true };
   } catch (err) {
     const statusCode = (err as { statusCode?: number } | null)?.statusCode;
