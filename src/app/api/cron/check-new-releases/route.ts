@@ -31,6 +31,7 @@ interface ReleaseEvent {
   name: string;
   notificationType: NotificationType;
   episodeLabel: string | null;
+  episodeName: string | null;
   dedupSuffix: string;
 }
 
@@ -78,6 +79,7 @@ export async function GET(request: NextRequest) {
           name: fresh.name,
           notificationType: "new_movie_release",
           episodeLabel: null,
+          episodeName: null,
           dedupSuffix: fresh.releaseDate,
         });
       }
@@ -109,6 +111,7 @@ export async function GET(request: NextRequest) {
       name: fresh.name,
       notificationType,
       episodeLabel: `T${airedEpisode.season_number}E${airedEpisode.episode_number}`,
+      episodeName: airedEpisode.name || null,
       dedupSuffix: `${airedEpisode.season_number}-${airedEpisode.episode_number}`,
     });
   }
@@ -146,13 +149,21 @@ export async function GET(request: NextRequest) {
         continue;
       }
 
+      // "Já está disponível" era enganoso pra redes com horário fixo de
+      // lançamento (ex.: HBO solta episódios só às 22h) — o cron roda de
+      // manhã, então a notificação chegava horas antes do episódio existir
+      // de fato. A frase agora não promete disponibilidade imediata.
+      const episodeSuffix = event.episodeName ? `${event.episodeLabel} - ${event.episodeName}` : event.episodeLabel;
       const title =
         event.notificationType === "new_movie_release"
           ? `${event.name} já está disponível`
           : event.notificationType === "new_season"
-            ? `Nova temporada de ${event.name}`
-            : `Novo episódio de ${event.name}`;
-      const body = event.episodeLabel ? `${event.episodeLabel} já está disponível` : "Já disponível para assistir";
+            ? `Hoje tem uma nova temporada de ${event.name}!`
+            : `Hoje tem um novo episódio de ${event.name}!`;
+      const body =
+        event.notificationType === "new_movie_release"
+          ? "Já disponível para assistir"
+          : `Divirta-se com o episódio ${episodeSuffix}`;
       const url = `${process.env.NEXT_PUBLIC_APP_URL}/title/${event.mediaType}/${event.tmdbId}`;
 
       if (user.pushEnabled) {
