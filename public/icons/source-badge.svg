@@ -1,0 +1,13 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Badge monocromático pra bandeja/status bar do Android: sem fundo, tudo
+       branco sobre transparente — o SO usa só o canal alpha pra desenhar o
+       glifo, então cor aqui não importa, só forma e opacidade. -->
+  <g transform="translate(256 256) scale(0.88) translate(-256 -256)">
+    <circle cx="256" cy="256" r="200" fill="none" stroke="#FFFFFF" stroke-width="20" stroke-linecap="round" stroke-dasharray="1029.744 226.893" transform="rotate(168 256 256)"/>
+    <circle cx="256" cy="256" r="140" fill="none" stroke="#FFFFFF" stroke-width="20" stroke-linecap="round" stroke-dasharray="720.821 158.825" transform="rotate(168 256 256)"/>
+    <circle cx="256" cy="256" r="80" fill="none" stroke="#FFFFFF" stroke-width="20" stroke-linecap="round" stroke-dasharray="411.898 90.757" transform="rotate(168 256 256)"/>
+    <polygon points="211,171 211,341 356,256" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="20" stroke-linejoin="round" transform="rotate(315 256 256)"/>
+    <circle cx="256" cy="256" r="18" fill="#FFFFFF"/>
+    <line x1="256" y1="256" x2="114" y2="398" stroke="#FFFFFF" stroke-width="20" stroke-linecap="round"/>
+  </g>
+</svg>

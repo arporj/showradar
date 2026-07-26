@@ -113,7 +113,10 @@ self.addEventListener("push", (event) => {
   const options = {
     body: payload.body || "",
     icon: "/icons/icon-192.png",
-    badge: "/icons/icon-192.png",
+    // Android desenha o badge da bandeja só com o canal alpha — um ícone
+    // colorido/opaco vira um quadrado branco sólido. Precisa de um PNG
+    // monocromático com fundo transparente (ver source-badge.svg).
+    badge: "/icons/badge-192.png",
     data: { url: payload.url || "/dashboard" },
   };
 
