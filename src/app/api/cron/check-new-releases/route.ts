@@ -14,7 +14,7 @@ import { notificationEmailHtml, sendEmail } from "@/lib/email";
 import { sendPushNotification } from "@/lib/push";
 import { isWithinQuietHours } from "@/lib/quiet-hours";
 import { todayBrDateString } from "@/lib/release-dates";
-import type { TmdbEpisodeRef } from "@/lib/tmdb";
+import { getTvSeason, tmdbImageUrl, type TmdbEpisodeRef } from "@/lib/tmdb";
 import { syncTitleFromTmdb } from "@/lib/tmdb-sync";
 
 // TMDb TV genre ids — talk shows and news air near-daily, so a per-episode
@@ -33,6 +33,7 @@ interface ReleaseEvent {
   episodeLabel: string | null;
   episodeName: string | null;
   dedupSuffix: string;
+  imageUrl: string | null;
 }
 
 export async function GET(request: NextRequest) {
@@ -81,6 +82,7 @@ export async function GET(request: NextRequest) {
           episodeLabel: null,
           episodeName: null,
           dedupSuffix: fresh.releaseDate,
+          imageUrl: tmdbImageUrl(fresh.posterPath, "w500"),
         });
       }
       continue;
@@ -104,6 +106,19 @@ export async function GET(request: NextRequest) {
       if (genres.some((g) => TALK_OR_NEWS_GENRE_IDS.has(g.id))) continue;
     }
 
+    // O ref de episódio do /tv/{id} não traz still_path (ver TmdbEpisodeRef) —
+    // busca a temporada à parte só para pegar a foto do episódio. Cai pro
+    // poster da série se o still ainda não existir no TMDb (comum em
+    // episódios recém-lançados) ou se a chamada falhar.
+    let stillPath: string | null = null;
+    try {
+      const season = await getTvSeason(fresh.tmdbId, airedEpisode.season_number);
+      stillPath =
+        season.episodes.find((e) => e.episode_number === airedEpisode.episode_number)?.still_path ?? null;
+    } catch (error) {
+      console.error(`[cron] failed to fetch season still for title ${fresh.id}`, error);
+    }
+
     events.push({
       titleId: fresh.id,
       tmdbId: fresh.tmdbId,
@@ -113,6 +128,7 @@ export async function GET(request: NextRequest) {
       episodeLabel: `T${airedEpisode.season_number}E${airedEpisode.episode_number}`,
       episodeName: airedEpisode.name || null,
       dedupSuffix: `${airedEpisode.season_number}-${airedEpisode.episode_number}`,
+      imageUrl: tmdbImageUrl(stillPath ?? fresh.posterPath, "w500"),
     });
   }
 
@@ -240,7 +256,11 @@ export async function GET(request: NextRequest) {
         let emailSent = false;
         let emailError: string | null = null;
         try {
-          await sendEmail({ to: user.email, subject: title, htmlContent: notificationEmailHtml({ title, body, url }) });
+          await sendEmail({
+            to: user.email,
+            subject: title,
+            htmlContent: notificationEmailHtml({ title, body, url, imageUrl: event.imageUrl }),
+          });
           emailSent = true;
         } catch (error) {
           emailError = error instanceof Error ? error.message : "unknown_error";
