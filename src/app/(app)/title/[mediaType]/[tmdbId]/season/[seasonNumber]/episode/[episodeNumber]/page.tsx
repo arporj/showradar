@@ -62,7 +62,7 @@ export default async function EpisodeDetailPage({
     userId: session?.user?.id,
   });
   if (!result) notFound();
-  const { episode, watched } = result;
+  const { episode, watched, watchCount } = result;
 
   const [commentPreview, commentCount, ratingSummary, userRating] = await Promise.all([
     getEpisodeCommentPreview(episode.id, session?.user?.id),
@@ -111,6 +111,7 @@ export default async function EpisodeDetailPage({
             seasonNumber={seasonNumberNum}
             episodeNumber={episodeNumberNum}
             initialWatched={watched}
+            initialWatchCount={watchCount}
             aired={aired}
           />
         </div>

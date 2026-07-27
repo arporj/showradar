@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -127,6 +127,36 @@ export async function rewatchMovie(titleId: string, mediaType: TmdbMediaType, tm
   await db
     .update(userLibrary)
     .set({ watchedAt: now, updatedAt: now })
+    .where(and(eq(userLibrary.userId, session.user.id), eq(userLibrary.titleId, titleId)));
+
+  revalidatePath("/library");
+  revalidatePath("/dashboard");
+  revalidatePath(`/title/${mediaType}/${tmdbId}`);
+}
+
+// Undoes the most recent watch of a movie — for fixing an accidental
+// "Assistir de novo" click, not a general "unwatch". Never removes the last
+// remaining event: with only one watch on record, that's what keeps the
+// title "completed" at all, and belongs to updateLibraryStatus instead.
+// user_library.watchedAt rolls back to whatever watch is now the most
+// recent, instead of "now", so /history and the friend feed still show the
+// actual last watch.
+export async function undoMovieRewatch(titleId: string, mediaType: TmdbMediaType, tmdbId: number) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
+
+  const events = await db
+    .select({ id: movieWatchEvents.id, watchedAt: movieWatchEvents.watchedAt })
+    .from(movieWatchEvents)
+    .where(and(eq(movieWatchEvents.userId, session.user.id), eq(movieWatchEvents.titleId, titleId)))
+    .orderBy(desc(movieWatchEvents.watchedAt));
+
+  if (events.length <= 1) return;
+
+  await db.delete(movieWatchEvents).where(eq(movieWatchEvents.id, events[0].id));
+  await db
+    .update(userLibrary)
+    .set({ watchedAt: events[1].watchedAt, updatedAt: new Date() })
     .where(and(eq(userLibrary.userId, session.user.id), eq(userLibrary.titleId, titleId)));
 
   revalidatePath("/library");

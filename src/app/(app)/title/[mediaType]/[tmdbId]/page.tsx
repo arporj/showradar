@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -9,7 +9,7 @@ import { SearchResultCard } from "@/components/search/result-card";
 import { TitleRatingsSection } from "@/components/title/title-ratings-section";
 import { WatchProgress } from "@/components/title/watch-progress";
 import { WatchProviders } from "@/components/title/watch-providers";
-import { seasons as seasonsTable, titles, userLibrary } from "@/db/schema";
+import { movieWatchEvents, seasons as seasonsTable, titles, userLibrary } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { deleteRating, submitRating } from "@/lib/actions/ratings";
 import { db } from "@/lib/db";
@@ -62,22 +62,30 @@ export default async function TitleDetailPage({
   ]);
   if (!title) notFound();
 
-  const [libraryRows, watchedCounts, ratingSummary, commentPreview, commentCount, similarTitles] = await Promise.all([
-    session?.user
-      ? db
-          .select()
-          .from(userLibrary)
-          .where(and(eq(userLibrary.userId, session.user.id), eq(userLibrary.titleId, titleId)))
-      : Promise.resolve([]),
-    getWatchedEpisodeCounts(
-      session?.user?.id,
-      seasonRows.map((s) => s.id),
-    ),
-    getTitleRatingSummary(titleId),
-    getTitleCommentPreview(titleId, session?.user?.id),
-    getTitleCommentCount(titleId),
-    getSimilarTitles(session?.user?.id, mediaType, tmdbIdNum),
-  ]);
+  const [libraryRows, watchedCounts, ratingSummary, commentPreview, commentCount, similarTitles, movieWatchCount] =
+    await Promise.all([
+      session?.user
+        ? db
+            .select()
+            .from(userLibrary)
+            .where(and(eq(userLibrary.userId, session.user.id), eq(userLibrary.titleId, titleId)))
+        : Promise.resolve([]),
+      getWatchedEpisodeCounts(
+        session?.user?.id,
+        seasonRows.map((s) => s.id),
+      ),
+      getTitleRatingSummary(titleId),
+      getTitleCommentPreview(titleId, session?.user?.id),
+      getTitleCommentCount(titleId),
+      getSimilarTitles(session?.user?.id, mediaType, tmdbIdNum),
+      mediaType === "movie" && session?.user
+        ? db
+            .select({ count: sql<number>`count(*)::int` })
+            .from(movieWatchEvents)
+            .where(and(eq(movieWatchEvents.userId, session.user.id), eq(movieWatchEvents.titleId, titleId)))
+            .then((rows) => rows[0]?.count ?? 0)
+        : Promise.resolve(0),
+    ]);
   const libraryEntry = libraryRows[0];
   const currentStatus =
     libraryEntry && LIBRARY_STATUSES.includes(libraryEntry.status) ? libraryEntry.status : null;
@@ -145,6 +153,7 @@ export default async function TitleDetailPage({
             tmdbId={tmdbIdNum}
             currentStatus={currentStatus}
             mediaType={mediaType}
+            watchCount={movieWatchCount}
           />
 
           <WatchProviders providers={title.watchProvidersBr as TmdbWatchProviderRegion | null} />

@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq, inArray, isNull, lte, or } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, lte, or } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -345,6 +345,45 @@ export async function rewatchEpisode(
   await db
     .update(userEpisodeProgress)
     .set({ watchedAt: now })
+    .where(and(eq(userEpisodeProgress.userId, session.user.id), eq(userEpisodeProgress.episodeId, episodeId)));
+
+  revalidatePath(`/title/tv/${tmdbTvId}`);
+  revalidatePath("/library");
+  revalidatePath("/dashboard");
+  if (seasonNumber != null && episodeNumber != null) {
+    revalidatePath(`/title/tv/${tmdbTvId}/season/${seasonNumber}/episode/${episodeNumber}`);
+  }
+}
+
+// Undoes the most recent watch of an episode — for fixing an accidental
+// "Assistir de novo" click, not a general-purpose unwatch. Never removes the
+// last remaining event: with only one watch on record, that's the episode's
+// only watched/unwatched signal and belongs to toggleEpisodeWatched instead.
+// user_episode_progress.watchedAt rolls back to whatever watch is now the
+// most recent, instead of "now", so /history and the friend feed still show
+// the actual last watch.
+export async function undoEpisodeRewatch(
+  episodeId: string,
+  titleId: string,
+  tmdbTvId: number,
+  seasonNumber?: number,
+  episodeNumber?: number,
+) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
+
+  const events = await db
+    .select({ id: episodeWatchEvents.id, watchedAt: episodeWatchEvents.watchedAt })
+    .from(episodeWatchEvents)
+    .where(and(eq(episodeWatchEvents.userId, session.user.id), eq(episodeWatchEvents.episodeId, episodeId)))
+    .orderBy(desc(episodeWatchEvents.watchedAt));
+
+  if (events.length <= 1) return;
+
+  await db.delete(episodeWatchEvents).where(eq(episodeWatchEvents.id, events[0].id));
+  await db
+    .update(userEpisodeProgress)
+    .set({ watchedAt: events[1].watchedAt })
     .where(and(eq(userEpisodeProgress.userId, session.user.id), eq(userEpisodeProgress.episodeId, episodeId)));
 
   revalidatePath(`/title/tv/${tmdbTvId}`);

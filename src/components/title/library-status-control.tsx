@@ -1,11 +1,18 @@
 "use client";
 
-import { useOptimistic, useTransition } from "react";
+import { useOptimistic, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { addExistingTitleToLibrary, removeFromLibrary, rewatchMovie, updateLibraryStatus } from "@/lib/actions/library";
+import { WatchCountControl } from "@/components/title/watch-count-control";
+import {
+  addExistingTitleToLibrary,
+  removeFromLibrary,
+  rewatchMovie,
+  undoMovieRewatch,
+  updateLibraryStatus,
+} from "@/lib/actions/library";
 import { LIBRARY_STATUS_LABEL, type LibraryStatus } from "@/lib/library-status";
 import { runOrQueue } from "@/lib/offline/run-or-queue";
 
@@ -18,16 +25,19 @@ export function LibraryStatusControl({
   tmdbId,
   currentStatus,
   mediaType,
+  watchCount,
 }: {
   titleId: string;
   tmdbId: number;
   currentStatus: LibraryStatus | null;
   mediaType: "movie" | "tv";
+  watchCount: number;
 }) {
   const [optimisticStatus, setOptimisticStatus] = useOptimistic(
     currentStatus,
     (_state: LibraryStatus | null, next: LibraryStatus | null) => next,
   );
+  const [count, setCount] = useState(watchCount);
   const [isPending, startTransition] = useTransition();
 
   function handleAdd() {
@@ -38,6 +48,13 @@ export function LibraryStatusControl({
   }
 
   function handleChangeStatus(status: LibraryStatus) {
+    // Mirrors the server-side rule in updateLibraryStatus: a genuine
+    // transition into "completed" logs a watch event too, so the counter
+    // shown right after clicking "Assistido" isn't stuck at the stale
+    // pre-completion count from page load.
+    if (mediaType === "movie" && status === "completed" && optimisticStatus !== "completed") {
+      setCount((c) => c + 1);
+    }
     startTransition(async () => {
       setOptimisticStatus(status);
       await runOrQueue(() => updateLibraryStatus(titleId, status), {
@@ -55,9 +72,17 @@ export function LibraryStatusControl({
   }
 
   function handleRewatch() {
+    setCount((c) => c + 1);
     startTransition(async () => {
       await rewatchMovie(titleId, "movie", tmdbId);
       toast.success("Nova vista registrada");
+    });
+  }
+
+  function handleUndoRewatch() {
+    setCount((c) => Math.max(1, c - 1));
+    startTransition(async () => {
+      await undoMovieRewatch(titleId, "movie", tmdbId);
     });
   }
 
@@ -106,9 +131,12 @@ export function LibraryStatusControl({
         </Button>
       ))}
       {mediaType === "movie" && optimisticStatus === "completed" && (
-        <Button type="button" variant="outline" size="sm" disabled={isPending} onClick={handleRewatch}>
-          Assistir de novo
-        </Button>
+        <WatchCountControl
+          count={count}
+          disabled={isPending}
+          onIncrement={handleRewatch}
+          onDecrement={handleUndoRewatch}
+        />
       )}
       <Button type="button" variant="ghost" size="sm" disabled={isPending} onClick={handleRemove}>
         Remover

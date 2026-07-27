@@ -1,6 +1,6 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 
-import { episodes, seasons, userEpisodeProgress } from "@/db/schema";
+import { episodeWatchEvents, episodes, seasons, userEpisodeProgress } from "@/db/schema";
 import { db } from "@/lib/db";
 import { syncSeasonEpisodes } from "@/lib/tmdb-sync";
 
@@ -39,5 +39,13 @@ export async function getEpisodeByNumbers(input: {
       ).length > 0
     : false;
 
-  return { episode, season, watched };
+  const watchCount = input.userId
+    ? await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(episodeWatchEvents)
+        .where(and(eq(episodeWatchEvents.userId, input.userId), eq(episodeWatchEvents.episodeId, episode.id)))
+        .then((rows) => rows[0]?.count ?? 0)
+    : 0;
+
+  return { episode, season, watched, watchCount };
 }
