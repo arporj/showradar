@@ -18,6 +18,7 @@ const STATUS_LABEL: Record<string, string> = {
 const SOURCE_LABEL: Record<string, string> = {
   tv_time: "TV Time",
   imdb: "IMDb",
+  letterboxd: "Letterboxd",
 };
 
 export default async function ImportJobPage({ params }: { params: Promise<{ jobId: string }> }) {

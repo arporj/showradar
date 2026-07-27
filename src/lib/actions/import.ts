@@ -17,6 +17,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { syncLibraryStatusFromProgress } from "@/lib/actions/episodes";
 import { parseImdbExport, ImdbExportError } from "@/lib/import/imdb";
+import { parseLetterboxdExport, LetterboxdExportError } from "@/lib/import/letterboxd";
 import { parseTvTimeExport, TvTimeExportError } from "@/lib/import/tv-time";
 import type { ParsedImportItem } from "@/lib/import/types";
 import { searchMovieFuzzy, searchTvFuzzy, type TmdbSearchResult } from "@/lib/tmdb";
@@ -58,7 +59,7 @@ export async function startTvTimeImport(formData: FormData): Promise<{ error: st
 
 async function startImportJob(
   userId: string,
-  source: "tv_time" | "imdb",
+  source: "tv_time" | "imdb" | "letterboxd",
   items: ParsedImportItem[],
 ): Promise<{ error: string } | { jobId: string }> {
   if (items.length === 0) {
@@ -115,6 +116,34 @@ export async function startImdbImport(formData: FormData): Promise<{ error: stri
   }
 
   return startImportJob(session.user.id, "imdb", items);
+}
+
+export async function startLetterboxdImport(formData: FormData): Promise<{ error: string } | { jobId: string }> {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
+
+  const file = formData.get("file");
+  if (!(file instanceof File)) {
+    return { error: "Nenhum arquivo enviado" };
+  }
+  if (!file.name.toLowerCase().endsWith(".zip")) {
+    return { error: "Envie o arquivo .zip da exportação do Letterboxd" };
+  }
+  if (file.size > MAX_UPLOAD_SIZE_BYTES) {
+    return { error: "O arquivo deve ter no máximo 15MB" };
+  }
+
+  let items: ParsedImportItem[];
+  try {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    items = parseLetterboxdExport(bytes);
+  } catch (err) {
+    if (err instanceof LetterboxdExportError) return { error: err.message };
+    console.error("Failed to parse Letterboxd export", err);
+    return { error: "Não foi possível ler o arquivo enviado." };
+  }
+
+  return startImportJob(session.user.id, "letterboxd", items);
 }
 
 function candidateYear(result: TmdbSearchResult, mediaType: "movie" | "tv") {

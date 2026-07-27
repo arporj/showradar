@@ -71,6 +71,26 @@ export default async function ImportSettingsPage() {
         <ImportUploadForm source="imdb" />
       </div>
 
+      <div className="space-y-3 rounded-lg border p-4">
+        <div>
+          <h2 className="text-sm font-medium">Letterboxd</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Baixe seu export em{" "}
+            <a
+              href="https://letterboxd.com/settings/data/"
+              target="_blank"
+              rel="noreferrer"
+              className="underline underline-offset-4"
+            >
+              letterboxd.com/settings/data
+            </a>{" "}
+            e envie o arquivo .zip aqui. Só lemos os filmes assistidos (diário e histórico) — comentários,
+            curtidas, listas e avaliações do arquivo nunca são abertos. O Letterboxd só cobre filmes.
+          </p>
+        </div>
+        <ImportUploadForm source="letterboxd" />
+      </div>
+
       {jobs.length > 0 && (
         <div className="space-y-2">
           <h2 className="text-sm font-medium text-muted-foreground">Importações anteriores</h2>

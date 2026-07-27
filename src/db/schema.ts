@@ -53,9 +53,9 @@ export const notificationStatusEnum = appSchema.enum("notification_status", [
 export const followStatusEnum = appSchema.enum("follow_status", ["pending", "accepted"]);
 export const userRoleEnum = appSchema.enum("user_role", ["user", "admin"]);
 export const userPlanEnum = appSchema.enum("user_plan", ["free", "premium"]);
-// Kept as an enum, not a bare column, so Trakt/Simkl/Serializd/Letterboxd can
-// be appended later without touching any other table or query shape.
-export const importSourceEnum = appSchema.enum("import_source", ["tv_time", "imdb"]);
+// Kept as an enum, not a bare column, so Trakt/Simkl/Serializd can be
+// appended later without touching any other table or query shape.
+export const importSourceEnum = appSchema.enum("import_source", ["tv_time", "imdb", "letterboxd"]);
 export const importJobStatusEnum = appSchema.enum("import_job_status", [
   "processing",
   "completed",

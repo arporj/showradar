@@ -4,12 +4,12 @@ import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
-import { startImdbImport, startTvTimeImport } from "@/lib/actions/import";
+import { startImdbImport, startLetterboxdImport, startTvTimeImport } from "@/lib/actions/import";
 
 const MAX_SIZE_BYTES = 15 * 1024 * 1024;
 
 interface ImportUploadFormProps {
-  source: "tv_time" | "imdb";
+  source: "tv_time" | "imdb" | "letterboxd";
 }
 
 const SOURCE_CONFIG = {
@@ -24,6 +24,12 @@ const SOURCE_CONFIG = {
     label: "Selecionar arquivo .csv",
     errorWrongExtension: "Envie o arquivo .csv de avaliações do IMDb",
     action: startImdbImport,
+  },
+  letterboxd: {
+    extension: ".zip",
+    label: "Selecionar arquivo .zip",
+    errorWrongExtension: "Envie o arquivo .zip da exportação do Letterboxd",
+    action: startLetterboxdImport,
   },
 } as const;
 

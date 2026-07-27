@@ -1,0 +1,1 @@
+ALTER TYPE "showradar"."import_source" ADD VALUE 'letterboxd';
