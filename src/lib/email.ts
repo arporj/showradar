@@ -58,6 +58,18 @@ const BRAND = {
   pageBg: "#F1F5F9", // slate-100
 };
 
+// title/body/synopsis carregam texto livre (nome e sinopse vêm do TMDb, ex.:
+// "Tom & Jerry" ou aspas em overviews) — sem escape, um "&" cru quebra o
+// parsing de entidade HTML em clientes mais rígidos (Outlook/Word engine).
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 // Layout de e-mail compartilhado (tabelas + estilos inline) para compatibilidade
 // com Outlook/Gmail, que ignoram <style> e boa parte do CSS moderno.
 function emailShell({
@@ -65,6 +77,7 @@ function emailShell({
   heroImageUrl,
   title,
   body,
+  synopsis,
   ctaLabel,
   ctaUrl,
   footerNote,
@@ -73,6 +86,7 @@ function emailShell({
   heroImageUrl?: string | null;
   title: string;
   body: string;
+  synopsis?: string | null;
   ctaLabel: string;
   ctaUrl: string;
   footerNote: string;
@@ -85,7 +99,7 @@ function emailShell({
     <meta name="viewport" content="width=device-width, initial-scale=1">
   </head>
   <body style="margin: 0; padding: 0; background: ${BRAND.pageBg}; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-    <div style="display: none; max-height: 0; overflow: hidden; opacity: 0;">${preheader}</div>
+    <div style="display: none; max-height: 0; overflow: hidden; opacity: 0;">${escapeHtml(preheader)}</div>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background: ${BRAND.pageBg};">
       <tr>
         <td align="center" style="padding: 32px 16px;">
@@ -106,12 +120,21 @@ function emailShell({
             }
             <tr>
               <td style="padding: 28px 28px 8px;">
-                <h1 style="margin: 0 0 12px; font-size: 20px; line-height: 1.3; color: ${BRAND.title};">${title}</h1>
-                <p style="margin: 0; font-size: 15px; line-height: 1.6; color: ${BRAND.body};">${body}</p>
+                <h1 style="margin: 0 0 12px; font-size: 20px; line-height: 1.3; color: ${BRAND.title};">${escapeHtml(title)}</h1>
+                <p style="margin: 0; font-size: 15px; line-height: 1.6; color: ${BRAND.body};">${escapeHtml(body)}</p>
               </td>
             </tr>
+            ${
+              synopsis
+                ? `<tr>
+              <td style="padding: 0 28px 8px;">
+                <p style="margin: 0; font-size: 13px; line-height: 1.6; color: ${BRAND.footer};">${escapeHtml(synopsis)}</p>
+              </td>
+            </tr>`
+                : ""
+            }
             <tr>
-              <td style="padding: 20px 28px 28px;">
+              <td align="center" style="padding: 20px 28px 28px;">
                 <a href="${ctaUrl}" style="display: inline-block; padding: 12px 24px; background: ${BRAND.cta}; color: #ffffff; font-weight: 600; font-size: 14px; text-decoration: none; border-radius: 8px;">${ctaLabel}</a>
               </td>
             </tr>
@@ -139,22 +162,32 @@ export function passwordResetEmailHtml(resetUrl: string): string {
   });
 }
 
+const SYNOPSIS_MAX_LENGTH = 220;
+
+function truncateSynopsis(text: string): string {
+  if (text.length <= SYNOPSIS_MAX_LENGTH) return text;
+  return `${text.slice(0, SYNOPSIS_MAX_LENGTH).trimEnd()}…`;
+}
+
 export function notificationEmailHtml({
   title,
   body,
   url,
   imageUrl,
+  synopsis,
 }: {
   title: string;
   body: string;
   url: string;
   imageUrl?: string | null;
+  synopsis?: string | null;
 }): string {
   return emailShell({
     preheader: body,
     heroImageUrl: imageUrl,
     title,
     body,
+    synopsis: synopsis ? truncateSynopsis(synopsis) : null,
     ctaLabel: "Ver no ShowRadar",
     ctaUrl: url,
     footerNote:

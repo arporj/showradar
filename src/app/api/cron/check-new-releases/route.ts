@@ -22,6 +22,15 @@ import { syncTitleFromTmdb } from "@/lib/tmdb-sync";
 // unaffected; those are rare enough per title to stay meaningful.
 const TALK_OR_NEWS_GENRE_IDS = new Set([10767, 10763]);
 
+// TMDb devolve "Episódio N" (pt-BR) quando o episódio ainda não tem título
+// próprio traduzido — mostrar isso do lado de "TxEy" na notificação repetiria
+// a mesma informação com outras palavras, então tratamos como "sem nome".
+const GENERIC_EPISODE_NAME = /^epis[oó]dio\s+\d+$/i;
+function realEpisodeName(name: string | null | undefined): string | null {
+  if (!name) return null;
+  return GENERIC_EPISODE_NAME.test(name.trim()) ? null : name;
+}
+
 type NotificationType = "new_episode" | "new_season" | "new_movie_release";
 
 interface ReleaseEvent {
@@ -34,6 +43,7 @@ interface ReleaseEvent {
   episodeName: string | null;
   dedupSuffix: string;
   imageUrl: string | null;
+  synopsis: string | null;
 }
 
 export async function GET(request: NextRequest) {
@@ -83,6 +93,7 @@ export async function GET(request: NextRequest) {
           episodeName: null,
           dedupSuffix: fresh.releaseDate,
           imageUrl: tmdbImageUrl(fresh.posterPath, "w500"),
+          synopsis: fresh.overview || null,
         });
       }
       continue;
@@ -106,15 +117,17 @@ export async function GET(request: NextRequest) {
       if (genres.some((g) => TALK_OR_NEWS_GENRE_IDS.has(g.id))) continue;
     }
 
-    // O ref de episódio do /tv/{id} não traz still_path (ver TmdbEpisodeRef) —
-    // busca a temporada à parte só para pegar a foto do episódio. Cai pro
-    // poster da série se o still ainda não existir no TMDb (comum em
-    // episódios recém-lançados) ou se a chamada falhar.
+    // O ref de episódio do /tv/{id} não traz still_path nem overview (ver
+    // TmdbEpisodeRef) — busca a temporada à parte só por isso. Cai pro
+    // poster/sinopse da série se o episódio ainda não tiver still/overview no
+    // TMDb (comum em episódios recém-lançados) ou se a chamada falhar.
     let stillPath: string | null = null;
+    let episodeOverview: string | null = null;
     try {
       const season = await getTvSeason(fresh.tmdbId, airedEpisode.season_number);
-      stillPath =
-        season.episodes.find((e) => e.episode_number === airedEpisode.episode_number)?.still_path ?? null;
+      const episodeDetail = season.episodes.find((e) => e.episode_number === airedEpisode.episode_number);
+      stillPath = episodeDetail?.still_path ?? null;
+      episodeOverview = episodeDetail?.overview || null;
     } catch (error) {
       console.error(`[cron] failed to fetch season still for title ${fresh.id}`, error);
     }
@@ -126,9 +139,10 @@ export async function GET(request: NextRequest) {
       name: fresh.name,
       notificationType,
       episodeLabel: `T${airedEpisode.season_number}E${airedEpisode.episode_number}`,
-      episodeName: airedEpisode.name || null,
+      episodeName: realEpisodeName(airedEpisode.name),
       dedupSuffix: `${airedEpisode.season_number}-${airedEpisode.episode_number}`,
       imageUrl: tmdbImageUrl(stillPath ?? fresh.posterPath, "w500"),
+      synopsis: episodeOverview || fresh.overview || null,
     });
   }
 
@@ -259,7 +273,7 @@ export async function GET(request: NextRequest) {
           await sendEmail({
             to: user.email,
             subject: title,
-            htmlContent: notificationEmailHtml({ title, body, url, imageUrl: event.imageUrl }),
+            htmlContent: notificationEmailHtml({ title, body, url, imageUrl: event.imageUrl, synopsis: event.synopsis }),
           });
           emailSent = true;
         } catch (error) {
