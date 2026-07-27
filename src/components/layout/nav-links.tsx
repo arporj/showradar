@@ -1,5 +1,6 @@
 import {
   Activity,
+  BarChart3,
   CalendarClock,
   History,
   House,
@@ -28,6 +29,7 @@ export const MAIN_LINKS: NavLink[] = [
   { href: "/upcoming", label: "Em breve", icon: CalendarClock },
   { href: "/history", label: "Histórico", icon: History },
   { href: "/friends", label: "Amigos", icon: Users },
+  { href: "/stats", label: "Estatísticas", icon: BarChart3 },
 ];
 
 export const BOTTOM_TAB_COUNT = 4;
