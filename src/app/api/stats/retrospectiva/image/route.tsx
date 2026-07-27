@@ -220,7 +220,7 @@ export async function GET(request: NextRequest) {
             letterSpacing: "0.04em",
           }}
         >
-          showradar.com.br
+          www.showradar.com.br
         </div>
       </div>
     ),

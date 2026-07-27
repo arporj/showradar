@@ -59,7 +59,11 @@ export function RetrospectivaReveal({ year, stats }: { year: number; stats: Year
         await navigator.share({
           files: [file],
           title: `Minha retrospectiva ${year} no ShowRadar`,
-          text: `Assisti ${watchedHoursLabel} em ${year} — confira minha retrospectiva no ShowRadar!`,
+          // O link vai embutido no texto (não só no campo `url`) porque boa
+          // parte dos alvos de share — WhatsApp, Instagram — ignoram `url`
+          // quando `files` está presente e só repassam o `text` como legenda.
+          text: `Assisti ${watchedHoursLabel} em ${year} — confira minha retrospectiva no ShowRadar! https://www.showradar.com.br`,
+          url: "https://www.showradar.com.br",
         });
       } else {
         await downloadFile(file);
