@@ -4,7 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { userLibrary } from "@/db/schema";
+import { movieWatchEvents, titles as titlesTable, userLibrary } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import type { LibraryStatus } from "@/lib/library-status";
@@ -37,6 +37,11 @@ export async function addTitleToLibraryAsWatched(mediaType: TmdbMediaType, tmdbI
   const titleId = await syncTitleFromTmdb(mediaType, tmdbId);
   const now = new Date();
 
+  const [existing] = await db
+    .select({ status: userLibrary.status })
+    .from(userLibrary)
+    .where(and(eq(userLibrary.userId, session.user.id), eq(userLibrary.titleId, titleId)));
+
   await db
     .insert(userLibrary)
     .values({ userId: session.user.id, titleId, status: "completed", watchedAt: now })
@@ -44,6 +49,14 @@ export async function addTitleToLibraryAsWatched(mediaType: TmdbMediaType, tmdbI
       target: [userLibrary.userId, userLibrary.titleId],
       set: { status: "completed", watchedAt: now, updatedAt: now },
     });
+
+  // Logged only for movies (TV's "assisti a série completa" shortcut skips
+  // episode-level progress entirely, so it has no per-episode minutes to add
+  // up anyway) and only on a genuine transition into "completed" — reclicking
+  // this from search on an already-completed movie shouldn't log a rewatch.
+  if (mediaType === "movie" && existing?.status !== "completed") {
+    await db.insert(movieWatchEvents).values({ userId: session.user.id, titleId, watchedAt: now });
+  }
 
   revalidatePath("/library");
   revalidatePath("/dashboard");
@@ -70,17 +83,55 @@ export async function updateLibraryStatus(titleId: string, status: LibraryStatus
   const session = await auth();
   if (!session?.user) redirect("/login");
 
+  const now = new Date();
+
+  // Movie rewatch tracking only applies here on a genuine transition into
+  // "completed" — TV never reaches "completed" through this manual action
+  // (that's always auto-derived by syncLibraryStatusFromProgress instead),
+  // so in practice only movies ever hit this branch.
+  if (status === "completed") {
+    const [existing] = await db
+      .select({ status: userLibrary.status, mediaType: titlesTable.mediaType })
+      .from(userLibrary)
+      .innerJoin(titlesTable, eq(userLibrary.titleId, titlesTable.id))
+      .where(and(eq(userLibrary.userId, session.user.id), eq(userLibrary.titleId, titleId)));
+
+    if (existing && existing.mediaType === "movie" && existing.status !== "completed") {
+      await db.insert(movieWatchEvents).values({ userId: session.user.id, titleId, watchedAt: now });
+    }
+  }
+
   await db
     .update(userLibrary)
     .set({
       status,
-      updatedAt: new Date(),
-      watchedAt: status === "completed" ? new Date() : null,
+      updatedAt: now,
+      watchedAt: status === "completed" ? now : null,
     })
     .where(and(eq(userLibrary.userId, session.user.id), eq(userLibrary.titleId, titleId)));
 
   revalidatePath("/library");
   revalidatePath("/dashboard");
+}
+
+// Logs a rewatch of a movie already marked "completed" — a distinct action
+// from updateLibraryStatus (whose UI never offers re-clicking the status
+// already shown). Bumps watchedAt so /history and the friend feed reflect
+// the most recent watch, same as the first-time completion path.
+export async function rewatchMovie(titleId: string, mediaType: TmdbMediaType, tmdbId: number) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
+
+  const now = new Date();
+  await db.insert(movieWatchEvents).values({ userId: session.user.id, titleId, watchedAt: now });
+  await db
+    .update(userLibrary)
+    .set({ watchedAt: now, updatedAt: now })
+    .where(and(eq(userLibrary.userId, session.user.id), eq(userLibrary.titleId, titleId)));
+
+  revalidatePath("/library");
+  revalidatePath("/dashboard");
+  revalidatePath(`/title/${mediaType}/${tmdbId}`);
 }
 
 export async function removeFromLibrary(titleId: string) {

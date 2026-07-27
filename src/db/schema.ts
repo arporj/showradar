@@ -30,6 +30,7 @@ export const libraryStatusEnum = appSchema.enum("library_status", [
   "watching",
   "completed",
   "dropped",
+  "on_hold",
 ]);
 export const notificationChannelEnum = appSchema.enum(
   "notification_channel",
@@ -368,6 +369,56 @@ export const userEpisodeProgress = appSchema.table(
     createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("user_episode_progress_user_id_episode_id_idx").on(t.userId, t.episodeId)],
+);
+
+// Append-only log of every episode watch, including rewatches — deliberately
+// no unique constraint (unlike user_episode_progress), since the whole point
+// is that the same user+episode pair can show up more than once, each with
+// its own watchedAt. user_episode_progress stays the source of truth for
+// "is this currently marked watched" (presence) and "last watched at"; this
+// table exists purely so lib/stats.ts can attribute minutes/genres/busiest
+// day to the year each individual watch actually happened in, instead of
+// only the most recent one.
+export const episodeWatchEvents = appSchema.table(
+  "episode_watch_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    episodeId: uuid("episode_id")
+      .notNull()
+      .references(() => episodes.id, { onDelete: "cascade" }),
+    watchedAt: timestamp("watched_at", { mode: "date" }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("episode_watch_events_user_id_episode_id_idx").on(t.userId, t.episodeId),
+    index("episode_watch_events_user_id_watched_at_idx").on(t.userId, t.watchedAt),
+  ],
+);
+
+// Same idea as episodeWatchEvents, but for movies — a movie's "current"
+// completion date still lives on user_library.watchedAt (bumped on every
+// watch, including rewatches), this table only exists for accurate
+// per-year stats attribution.
+export const movieWatchEvents = appSchema.table(
+  "movie_watch_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    titleId: uuid("title_id")
+      .notNull()
+      .references(() => titles.id, { onDelete: "cascade" }),
+    watchedAt: timestamp("watched_at", { mode: "date" }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("movie_watch_events_user_id_title_id_idx").on(t.userId, t.titleId),
+    index("movie_watch_events_user_id_watched_at_idx").on(t.userId, t.watchedAt),
+  ],
 );
 
 // One row per title a user has swiped away from "Recomendados para você" —

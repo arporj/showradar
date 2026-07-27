@@ -1,23 +1,26 @@
 "use client";
 
 import { useOptimistic, useTransition } from "react";
+import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { addExistingTitleToLibrary, removeFromLibrary, updateLibraryStatus } from "@/lib/actions/library";
+import { addExistingTitleToLibrary, removeFromLibrary, rewatchMovie, updateLibraryStatus } from "@/lib/actions/library";
 import { LIBRARY_STATUS_LABEL, type LibraryStatus } from "@/lib/library-status";
 import { runOrQueue } from "@/lib/offline/run-or-queue";
 
-// Movies have no episode-level signal to derive status from, so all four
+// Movies have no episode-level signal to derive status from, so all five
 // stay manual and always visible, in a fixed order.
-const MOVIE_STATUS_BUTTONS: LibraryStatus[] = ["plan_to_watch", "watching", "completed", "dropped"];
+const MOVIE_STATUS_BUTTONS: LibraryStatus[] = ["plan_to_watch", "watching", "on_hold", "completed", "dropped"];
 
 export function LibraryStatusControl({
   titleId,
+  tmdbId,
   currentStatus,
   mediaType,
 }: {
   titleId: string;
+  tmdbId: number;
   currentStatus: LibraryStatus | null;
   mediaType: "movie" | "tv";
 }) {
@@ -51,6 +54,13 @@ export function LibraryStatusControl({
     });
   }
 
+  function handleRewatch() {
+    startTransition(async () => {
+      await rewatchMovie(titleId, "movie", tmdbId);
+      toast.success("Nova vista registrada");
+    });
+  }
+
   if (!optimisticStatus) {
     return (
       <Button type="button" onClick={handleAdd} disabled={isPending}>
@@ -62,15 +72,22 @@ export function LibraryStatusControl({
   // For TV shows, "Assistindo"/"Assistido" are derived automatically from
   // episode progress (see syncLibraryStatusFromProgress in lib/actions/episodes.ts).
   // "Quero assistir" only makes sense as a manual action once the show has
-  // been dropped — it's the one way back. Showing it while already
-  // watching/completed/plan_to_watch would be redundant or nonsensical, so
-  // exactly one of the two toggle buttons is visible at a time.
+  // been dropped — it's the one way back. "Pausado" is the other sticky
+  // manual override (see the same syncLibraryStatusFromProgress) — reachable
+  // from any active state, with its own way back into "Assistindo" or all
+  // the way to "Abandonei".
   //
   // Either way, the current status itself is never offered as a button — a
   // click should always mean "change to something else", never a no-op
   // re-click on the status already shown in the badge above.
   const availableStatuses: LibraryStatus[] =
-    mediaType === "tv" ? (optimisticStatus === "dropped" ? ["plan_to_watch"] : ["dropped"]) : MOVIE_STATUS_BUTTONS;
+    mediaType === "tv"
+      ? optimisticStatus === "dropped"
+        ? ["plan_to_watch"]
+        : optimisticStatus === "on_hold"
+          ? ["watching", "dropped"]
+          : ["dropped", "on_hold"]
+      : MOVIE_STATUS_BUTTONS;
   const statusButtons = availableStatuses.filter((status) => status !== optimisticStatus);
 
   return (
@@ -88,6 +105,11 @@ export function LibraryStatusControl({
           {LIBRARY_STATUS_LABEL[status]}
         </Button>
       ))}
+      {mediaType === "movie" && optimisticStatus === "completed" && (
+        <Button type="button" variant="outline" size="sm" disabled={isPending} onClick={handleRewatch}>
+          Assistir de novo
+        </Button>
+      )}
       <Button type="button" variant="ghost" size="sm" disabled={isPending} onClick={handleRemove}>
         Remover
       </Button>

@@ -1,6 +1,6 @@
 import { and, eq, gte, lt, sql } from "drizzle-orm";
 
-import { episodes as episodesTable, titles as titlesTable, userEpisodeProgress, userLibrary } from "@/db/schema";
+import { episodeWatchEvents, episodes as episodesTable, movieWatchEvents, titles as titlesTable, userLibrary } from "@/db/schema";
 import { db } from "@/lib/db";
 
 // Nem todo episódio tem runtime próprio sincronizado (só grava quando a
@@ -64,22 +64,22 @@ function extractGenreNames(genres: unknown): string[] {
  * /stats. O ano corrente sempre entra, mesmo sem nenhum dado ainda.
  */
 export async function getAvailableStatsYears(userId: string): Promise<number[]> {
-  const [episodeYears, libraryYears] = await Promise.all([
+  const [episodeYears, movieYears] = await Promise.all([
     db
-      .select({ year: sql<number>`extract(year from ${userEpisodeProgress.watchedAt})::int` })
-      .from(userEpisodeProgress)
-      .where(eq(userEpisodeProgress.userId, userId))
-      .groupBy(sql`extract(year from ${userEpisodeProgress.watchedAt})`),
+      .select({ year: sql<number>`extract(year from ${episodeWatchEvents.watchedAt})::int` })
+      .from(episodeWatchEvents)
+      .where(eq(episodeWatchEvents.userId, userId))
+      .groupBy(sql`extract(year from ${episodeWatchEvents.watchedAt})`),
     db
-      .select({ year: sql<number>`extract(year from ${userLibrary.watchedAt})::int` })
-      .from(userLibrary)
-      .where(and(eq(userLibrary.userId, userId), eq(userLibrary.status, "completed")))
-      .groupBy(sql`extract(year from ${userLibrary.watchedAt})`),
+      .select({ year: sql<number>`extract(year from ${movieWatchEvents.watchedAt})::int` })
+      .from(movieWatchEvents)
+      .where(eq(movieWatchEvents.userId, userId))
+      .groupBy(sql`extract(year from ${movieWatchEvents.watchedAt})`),
   ]);
 
   const years = new Set<number>([new Date().getUTCFullYear()]);
   for (const row of episodeYears) if (row.year != null) years.add(row.year);
-  for (const row of libraryYears) if (row.year != null) years.add(row.year);
+  for (const row of movieYears) if (row.year != null) years.add(row.year);
 
   return [...years].sort((a, b) => b - a);
 }
@@ -91,11 +91,18 @@ export async function getAvailableStatsYears(userId: string): Promise<number[]> 
  * ranking e não uma pizza que precisa fechar 100%), série mais assistida e
  * dia com mais episódios (efeito "maratona").
  *
- * "Séries concluídas no ano" usa user_library.watchedAt, que só é confiável
- * pra títulos com status "completed" hoje — mudar de status limpa esse
- * campo (ver lib/actions/library.ts e lib/actions/episodes.ts), então uma
- * série concluída e depois reaberta perde essa data. Limitação aceita para
- * esta versão — ver PROGRESS.md item 3 (rewatch/status).
+ * Episódios e filmes vêm de episode_watch_events/movie_watch_events (um
+ * evento por vista, incluindo rewatches) em vez de user_episode_progress/
+ * user_library diretamente — assim um rewatch em outro ano soma nas
+ * estatísticas do ano em que aconteceu, em vez de só "mover" a vista
+ * original de ano.
+ *
+ * "Séries concluídas no ano" continua usando user_library.watchedAt, que só
+ * é confiável pra títulos com status "completed" hoje — mudar de status
+ * limpa esse campo (ver lib/actions/library.ts e lib/actions/episodes.ts),
+ * então uma série concluída e depois reaberta perde essa data. Isso é sobre
+ * a conclusão da série inteira, não sobre rewatch de episódio — não é
+ * coberto pelas tabelas de evento acima, é uma limitação separada e aceita.
  */
 export async function getYearStats(userId: string, year: number): Promise<YearStats> {
   const startOfYear = new Date(Date.UTC(year, 0, 1));
@@ -111,33 +118,31 @@ export async function getYearStats(userId: string, year: number): Promise<YearSt
         genres: titlesTable.genres,
         titleEpisodeRunTime: titlesTable.episodeRunTime,
         episodeRuntime: episodesTable.runtime,
-        watchedAt: userEpisodeProgress.watchedAt,
+        watchedAt: episodeWatchEvents.watchedAt,
       })
-      .from(userEpisodeProgress)
-      .innerJoin(episodesTable, eq(userEpisodeProgress.episodeId, episodesTable.id))
+      .from(episodeWatchEvents)
+      .innerJoin(episodesTable, eq(episodeWatchEvents.episodeId, episodesTable.id))
       .innerJoin(titlesTable, eq(episodesTable.titleId, titlesTable.id))
       .where(
         and(
-          eq(userEpisodeProgress.userId, userId),
-          gte(userEpisodeProgress.watchedAt, startOfYear),
-          lt(userEpisodeProgress.watchedAt, startOfNextYear),
+          eq(episodeWatchEvents.userId, userId),
+          gte(episodeWatchEvents.watchedAt, startOfYear),
+          lt(episodeWatchEvents.watchedAt, startOfNextYear),
         ),
       ),
     db
       .select({
         genres: titlesTable.genres,
         runtime: titlesTable.runtime,
-        watchedAt: userLibrary.watchedAt,
+        watchedAt: movieWatchEvents.watchedAt,
       })
-      .from(userLibrary)
-      .innerJoin(titlesTable, eq(userLibrary.titleId, titlesTable.id))
+      .from(movieWatchEvents)
+      .innerJoin(titlesTable, eq(movieWatchEvents.titleId, titlesTable.id))
       .where(
         and(
-          eq(userLibrary.userId, userId),
-          eq(titlesTable.mediaType, "movie"),
-          eq(userLibrary.status, "completed"),
-          gte(userLibrary.watchedAt, startOfYear),
-          lt(userLibrary.watchedAt, startOfNextYear),
+          eq(movieWatchEvents.userId, userId),
+          gte(movieWatchEvents.watchedAt, startOfYear),
+          lt(movieWatchEvents.watchedAt, startOfNextYear),
         ),
       ),
     db

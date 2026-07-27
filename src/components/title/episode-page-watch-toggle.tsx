@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { toast } from "sonner";
 
 import { WatchToggleButton } from "@/components/title/episode-watch-button";
-import { toggleEpisodeWatched } from "@/lib/actions/episodes";
+import { Button } from "@/components/ui/button";
+import { rewatchEpisode, toggleEpisodeWatched } from "@/lib/actions/episodes";
 import { runOrQueue } from "@/lib/offline/run-or-queue";
 
 export function EpisodePageWatchToggle({
@@ -24,7 +26,7 @@ export function EpisodePageWatchToggle({
   aired: boolean;
 }) {
   const [watched, setWatched] = useState(initialWatched);
-  const [, startTransition] = useTransition();
+  const [isPending, startTransition] = useTransition();
 
   function handleToggle() {
     const next = !watched;
@@ -37,13 +39,27 @@ export function EpisodePageWatchToggle({
     });
   }
 
+  function handleRewatch() {
+    startTransition(async () => {
+      await rewatchEpisode(episodeId, titleId, tmdbTvId, seasonNumber, episodeNumber);
+      toast.success("Nova vista registrada");
+    });
+  }
+
   return (
-    <WatchToggleButton
-      watched={watched}
-      disabled={!aired}
-      onToggle={handleToggle}
-      label={watched ? "Desmarcar como assistido" : "Marcar como assistido"}
-      size="lg"
-    />
+    <div className="flex items-center gap-2">
+      <WatchToggleButton
+        watched={watched}
+        disabled={!aired}
+        onToggle={handleToggle}
+        label={watched ? "Desmarcar como assistido" : "Marcar como assistido"}
+        size="lg"
+      />
+      {watched && (
+        <Button type="button" variant="outline" size="sm" disabled={isPending} onClick={handleRewatch}>
+          Assistir de novo
+        </Button>
+      )}
+    </div>
   );
 }

@@ -1,4 +1,4 @@
-export const LIBRARY_STATUSES = ["plan_to_watch", "watching", "completed", "dropped"] as const;
+export const LIBRARY_STATUSES = ["plan_to_watch", "watching", "completed", "dropped", "on_hold"] as const;
 export type LibraryStatus = (typeof LIBRARY_STATUSES)[number];
 
 export const LIBRARY_STATUS_LABEL: Record<LibraryStatus, string> = {
@@ -6,6 +6,7 @@ export const LIBRARY_STATUS_LABEL: Record<LibraryStatus, string> = {
   watching: "Assistindo",
   completed: "Assistido",
   dropped: "Abandonei",
+  on_hold: "Pausado",
 };
 
 export function isLibraryStatus(value: string | undefined): value is LibraryStatus {

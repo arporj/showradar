@@ -52,10 +52,11 @@ export default async function UserProfilePage({ params }: { params: Promise<{ us
         .orderBy(desc(userLibrary.addedAt))
     : [];
 
-  // Series mid-watch don't have a final rating yet — episodes already rated
-  // stand in as a provisional one (see getUserProvisionalRatingSummaries).
+  // Series mid-watch (or paused, which is the same "not finished yet" state)
+  // don't have a final rating yet — episodes already rated stand in as a
+  // provisional one (see getUserProvisionalRatingSummaries).
   const watchingTvTitleIds = libraryRows
-    .filter((row) => row.status === "watching" && row.mediaType === "tv")
+    .filter((row) => (row.status === "watching" || row.status === "on_hold") && row.mediaType === "tv")
     .map((row) => row.titleId);
   const provisionalRatings = await getUserProvisionalRatingSummaries(targetUser.id, watchingTvTitleIds);
 
@@ -98,7 +99,11 @@ export default async function UserProfilePage({ params }: { params: Promise<{ us
                   <Badge variant="secondary">{LIBRARY_STATUS_LABEL[row.status]}</Badge>
                   <FriendTitleRating
                     finalRating={row.status === "completed" || row.status === "dropped" ? row.personalRating : null}
-                    provisional={row.status === "watching" ? (provisionalRatings.get(row.titleId) ?? null) : null}
+                    provisional={
+                      row.status === "watching" || row.status === "on_hold"
+                        ? (provisionalRatings.get(row.titleId) ?? null)
+                        : null
+                    }
                   />
                 </div>
               </TitleCard>

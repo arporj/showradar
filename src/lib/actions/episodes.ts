@@ -4,7 +4,7 @@ import { and, eq, inArray, isNull, lte, or } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { episodes, seasons, userEpisodeProgress, userLibrary } from "@/db/schema";
+import { episodeWatchEvents, episodes, seasons, userEpisodeProgress, userLibrary } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import type { LibraryStatus } from "@/lib/library-status";
@@ -24,8 +24,8 @@ function airedCondition() {
 // "Assistindo"/"Assistido" are never something the user has to set by hand:
 // any watched episode moves a title to "watching", finishing every episode
 // moves it to "completed", and clearing every watched episode drops it back
-// to "plan_to_watch". "Abandonei" is the one exception — it's a deliberate,
-// sticky choice that episode activity should never silently override.
+// to "plan_to_watch". "Abandonei"/"Pausado" are the exceptions — deliberate,
+// sticky choices that episode activity should never silently override.
 export async function syncLibraryStatusFromProgress(userId: string, titleId: string) {
   const seasonRows = await db
     .select({ id: seasons.id, seasonNumber: seasons.seasonNumber, episodeCount: seasons.episodeCount })
@@ -53,7 +53,7 @@ export async function syncLibraryStatusFromProgress(userId: string, titleId: str
     .from(userLibrary)
     .where(and(eq(userLibrary.userId, userId), eq(userLibrary.titleId, titleId)));
 
-  if (existing?.status === "dropped") return { seriesCompleted: false };
+  if (existing?.status === "dropped" || existing?.status === "on_hold") return { seriesCompleted: false };
 
   if (!existing) {
     await db.insert(userLibrary).values({
@@ -115,12 +115,28 @@ export async function loadSeasonEpisodes(input: {
   return episodeRows.map((episode) => ({ ...episode, watched: watchedIds.has(episode.id) }));
 }
 
+// Shared by every path that inserts into user_episode_progress (single
+// toggle, dashboard card, bulk season/series mark). Only logs a watch event
+// for rows actually inserted (.returning() omits ones that hit the conflict),
+// so re-marking an already-watched episode in a bulk action never spams
+// episode_watch_events with duplicate "watches" of the same episode.
+async function markEpisodesWatched(userId: string, episodeIds: string[]) {
+  if (episodeIds.length === 0) return;
+
+  const inserted = await db
+    .insert(userEpisodeProgress)
+    .values(episodeIds.map((episodeId) => ({ userId, episodeId })))
+    .onConflictDoNothing({ target: [userEpisodeProgress.userId, userEpisodeProgress.episodeId] })
+    .returning({ episodeId: userEpisodeProgress.episodeId });
+
+  if (inserted.length > 0) {
+    await db.insert(episodeWatchEvents).values(inserted.map((row) => ({ userId, episodeId: row.episodeId })));
+  }
+}
+
 async function writeEpisodeWatched(userId: string, episodeId: string, watched: boolean) {
   if (watched) {
-    await db
-      .insert(userEpisodeProgress)
-      .values({ userId, episodeId })
-      .onConflictDoNothing({ target: [userEpisodeProgress.userId, userEpisodeProgress.episodeId] });
+    await markEpisodesWatched(userId, [episodeId]);
   } else {
     await db
       .delete(userEpisodeProgress)
@@ -204,10 +220,7 @@ export async function setSeasonWatched(input: {
 
   if (episodeIds.length > 0) {
     if (input.watched) {
-      await db
-        .insert(userEpisodeProgress)
-        .values(episodeIds.map((episodeId) => ({ userId: session.user.id, episodeId })))
-        .onConflictDoNothing({ target: [userEpisodeProgress.userId, userEpisodeProgress.episodeId] });
+      await markEpisodesWatched(session.user.id, episodeIds);
     } else {
       await db
         .delete(userEpisodeProgress)
@@ -253,12 +266,7 @@ export async function markEpisodesWatchedThrough(input: {
 
   const episodeIds = airedUpTo.map((e) => e.id);
 
-  if (episodeIds.length > 0) {
-    await db
-      .insert(userEpisodeProgress)
-      .values(episodeIds.map((episodeId) => ({ userId: session.user.id, episodeId })))
-      .onConflictDoNothing({ target: [userEpisodeProgress.userId, userEpisodeProgress.episodeId] });
-  }
+  await markEpisodesWatched(session.user.id, episodeIds);
 
   await syncLibraryStatusFromProgress(session.user.id, input.titleId);
 
@@ -298,12 +306,10 @@ export async function markAllEpisodesWatched(titleId: string, tmdbTvId: number) 
       ),
     );
 
-  if (airedEpisodes.length > 0) {
-    await db
-      .insert(userEpisodeProgress)
-      .values(airedEpisodes.map((e) => ({ userId: session.user.id, episodeId: e.id })))
-      .onConflictDoNothing({ target: [userEpisodeProgress.userId, userEpisodeProgress.episodeId] });
-  }
+  await markEpisodesWatched(
+    session.user.id,
+    airedEpisodes.map((e) => e.id),
+  );
 
   await syncLibraryStatusFromProgress(session.user.id, titleId);
 
@@ -316,4 +322,35 @@ export async function markAllEpisodesWatched(titleId: string, tmdbTvId: number) 
     watchedCountsBySeasonId[e.seasonId] = (watchedCountsBySeasonId[e.seasonId] ?? 0) + 1;
   }
   return { watchedCountsBySeasonId };
+}
+
+// Logs a rewatch of an episode that's already marked watched — a distinct
+// action from toggleEpisodeWatched (which flips the watched/unwatched
+// checkbox). Doesn't touch user_episode_progress's presence or the library
+// status derivation (the episode already counted as watched); it only adds a
+// new episode_watch_events row and bumps watchedAt so /history and the
+// friend feed reflect the most recent watch, same as the first-time path.
+export async function rewatchEpisode(
+  episodeId: string,
+  titleId: string,
+  tmdbTvId: number,
+  seasonNumber?: number,
+  episodeNumber?: number,
+) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
+
+  const now = new Date();
+  await db.insert(episodeWatchEvents).values({ userId: session.user.id, episodeId, watchedAt: now });
+  await db
+    .update(userEpisodeProgress)
+    .set({ watchedAt: now })
+    .where(and(eq(userEpisodeProgress.userId, session.user.id), eq(userEpisodeProgress.episodeId, episodeId)));
+
+  revalidatePath(`/title/tv/${tmdbTvId}`);
+  revalidatePath("/library");
+  revalidatePath("/dashboard");
+  if (seasonNumber != null && episodeNumber != null) {
+    revalidatePath(`/title/tv/${tmdbTvId}/season/${seasonNumber}/episode/${episodeNumber}`);
+  }
 }

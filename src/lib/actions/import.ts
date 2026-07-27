@@ -3,7 +3,16 @@
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
 
-import { episodes, importJobItems, importJobs, seasons, userEpisodeProgress, userLibrary } from "@/db/schema";
+import {
+  episodeWatchEvents,
+  episodes,
+  importJobItems,
+  importJobs,
+  movieWatchEvents,
+  seasons,
+  userEpisodeProgress,
+  userLibrary,
+} from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { syncLibraryStatusFromProgress } from "@/lib/actions/episodes";
@@ -113,10 +122,15 @@ async function upsertWatchedMovie(userId: string, titleId: string, watchedAt: Da
     .where(and(eq(userLibrary.userId, userId), eq(userLibrary.titleId, titleId)));
 
   if (!existing) {
-    await db
+    const [inserted] = await db
       .insert(userLibrary)
       .values({ userId, titleId, status: "completed", watchedAt })
-      .onConflictDoNothing({ target: [userLibrary.userId, userLibrary.titleId] });
+      .onConflictDoNothing({ target: [userLibrary.userId, userLibrary.titleId] })
+      .returning({ titleId: userLibrary.titleId });
+    // Same historical watchedAt from the export, not now() — keeps a
+    // rewatch that happened in a different year attributed correctly in
+    // lib/stats.ts once it starts reading from movie_watch_events.
+    if (inserted) await db.insert(movieWatchEvents).values({ userId, titleId, watchedAt });
     return;
   }
 
@@ -128,6 +142,7 @@ async function upsertWatchedMovie(userId: string, titleId: string, watchedAt: Da
     .update(userLibrary)
     .set({ status: "completed", watchedAt, updatedAt: new Date() })
     .where(and(eq(userLibrary.userId, userId), eq(userLibrary.titleId, titleId)));
+  await db.insert(movieWatchEvents).values({ userId, titleId, watchedAt });
 }
 
 async function writeTvItem(
@@ -173,10 +188,19 @@ async function writeTvItem(
   }
 
   if (progressValues.length > 0) {
-    await db
+    const inserted = await db
       .insert(userEpisodeProgress)
       .values(progressValues)
-      .onConflictDoNothing({ target: [userEpisodeProgress.userId, userEpisodeProgress.episodeId] });
+      .onConflictDoNothing({ target: [userEpisodeProgress.userId, userEpisodeProgress.episodeId] })
+      .returning({ episodeId: userEpisodeProgress.episodeId, watchedAt: userEpisodeProgress.watchedAt });
+
+    // Historical watchedAt from the export, not now() — same reasoning as
+    // upsertWatchedMovie above.
+    if (inserted.length > 0) {
+      await db
+        .insert(episodeWatchEvents)
+        .values(inserted.map((row) => ({ userId, episodeId: row.episodeId, watchedAt: row.watchedAt })));
+    }
   }
 
   await syncLibraryStatusFromProgress(userId, titleId);

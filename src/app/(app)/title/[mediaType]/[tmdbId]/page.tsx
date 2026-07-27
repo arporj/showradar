@@ -142,6 +142,7 @@ export default async function TitleDetailPage({
 
           <LibraryStatusControl
             titleId={titleId}
+            tmdbId={tmdbIdNum}
             currentStatus={currentStatus}
             mediaType={mediaType}
           />

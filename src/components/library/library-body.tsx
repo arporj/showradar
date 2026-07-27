@@ -26,6 +26,7 @@ const STATUS_FILTERS: { value: LibraryStatus | undefined; label: string }[] = [
   { value: undefined, label: "Tudo" },
   { value: "plan_to_watch", label: LIBRARY_STATUS_LABEL.plan_to_watch },
   { value: "watching", label: LIBRARY_STATUS_LABEL.watching },
+  { value: "on_hold", label: LIBRARY_STATUS_LABEL.on_hold },
   { value: "completed", label: LIBRARY_STATUS_LABEL.completed },
   { value: "dropped", label: LIBRARY_STATUS_LABEL.dropped },
 ];
