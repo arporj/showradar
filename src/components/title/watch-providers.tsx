@@ -3,17 +3,26 @@ import Link from "next/link";
 
 import { tmdbImageUrl, type TmdbWatchProviderRegion } from "@/lib/tmdb";
 
-export function WatchProviders({ providers }: { providers: TmdbWatchProviderRegion | null }) {
-  if (!providers) return null;
+// Dedup entre flatrate/free/ads (um provider pode aparecer em mais de um) e
+// ordena pela prioridade de exibição do TMDb — reusado no card compacto da
+// grade (library-body.tsx) além do "Onde assistir" da página de detalhe.
+export function getStreamingProviders(providers: TmdbWatchProviderRegion | null | undefined) {
+  if (!providers) return [];
 
   const seen = new Set<number>();
-  const streaming = [...(providers.flatrate ?? []), ...(providers.free ?? []), ...(providers.ads ?? [])]
+  return [...(providers.flatrate ?? []), ...(providers.free ?? []), ...(providers.ads ?? [])]
     .filter((provider) => {
       if (seen.has(provider.provider_id)) return false;
       seen.add(provider.provider_id);
       return true;
     })
     .sort((a, b) => a.display_priority - b.display_priority);
+}
+
+export function WatchProviders({ providers }: { providers: TmdbWatchProviderRegion | null }) {
+  if (!providers) return null;
+
+  const streaming = getStreamingProviders(providers);
 
   if (streaming.length === 0) return null;
 

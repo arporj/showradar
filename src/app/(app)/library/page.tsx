@@ -50,6 +50,8 @@ export default async function LibraryPage({
       posterPath: titlesTable.posterPath,
       status: userLibrary.status,
       addedAt: userLibrary.addedAt,
+      releaseDate: titlesTable.releaseDate,
+      watchProvidersBr: titlesTable.watchProvidersBr,
     })
     .from(userLibrary)
     .innerJoin(titlesTable, eq(userLibrary.titleId, titlesTable.id))

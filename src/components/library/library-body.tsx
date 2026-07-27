@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
@@ -7,7 +8,11 @@ import { useTransition } from "react";
 import { LibraryBodySkeleton } from "@/components/library/library-skeleton";
 import { TitleCard } from "@/components/library/title-card";
 import { Badge } from "@/components/ui/badge";
+import { getStreamingProviders } from "@/components/title/watch-providers";
+import { formatDate } from "@/lib/format-date";
 import { LIBRARY_STATUS_LABEL, type LibraryStatus } from "@/lib/library-status";
+import { todayBrDateString } from "@/lib/release-dates";
+import { tmdbImageUrl, type TmdbWatchProviderRegion } from "@/lib/tmdb";
 import { cn } from "@/lib/utils";
 
 const MEDIA_TABS = [
@@ -41,6 +46,8 @@ interface LibraryRow {
   name: string;
   posterPath: string | null;
   status: LibraryStatus;
+  releaseDate: string | null;
+  watchProvidersBr: unknown;
 }
 
 export function LibraryBody({
@@ -58,6 +65,7 @@ export function LibraryBody({
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const today = todayBrDateString();
 
   // isPending flips synchronously in this same click, before the navigation
   // resolves — swapping to the skeleton immediately instead of leaving the
@@ -137,18 +145,51 @@ export function LibraryBody({
         )
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-          {rows.map((row) => (
-            <TitleCard
-              key={row.titleId}
-              href={`/title/${row.mediaType}/${row.tmdbId}`}
-              posterPath={row.posterPath}
-              name={row.name}
-            >
-              <Badge variant="secondary" className="mt-1">
-                {LIBRARY_STATUS_LABEL[row.status]}
-              </Badge>
-            </TitleCard>
-          ))}
+          {rows.map((row) => {
+            // Só filmes têm release_date único e cedo o bastante pra valer a
+            // pena badge de estreia aqui — episódio futuro de série já tem
+            // seção própria ("Em breve" no dashboard e /upcoming).
+            const isUpcomingMovie = row.mediaType === "movie" && !!row.releaseDate && row.releaseDate > today;
+            const providers = isUpcomingMovie
+              ? getStreamingProviders(row.watchProvidersBr as TmdbWatchProviderRegion | null)
+              : [];
+
+            return (
+              <TitleCard
+                key={row.titleId}
+                href={`/title/${row.mediaType}/${row.tmdbId}`}
+                posterPath={row.posterPath}
+                name={row.name}
+              >
+                <Badge variant="secondary" className="mt-1">
+                  {LIBRARY_STATUS_LABEL[row.status]}
+                </Badge>
+                {isUpcomingMovie && (
+                  <>
+                    <p className="mt-1 text-xs text-muted-foreground">Estreia em {formatDate(row.releaseDate!)}</p>
+                    {providers.length > 0 && (
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {providers.map((provider) => {
+                          const logo = tmdbImageUrl(provider.logo_path, "w45");
+                          return (
+                            <span
+                              key={provider.provider_id}
+                              title={provider.provider_name}
+                              className="relative size-5 shrink-0 overflow-hidden rounded bg-muted"
+                            >
+                              {logo && (
+                                <Image src={logo} alt={provider.provider_name} fill sizes="20px" className="object-cover" />
+                              )}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </>
+                )}
+              </TitleCard>
+            );
+          })}
         </div>
       )}
     </div>
