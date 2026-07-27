@@ -16,12 +16,18 @@ const PUBLIC_PATHS = ["/login", "/signup"];
 // path — a exclusão por extensão do matcher não a cobre) precisa ficar aqui:
 // crawlers de link preview (WhatsApp/Facebook/Twitter) não têm sessão e
 // receberiam um redirect pra /login no lugar da imagem.
+// "/l/" é a primeira rota genuinamente pública do produto (listas públicas
+// ou "unlisted", pra SEO/compartilhamento — ver PROGRESS.md) — o proxy só
+// libera o acesso; a própria página consulta o banco e decide se quem
+// pediu pode ver aquela lista específica (dono vê sempre, senão depende de
+// visibility).
 const ALWAYS_ACCESSIBLE_PATHS = [
   "/forgot-password",
   "/reset-password",
   "/privacidade",
   "/termos",
   "/opengraph-image",
+  "/l/",
 ];
 const ONBOARDING_PATH = "/onboarding";
 const ADMIN_PATH = "/admin";

@@ -5,6 +5,7 @@ import {
   History,
   House,
   LayoutGrid,
+  ListChecks,
   Search,
   Settings,
   Shield,
@@ -30,6 +31,7 @@ export const MAIN_LINKS: NavLink[] = [
   { href: "/history", label: "Histórico", icon: History },
   { href: "/friends", label: "Amigos", icon: Users },
   { href: "/stats", label: "Estatísticas", icon: BarChart3 },
+  { href: "/lists", label: "Listas", icon: ListChecks },
 ];
 
 export const BOTTOM_TAB_COUNT = 4;

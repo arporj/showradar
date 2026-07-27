@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { BackButton } from "@/components/ui/back-button";
+import { AddToListButton } from "@/components/title/add-to-list-button";
 import { LibraryStatusControl } from "@/components/title/library-status-control";
 import { SearchResultCard } from "@/components/search/result-card";
 import { TitleRatingsSection } from "@/components/title/title-ratings-section";
@@ -15,6 +16,7 @@ import { deleteRating, submitRating } from "@/lib/actions/ratings";
 import { db } from "@/lib/db";
 import { getSimilarTitles } from "@/lib/discovery";
 import { LIBRARY_STATUSES } from "@/lib/library-status";
+import { getUserListsWithMembership } from "@/lib/lists";
 import { getWatchedEpisodeCounts } from "@/lib/progress";
 import { getTitleRatingSummary } from "@/lib/ratings";
 import { shiftDateString, todayBrDateString } from "@/lib/release-dates";
@@ -62,30 +64,39 @@ export default async function TitleDetailPage({
   ]);
   if (!title) notFound();
 
-  const [libraryRows, watchedCounts, ratingSummary, commentPreview, commentCount, similarTitles, movieWatchCount] =
-    await Promise.all([
-      session?.user
-        ? db
-            .select()
-            .from(userLibrary)
-            .where(and(eq(userLibrary.userId, session.user.id), eq(userLibrary.titleId, titleId)))
-        : Promise.resolve([]),
-      getWatchedEpisodeCounts(
-        session?.user?.id,
-        seasonRows.map((s) => s.id),
-      ),
-      getTitleRatingSummary(titleId),
-      getTitleCommentPreview(titleId, session?.user?.id),
-      getTitleCommentCount(titleId),
-      getSimilarTitles(session?.user?.id, mediaType, tmdbIdNum),
-      mediaType === "movie" && session?.user
-        ? db
-            .select({ count: sql<number>`count(*)::int` })
-            .from(movieWatchEvents)
-            .where(and(eq(movieWatchEvents.userId, session.user.id), eq(movieWatchEvents.titleId, titleId)))
-            .then((rows) => rows[0]?.count ?? 0)
-        : Promise.resolve(0),
-    ]);
+  const [
+    libraryRows,
+    watchedCounts,
+    ratingSummary,
+    commentPreview,
+    commentCount,
+    similarTitles,
+    movieWatchCount,
+    userLists,
+  ] = await Promise.all([
+    session?.user
+      ? db
+          .select()
+          .from(userLibrary)
+          .where(and(eq(userLibrary.userId, session.user.id), eq(userLibrary.titleId, titleId)))
+      : Promise.resolve([]),
+    getWatchedEpisodeCounts(
+      session?.user?.id,
+      seasonRows.map((s) => s.id),
+    ),
+    getTitleRatingSummary(titleId),
+    getTitleCommentPreview(titleId, session?.user?.id),
+    getTitleCommentCount(titleId),
+    getSimilarTitles(session?.user?.id, mediaType, tmdbIdNum),
+    mediaType === "movie" && session?.user
+      ? db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(movieWatchEvents)
+          .where(and(eq(movieWatchEvents.userId, session.user.id), eq(movieWatchEvents.titleId, titleId)))
+          .then((rows) => rows[0]?.count ?? 0)
+      : Promise.resolve(0),
+    session?.user ? getUserListsWithMembership(session.user.id, titleId) : Promise.resolve([]),
+  ]);
   const libraryEntry = libraryRows[0];
   const currentStatus =
     libraryEntry && LIBRARY_STATUSES.includes(libraryEntry.status) ? libraryEntry.status : null;
@@ -155,6 +166,8 @@ export default async function TitleDetailPage({
             mediaType={mediaType}
             watchCount={movieWatchCount}
           />
+
+          <AddToListButton titleId={titleId} mediaType={mediaType} tmdbId={tmdbIdNum} initialLists={userLists} />
 
           <WatchProviders providers={title.watchProvidersBr as TmdbWatchProviderRegion | null} />
 

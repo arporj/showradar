@@ -1,4 +1,4 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
   boolean,
   date,
@@ -69,6 +69,15 @@ export const importItemStatusEnum = appSchema.enum("import_item_status", [
   "matched",
   "unmatched",
   "error",
+]);
+// unlisted: link direto funciona, mas sem indexação/listagem (generateMetadata
+// devolve robots: { index: false }) — o meio-termo entre "só eu vejo" e
+// "todo mundo pode achar no Google", pra quem quer mandar o link pra um
+// amigo sem publicar de verdade.
+export const listVisibilityEnum = appSchema.enum("list_visibility", [
+  "private",
+  "unlisted",
+  "public",
 ]);
 
 // Auth.js adapter requires these exact JS property names (id/name/email/emailVerified/image)
@@ -318,7 +327,6 @@ export const userLibrary = appSchema.table(
       .notNull()
       .references(() => titles.id, { onDelete: "cascade" }),
     status: libraryStatusEnum("status").notNull().default("plan_to_watch"),
-    isFavorite: boolean("is_favorite").notNull().default(false),
     personalRating: smallint("personal_rating"),
     // Free text used to live here (review_text) — removed once title_comments
     // took over as the one place to write anything, same split as episodes
@@ -334,6 +342,48 @@ export const userLibrary = appSchema.table(
     updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("user_library_user_id_title_id_idx").on(t.userId, t.titleId)],
+);
+
+// A user's shareable collections of titles ("Melhores sci-fi de todos os
+// tempos"). isFavorites marks the one reserved system list every user gets
+// lazily on first favorite — the partial unique index guarantees at most one
+// per user; unlike a custom list it can't be deleted or renamed, only
+// toggled between visibility states, replacing the old
+// user_library.is_favorite boolean (which never shipped a UI).
+export const lists = appSchema.table(
+  "lists",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    slug: text("slug").notNull(),
+    title: text("title").notNull(),
+    description: text("description"),
+    visibility: listVisibilityEnum("visibility").notNull().default("private"),
+    isFavorites: boolean("is_favorites").notNull().default(false),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("lists_user_id_slug_idx").on(t.userId, t.slug),
+    uniqueIndex("lists_user_id_favorites_idx").on(t.userId).where(sql`${t.isFavorites} = true`),
+  ],
+);
+
+export const listItems = appSchema.table(
+  "list_items",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    listId: uuid("list_id")
+      .notNull()
+      .references(() => lists.id, { onDelete: "cascade" }),
+    titleId: uuid("title_id")
+      .notNull()
+      .references(() => titles.id, { onDelete: "cascade" }),
+    addedAt: timestamp("added_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("list_items_list_id_title_id_idx").on(t.listId, t.titleId)],
 );
 
 // followerId sends the request; followingId is the target who must accept it
@@ -550,6 +600,7 @@ export const importJobItemsRelations = relations(importJobItems, ({ one }) => ({
 export const usersRelations = relations(users, ({ many, one }) => ({
   accounts: many(accounts),
   library: many(userLibrary),
+  lists: many(lists),
   episodeProgress: many(userEpisodeProgress),
   importJobs: many(importJobs),
   notificationPreferences: one(notificationPreferences, {
@@ -581,6 +632,7 @@ export const titlesRelations = relations(titles, ({ many }) => ({
   seasons: many(seasons),
   episodes: many(episodes),
   libraryEntries: many(userLibrary),
+  listItems: many(listItems),
 }));
 
 export const seasonsRelations = relations(seasons, ({ one, many }) => ({
@@ -597,6 +649,16 @@ export const episodesRelations = relations(episodes, ({ one, many }) => ({
 export const userLibraryRelations = relations(userLibrary, ({ one }) => ({
   user: one(users, { fields: [userLibrary.userId], references: [users.id] }),
   title: one(titles, { fields: [userLibrary.titleId], references: [titles.id] }),
+}));
+
+export const listsRelations = relations(lists, ({ one, many }) => ({
+  user: one(users, { fields: [lists.userId], references: [users.id] }),
+  items: many(listItems),
+}));
+
+export const listItemsRelations = relations(listItems, ({ one }) => ({
+  list: one(lists, { fields: [listItems.listId], references: [lists.id] }),
+  title: one(titles, { fields: [listItems.titleId], references: [titles.id] }),
 }));
 
 export const userEpisodeProgressRelations = relations(userEpisodeProgress, ({ one }) => ({
