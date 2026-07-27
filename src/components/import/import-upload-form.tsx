@@ -4,11 +4,31 @@ import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
-import { startTvTimeImport } from "@/lib/actions/import";
+import { startImdbImport, startTvTimeImport } from "@/lib/actions/import";
 
 const MAX_SIZE_BYTES = 15 * 1024 * 1024;
 
-export function ImportUploadForm() {
+interface ImportUploadFormProps {
+  source: "tv_time" | "imdb";
+}
+
+const SOURCE_CONFIG = {
+  tv_time: {
+    extension: ".zip",
+    label: "Selecionar arquivo .zip",
+    errorWrongExtension: "Envie o arquivo .zip da exportação do TV Time",
+    action: startTvTimeImport,
+  },
+  imdb: {
+    extension: ".csv",
+    label: "Selecionar arquivo .csv",
+    errorWrongExtension: "Envie o arquivo .csv de avaliações do IMDb",
+    action: startImdbImport,
+  },
+} as const;
+
+export function ImportUploadForm({ source }: ImportUploadFormProps) {
+  const config = SOURCE_CONFIG[source];
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -19,8 +39,8 @@ export function ImportUploadForm() {
     e.target.value = "";
     if (!file) return;
 
-    if (!file.name.toLowerCase().endsWith(".zip")) {
-      setError("Envie o arquivo .zip da exportação do TV Time");
+    if (!file.name.toLowerCase().endsWith(config.extension)) {
+      setError(config.errorWrongExtension);
       return;
     }
     if (file.size > MAX_SIZE_BYTES) {
@@ -32,7 +52,7 @@ export function ImportUploadForm() {
     startTransition(async () => {
       const formData = new FormData();
       formData.set("file", file);
-      const result = await startTvTimeImport(formData);
+      const result = await config.action(formData);
       if ("error" in result) {
         setError(result.error);
       } else {
@@ -43,9 +63,9 @@ export function ImportUploadForm() {
 
   return (
     <div className="space-y-2">
-      <input ref={fileInputRef} type="file" accept=".zip" onChange={handleFileChange} className="hidden" />
+      <input ref={fileInputRef} type="file" accept={config.extension} onChange={handleFileChange} className="hidden" />
       <Button type="button" variant="outline" size="sm" disabled={isPending} onClick={() => fileInputRef.current?.click()}>
-        {isPending ? "Enviando..." : "Selecionar arquivo .zip"}
+        {isPending ? "Enviando..." : config.label}
       </Button>
       {error && <p className="text-xs text-destructive">{error}</p>}
     </div>

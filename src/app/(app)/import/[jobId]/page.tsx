@@ -15,6 +15,11 @@ const STATUS_LABEL: Record<string, string> = {
   failed: "Falhou",
 };
 
+const SOURCE_LABEL: Record<string, string> = {
+  tv_time: "TV Time",
+  imdb: "IMDb",
+};
+
 export default async function ImportJobPage({ params }: { params: Promise<{ jobId: string }> }) {
   const { jobId } = await params;
   const session = await auth();
@@ -38,7 +43,9 @@ export default async function ImportJobPage({ params }: { params: Promise<{ jobI
   return (
     <div className="max-w-lg space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Importação do TV Time</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">
+          Importação do {SOURCE_LABEL[job.source] ?? job.source}
+        </h1>
         <p className="text-muted-foreground">{STATUS_LABEL[job.status] ?? job.status}</p>
       </div>
 

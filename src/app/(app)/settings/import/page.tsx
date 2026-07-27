@@ -48,7 +48,27 @@ export default async function ImportSettingsPage() {
             reações e dados de conta do arquivo nunca são abertos.
           </p>
         </div>
-        <ImportUploadForm />
+        <ImportUploadForm source="tv_time" />
+      </div>
+
+      <div className="space-y-3 rounded-lg border p-4">
+        <div>
+          <h2 className="text-sm font-medium">IMDb</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Exporte suas avaliações em{" "}
+            <a
+              href="https://www.imdb.com/list/ratings"
+              target="_blank"
+              rel="noreferrer"
+              className="underline underline-offset-4"
+            >
+              imdb.com/list/ratings
+            </a>{" "}
+            (menu &quot;Exportar&quot;) e envie o arquivo .csv aqui. O IMDb só guarda a data em que você avaliou
+            cada filme/série, então episódios não vêm marcados individualmente — só filmes e séries inteiras.
+          </p>
+        </div>
+        <ImportUploadForm source="imdb" />
       </div>
 
       {jobs.length > 0 && (

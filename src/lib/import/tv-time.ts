@@ -3,6 +3,8 @@ import { unzipSync } from "fflate";
 
 import { normalizeSearchText } from "@/lib/utils";
 
+import type { ParsedEpisodeTuple, ParsedImportItem } from "./types";
+
 // Only these files are ever inflated from the uploaded ZIP — everything else
 // (comments, reactions, auth tokens, session/device data) is skipped before
 // decompression even runs, not just ignored after the fact. See TV Time
@@ -11,21 +13,6 @@ import { normalizeSearchText } from "@/lib/utils";
 const WATCH_EVENT_FILES = ["tracking-prod-records-v2.csv", "tracking-prod-records.csv"];
 const FOLLOWED_SHOW_FILES = ["followed_tv_show.csv", "user_tv_show_data.csv"];
 const TARGET_FILES = [...WATCH_EVENT_FILES, ...FOLLOWED_SHOW_FILES];
-
-export interface ParsedEpisodeTuple {
-  seasonNumber: number;
-  episodeNumber: number;
-  watchedAt: string;
-}
-
-export interface ParsedImportItem {
-  rawTitle: string;
-  canonicalKey: string;
-  mediaType: "movie" | "tv";
-  yearHint: number | null;
-  episodes: ParsedEpisodeTuple[];
-  movieWatchedAt: string | null;
-}
 
 export class TvTimeExportError extends Error {}
 

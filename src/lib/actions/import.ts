@@ -16,7 +16,9 @@ import {
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { syncLibraryStatusFromProgress } from "@/lib/actions/episodes";
-import { parseTvTimeExport, TvTimeExportError, type ParsedImportItem } from "@/lib/import/tv-time";
+import { parseImdbExport, ImdbExportError } from "@/lib/import/imdb";
+import { parseTvTimeExport, TvTimeExportError } from "@/lib/import/tv-time";
+import type { ParsedImportItem } from "@/lib/import/types";
 import { searchMovieFuzzy, searchTvFuzzy, type TmdbSearchResult } from "@/lib/tmdb";
 import { syncTitleFromTmdb, syncSeasonEpisodes } from "@/lib/tmdb-sync";
 
@@ -51,13 +53,21 @@ export async function startTvTimeImport(formData: FormData): Promise<{ error: st
     return { error: "Não foi possível ler o arquivo enviado." };
   }
 
+  return startImportJob(session.user.id, "tv_time", items);
+}
+
+async function startImportJob(
+  userId: string,
+  source: "tv_time" | "imdb",
+  items: ParsedImportItem[],
+): Promise<{ error: string } | { jobId: string }> {
   if (items.length === 0) {
     return { error: "Nenhum título encontrado no arquivo." };
   }
 
   const [job] = await db
     .insert(importJobs)
-    .values({ userId: session.user.id, source: "tv_time", status: "processing", totalItems: items.length })
+    .values({ userId, source, status: "processing", totalItems: items.length })
     .returning({ id: importJobs.id });
 
   await db
@@ -77,6 +87,34 @@ export async function startTvTimeImport(formData: FormData): Promise<{ error: st
     .onConflictDoNothing({ target: [importJobItems.jobId, importJobItems.canonicalKey, importJobItems.mediaType] });
 
   return { jobId: job.id };
+}
+
+export async function startImdbImport(formData: FormData): Promise<{ error: string } | { jobId: string }> {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
+
+  const file = formData.get("file");
+  if (!(file instanceof File)) {
+    return { error: "Nenhum arquivo enviado" };
+  }
+  if (!file.name.toLowerCase().endsWith(".csv")) {
+    return { error: "Envie o arquivo .csv de avaliações do IMDb" };
+  }
+  if (file.size > MAX_UPLOAD_SIZE_BYTES) {
+    return { error: "O arquivo deve ter no máximo 15MB" };
+  }
+
+  let items: ParsedImportItem[];
+  try {
+    const csvText = await file.text();
+    items = parseImdbExport(csvText);
+  } catch (err) {
+    if (err instanceof ImdbExportError) return { error: err.message };
+    console.error("Failed to parse IMDb export", err);
+    return { error: "Não foi possível ler o arquivo enviado." };
+  }
+
+  return startImportJob(session.user.id, "imdb", items);
 }
 
 function candidateYear(result: TmdbSearchResult, mediaType: "movie" | "tv") {
