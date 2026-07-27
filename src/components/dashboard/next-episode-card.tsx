@@ -6,12 +6,14 @@ import { useState, useTransition } from "react";
 
 import { CelebrationOverlay } from "@/components/title/celebration-overlay";
 import { WatchToggleButton } from "@/components/title/episode-watch-button";
-import { toggleEpisodeWatched } from "@/lib/actions/episodes";
+import { markDashboardEpisodeWatched } from "@/lib/actions/episodes";
 import type { NextEpisodeItem } from "@/lib/next-episode";
 import { runOrQueue } from "@/lib/offline/run-or-queue";
 import { tmdbImageUrl } from "@/lib/tmdb";
 
-export function NextEpisodeCard({ item }: { item: NextEpisodeItem }) {
+export function NextEpisodeCard({ item: initialItem }: { item: NextEpisodeItem }) {
+  const [item, setItem] = useState(initialItem);
+  const [hidden, setHidden] = useState(false);
   const [justMarked, setJustMarked] = useState(false);
   const [celebration, setCelebration] = useState<{ title: string; description: string } | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -21,23 +23,36 @@ export function NextEpisodeCard({ item }: { item: NextEpisodeItem }) {
   function handleMarkWatched() {
     setJustMarked(true);
     startTransition(async () => {
-      // Revalidates /dashboard server-side, so once this resolves the whole
-      // list re-renders with this show's *next* episode (or drops it if
-      // there isn't one available yet) — no manual refetch needed here.
-      // Offline, the toggle is queued instead: `result` is undefined and the
-      // celebration is simply skipped (not critical for correctness).
+      // Doesn't touch /dashboard's server-side cache at all — the action
+      // returns this show's own next episode directly, so the card updates
+      // itself instead of waiting on (and forcing) a full dashboard
+      // recompute. Offline, the toggle is queued instead: `result` is
+      // undefined and the card just stays as-is until it syncs.
       const result = await runOrQueue(
-        () => toggleEpisodeWatched(item.episodeId, true, item.titleId, item.tmdbId),
+        () => markDashboardEpisodeWatched(item.episodeId, item.titleId, item.tmdbId),
         { type: "episode-toggle", payload: { episodeId: item.episodeId, watched: true, titleId: item.titleId, tmdbTvId: item.tmdbId } },
       );
-      if (result?.seriesCompleted) {
+      if (!result) return;
+      if (result.seriesCompleted) {
         setCelebration({
           title: "Série concluída!",
           description: `Você assistiu a todos os episódios de ${item.showName}.`,
         });
+        setHidden(true);
+        return;
+      }
+      if (result.nextEpisode) {
+        setItem(result.nextEpisode);
+        setJustMarked(false);
+      } else {
+        // Caught up on everything aired so far — belongs in "Em breve"
+        // instead, once the next episode actually airs.
+        setHidden(true);
       }
     });
   }
+
+  if (hidden && !celebration) return null;
 
   return (
     <div className="flex items-center gap-3 rounded-lg border p-3">

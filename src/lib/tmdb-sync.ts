@@ -132,11 +132,20 @@ export async function syncTitleFromTmdb(mediaType: TmdbMediaType, tmdbId: number
   return row.id;
 }
 
+// Mirrors the freshness window tmdbFetch already applies to the underlying
+// TMDb request (see tmdb.ts's `next: { revalidate }`) — a second, DB-level
+// check on top of it, since this function gets called several times per
+// dashboard load (once per show whose "next episode" is being recomputed),
+// and skipping the query entirely for an already-fresh season saves both the
+// TMDb round trip and the per-episode upserts.
+const SEASON_RESYNC_INTERVAL_MS = 60 * 60 * 1000;
+
 /**
  * Fetches one season's episodes from TMDb and upserts them into the shared
  * cache. Called on demand (when a user expands a season), not eagerly for
  * every season on a title's page load — long-running shows can have
- * hundreds of episodes across dozens of seasons.
+ * hundreds of episodes across dozens of seasons. Skips the actual TMDb
+ * fetch when the season was already synced within SEASON_RESYNC_INTERVAL_MS.
  */
 export async function syncSeasonEpisodes(
   seasonId: string,
@@ -144,6 +153,14 @@ export async function syncSeasonEpisodes(
   tmdbTvId: number,
   seasonNumber: number,
 ) {
+  const [seasonRow] = await db
+    .select({ lastSyncedAt: seasons.lastSyncedAt })
+    .from(seasons)
+    .where(eq(seasons.id, seasonId));
+  if (seasonRow?.lastSyncedAt && Date.now() - seasonRow.lastSyncedAt.getTime() < SEASON_RESYNC_INTERVAL_MS) {
+    return;
+  }
+
   // O flag de atraso vem do jsonb já cacheado no título (sempre gravado antes
   // de qualquer sync de temporada) — o payload de temporada do TMDb não traz
   // watch providers.

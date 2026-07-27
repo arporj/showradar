@@ -8,6 +8,7 @@ import { episodes, seasons, userEpisodeProgress, userLibrary } from "@/db/schema
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import type { LibraryStatus } from "@/lib/library-status";
+import { getNextEpisodeForShow } from "@/lib/next-episode";
 import { getWatchedEpisodeCounts } from "@/lib/progress";
 import { todayBrDateString } from "@/lib/release-dates";
 import { syncSeasonEpisodes } from "@/lib/tmdb-sync";
@@ -114,6 +115,19 @@ export async function loadSeasonEpisodes(input: {
   return episodeRows.map((episode) => ({ ...episode, watched: watchedIds.has(episode.id) }));
 }
 
+async function writeEpisodeWatched(userId: string, episodeId: string, watched: boolean) {
+  if (watched) {
+    await db
+      .insert(userEpisodeProgress)
+      .values({ userId, episodeId })
+      .onConflictDoNothing({ target: [userEpisodeProgress.userId, userEpisodeProgress.episodeId] });
+  } else {
+    await db
+      .delete(userEpisodeProgress)
+      .where(and(eq(userEpisodeProgress.userId, userId), eq(userEpisodeProgress.episodeId, episodeId)));
+  }
+}
+
 export async function toggleEpisodeWatched(
   episodeId: string,
   watched: boolean,
@@ -125,16 +139,7 @@ export async function toggleEpisodeWatched(
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  if (watched) {
-    await db
-      .insert(userEpisodeProgress)
-      .values({ userId: session.user.id, episodeId })
-      .onConflictDoNothing({ target: [userEpisodeProgress.userId, userEpisodeProgress.episodeId] });
-  } else {
-    await db
-      .delete(userEpisodeProgress)
-      .where(and(eq(userEpisodeProgress.userId, session.user.id), eq(userEpisodeProgress.episodeId, episodeId)));
-  }
+  await writeEpisodeWatched(session.user.id, episodeId, watched);
 
   const { seriesCompleted } = await syncLibraryStatusFromProgress(session.user.id, titleId);
 
@@ -146,6 +151,31 @@ export async function toggleEpisodeWatched(
   }
 
   return { seriesCompleted };
+}
+
+// Used only by the dashboard's "Continuar assistindo"/"Não iniciado" cards
+// (always marks watched=true — there's no unmark affordance there).
+// Deliberately does NOT revalidatePath("/dashboard"): since this action is
+// called from a component rendered on /dashboard itself, doing so would make
+// Next.js recompute the *entire* dashboard (every show's next-episode row,
+// each with its own DB round trips and a live TMDb season sync) just to
+// update the single card the user clicked. Instead, only that show's own
+// next episode is recomputed and returned, so the card can update itself
+// directly — see next-episode-card.tsx.
+export async function markDashboardEpisodeWatched(episodeId: string, titleId: string, tmdbTvId: number) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
+
+  await writeEpisodeWatched(session.user.id, episodeId, true);
+
+  const { seriesCompleted } = await syncLibraryStatusFromProgress(session.user.id, titleId);
+
+  revalidatePath(`/title/tv/${tmdbTvId}`);
+  revalidatePath("/library");
+
+  const nextEpisode = seriesCompleted ? null : await getNextEpisodeForShow(session.user.id, titleId, tmdbTvId);
+
+  return { seriesCompleted, nextEpisode };
 }
 
 // Only aired episodes are affected — marking an episode that hasn't been
