@@ -94,7 +94,7 @@ export default function TermosPage() {
 
           <h2>10. Contato</h2>
           <p>
-            <a href="mailto:contato@andreric.com">contato@andreric.com</a>
+            <a href="mailto:contato@showradar.com.br">contato@showradar.com.br</a>
           </p>
         </article>
       </main>

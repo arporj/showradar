@@ -33,7 +33,7 @@ export default function PrivacidadePage() {
           <p>
             O ShowRadar é um serviço de rastreamento de séries e filmes operado como
             projeto independente. Dúvidas sobre esta política podem ser enviadas para{" "}
-            <a href="mailto:privacidade@andreric.com">privacidade@andreric.com</a>.
+            <a href="mailto:contato@showradar.com.br">contato@showradar.com.br</a>.
           </p>
 
           <h2>2. Dados que coletamos</h2>
