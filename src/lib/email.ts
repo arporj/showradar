@@ -22,7 +22,7 @@ export async function sendEmail({
   const apiKey = process.env.BREVO_API_KEY;
   if (!apiKey) throw new EmailError("BREVO_API_KEY is not set");
 
-  const senderEmail = process.env.BREVO_SENDER_EMAIL ?? "showradar@andreric.com";
+  const senderEmail = process.env.BREVO_SENDER_EMAIL ?? "noreply@showradar.com.br";
   const senderName = process.env.BREVO_SENDER_NAME ?? "ShowRadar";
 
   const res = await fetch(BREVO_API_URL, {
