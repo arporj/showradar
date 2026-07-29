@@ -13,12 +13,10 @@ O núcleo do produto (busca, biblioteca, marcação de episódios, dashboard, no
 
 Bugs de entrega (badge do ícone do app, resiliência de assinatura FCM) foram investigados e corrigidos, instrumentados e enviados em 2026-07-23 — detalhes completos da investigação em `PROGRESS_HISTORICO.md`. Teste ao vivo em dispositivo físico agendado via um episódio real de Silo em 2026-07-24 (hoje) — resultado ainda não confirmado nesta conversa.
 
-Independente do resultado desse teste, ainda faltam:
+Notificações de follow implementadas em 2026-07-29: `sendFollowRequest` e `acceptFollowRequest` (`lib/actions/follow.ts`) agora chamam `notifyCommentEvent` (`lib/comment-notifications.ts`, tipo widened para incluir `follow_request`/`follow_accepted`) com dedup via `notification_log`. Colunas `notify_follow_request`/`notify_follow_accepted` adicionadas em `notification_preferences` (migration `0017_reflective_ulik.sql`, já aplicada) com toggles correspondentes em `/settings`.
 
-- [ ] Notificar quando alguém envia um pedido de follow
-- [ ] Notificar quando um pedido de follow enviado por você é **aceito**
-  (implementar em `lib/actions/follow.ts`, mesmo padrão de `lib/comment-notifications.ts::notifyCommentEvent`, com dedup via `notification_log`)
-- [ ] Colunas/toggles novos em `/settings` pros dois gatilhos acima (ex.: `notify_follow_request`, `notify_follow_accepted`) — o restante das preferências granulares já existe
+Ainda falta:
+
 - [ ] Validar entrega em Android físico de verdade — nunca testado num aparelho real até agora, só via Playwright + CDP (`ServiceWorker.deliverPushMessage`)
 
 ## Backlog priorizado (análise competitiva — 2026-07-15)

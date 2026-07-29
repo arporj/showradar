@@ -66,6 +66,8 @@ export async function updateNotificationPreferences(input: {
   notifyMentions: boolean;
   notifyReplies: boolean;
   notifyReactions: boolean;
+  notifyFollowRequest: boolean;
+  notifyFollowAccepted: boolean;
 }) {
   const session = await auth();
   if (!session?.user) redirect("/login");

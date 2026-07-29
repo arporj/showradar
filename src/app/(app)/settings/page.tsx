@@ -55,6 +55,8 @@ export default async function SettingsPage() {
             notifyMentions: prefs?.notifyMentions ?? true,
             notifyReplies: prefs?.notifyReplies ?? true,
             notifyReactions: prefs?.notifyReactions ?? true,
+            notifyFollowRequest: prefs?.notifyFollowRequest ?? true,
+            notifyFollowAccepted: prefs?.notifyFollowAccepted ?? true,
           }}
         />
       </div>

@@ -12,6 +12,8 @@ interface Prefs {
   notifyMentions: boolean;
   notifyReplies: boolean;
   notifyReactions: boolean;
+  notifyFollowRequest: boolean;
+  notifyFollowAccepted: boolean;
 }
 
 export function NotificationPreferencesForm({ initial }: { initial: Prefs }) {
@@ -102,6 +104,30 @@ export function NotificationPreferencesForm({ initial }: { initial: Prefs }) {
           checked={prefs.notifyReactions}
           disabled={isPending}
           onCheckedChange={(checked) => toggle("notifyReactions", checked)}
+        />
+      </label>
+
+      <label className="flex items-center justify-between gap-4 rounded-lg border p-4">
+        <div>
+          <p className="text-sm font-medium">Pedido para seguir</p>
+          <p className="text-xs text-muted-foreground">Avisar quando alguém pedir para seguir você.</p>
+        </div>
+        <Switch
+          checked={prefs.notifyFollowRequest}
+          disabled={isPending}
+          onCheckedChange={(checked) => toggle("notifyFollowRequest", checked)}
+        />
+      </label>
+
+      <label className="flex items-center justify-between gap-4 rounded-lg border p-4">
+        <div>
+          <p className="text-sm font-medium">Pedido para seguir aceito</p>
+          <p className="text-xs text-muted-foreground">Avisar quando seu pedido para seguir alguém for aceito.</p>
+        </div>
+        <Switch
+          checked={prefs.notifyFollowAccepted}
+          disabled={isPending}
+          onCheckedChange={(checked) => toggle("notifyFollowAccepted", checked)}
         />
       </label>
     </div>

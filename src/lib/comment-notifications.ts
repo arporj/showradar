@@ -6,7 +6,7 @@ import { notificationEmailHtml, sendEmail } from "@/lib/email";
 import { sendPushNotification } from "@/lib/push";
 import { isWithinQuietHours } from "@/lib/quiet-hours";
 
-type CommentNotificationType = "mention" | "reply" | "reaction";
+type CommentNotificationType = "mention" | "reply" | "reaction" | "follow_request" | "follow_accepted";
 
 const MENTION_PATTERN = /@([a-z0-9_]+)/g;
 
@@ -22,7 +22,7 @@ export async function resolveMentions(body: string): Promise<{ id: string; usern
 
 // Real-time counterpart to the daily cron in check-new-releases/route.ts —
 // same dedup-log/quiet-hours/dead-subscription-cleanup pattern, but for a
-// single recipient fired synchronously from a comment/reaction Server
+// single recipient fired synchronously from a comment/reaction/follow Server
 // Action instead of batched once a day. Never throws — a notification
 // failure must not fail the mutation that triggered it (same spirit as
 // lib/actions/password-reset.ts's email send).
@@ -53,6 +53,8 @@ export async function notifyCommentEvent(input: {
         notifyMentions: sql<boolean>`coalesce(${notificationPreferences.notifyMentions}, true)`,
         notifyReplies: sql<boolean>`coalesce(${notificationPreferences.notifyReplies}, true)`,
         notifyReactions: sql<boolean>`coalesce(${notificationPreferences.notifyReactions}, true)`,
+        notifyFollowRequest: sql<boolean>`coalesce(${notificationPreferences.notifyFollowRequest}, true)`,
+        notifyFollowAccepted: sql<boolean>`coalesce(${notificationPreferences.notifyFollowAccepted}, true)`,
         quietHoursStart: notificationPreferences.quietHoursStart,
         quietHoursEnd: notificationPreferences.quietHoursEnd,
         timezone: sql<string>`coalesce(${notificationPreferences.timezone}, 'UTC')`,
@@ -62,12 +64,13 @@ export async function notifyCommentEvent(input: {
       .where(eq(users.id, input.recipientUserId));
     if (!recipient) return;
 
-    const typeEnabled =
-      input.type === "mention"
-        ? recipient.notifyMentions
-        : input.type === "reply"
-          ? recipient.notifyReplies
-          : recipient.notifyReactions;
+    const typeEnabled = {
+      mention: recipient.notifyMentions,
+      reply: recipient.notifyReplies,
+      reaction: recipient.notifyReactions,
+      follow_request: recipient.notifyFollowRequest,
+      follow_accepted: recipient.notifyFollowAccepted,
+    }[input.type];
     if (!typeEnabled) return;
 
     if (isWithinQuietHours(new Date(), recipient.timezone, recipient.quietHoursStart, recipient.quietHoursEnd)) {
