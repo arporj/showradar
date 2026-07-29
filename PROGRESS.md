@@ -1,6 +1,6 @@
 # ShowRadar — Status do Projeto (Pendências)
 
-_Atualizado em: 2026-07-27 — arquivo reorganizado: todo o histórico do que já foi entregue (Fases 0-13, complementos, decisões técnicas, bugs já corrigidos) foi movido para `PROGRESS_HISTORICO.md`, porque este arquivo estava ficando grande demais. **Volte a checar o histórico sempre que precisar entender como algo pronto foi implementado — não redescubra por leitura de código o que já está documentado lá.** Este arquivo passa a listar só o que falta fazer._
+_Atualizado em: 2026-07-29 — item 0 do backlog (notificações push) concluído por inteiro e movido para `PROGRESS_HISTORICO.md`. Atualizado em: 2026-07-27 — arquivo reorganizado: todo o histórico do que já foi entregue (Fases 0-13, complementos, decisões técnicas, bugs já corrigidos) foi movido para `PROGRESS_HISTORICO.md`, porque este arquivo estava ficando grande demais. **Volte a checar o histórico sempre que precisar entender como algo pronto foi implementado — não redescubra por leitura de código o que já está documentado lá.** Este arquivo passa a listar só o que falta fazer._
 
 Referência do plano completo: `C:\Users\andre\.claude\plans\quero-fazer-um-sistema-magical-kite.md`
 Histórico completo (tudo que já foi construído, fase por fase): `PROGRESS_HISTORICO.md`
@@ -9,28 +9,17 @@ Histórico completo (tudo que já foi construído, fase por fase): `PROGRESS_HIS
 
 O núcleo do produto (busca, biblioteca, marcação de episódios, dashboard, notificações, PWA, tema, social, avaliações por título e por episódio, comentários, recomendações, admin, importação de histórico do TV Time, sincronização offline, SEO/landing) está **concluído e em produção** — ver `PROGRESS_HISTORICO.md`. O que resta é o backlog priorizado abaixo.
 
-## 🔴 Em andamento agora — notificações push
-
-Bugs de entrega (badge do ícone do app, resiliência de assinatura FCM) foram investigados e corrigidos, instrumentados e enviados em 2026-07-23 — detalhes completos da investigação em `PROGRESS_HISTORICO.md`. Teste ao vivo em dispositivo físico agendado via um episódio real de Silo em 2026-07-24 (hoje) — resultado ainda não confirmado nesta conversa.
-
-Notificações de follow implementadas em 2026-07-29: `sendFollowRequest` e `acceptFollowRequest` (`lib/actions/follow.ts`) agora chamam `notifyCommentEvent` (`lib/comment-notifications.ts`, tipo widened para incluir `follow_request`/`follow_accepted`) com dedup via `notification_log`. Colunas `notify_follow_request`/`notify_follow_accepted` adicionadas em `notification_preferences` (migration `0017_reflective_ulik.sql`, já aplicada) com toggles correspondentes em `/settings`.
-
-Ainda falta:
-
-- [ ] Validar entrega em Android físico de verdade — nunca testado num aparelho real até agora, só via Playwright + CDP (`ServiceWorker.deliverPushMessage`)
-
 ## Backlog priorizado (análise competitiva — 2026-07-15)
 
 Comparação do ShowRadar contra Trakt, Simkl e Serializd, feita no dia em que o **TV Time foi descontinuado** (15/07/2026 — 26 milhões de instalações órfãs). Rank de importância combinando os gaps identificados na análise com o que já estava especificado e pendente. (O item "Avaliações e discussão por episódio" que estava nesta lista foi concluído em 2026-07-16 — ver `PROGRESS_HISTORICO.md`.)
 
-0. [ ] 🔴 **[PRIORIDADE MÁXIMA]** Notificações push — ver seção "Em andamento agora" acima.
 1. [ ] **Importação de histórico — Trakt/Simkl pendentes (Serializd descartado)** — TV Time concluído em 2026-07-15, IMDb e Letterboxd concluídos em 2026-07-27. IMDb: ratings.csv de "Your Ratings"; só filmes e séries inteiras, sem episódio (export não tem granularidade de episódio nem data de assistido separada da data de avaliação; `tvEpisode` é ignorado no parser por não ter como linkar de volta pro show). Letterboxd: ZIP com `diary.csv`+`watched.csv`; só filmes (Letterboxd não cobre TV), data assistida é a mais antiga entre os dois arquivos. O formato normalizado de `import_job_items` já é agnóstico de fonte — um parser novo só precisa produzir `{rawTitle, mediaType, yearHint, episodes|movieWatchedAt}` e reaproveitar o casamento+escrita de `processImportBatch` sem alteração (`startImportJob` em `lib/actions/import.ts` já é o wiring compartilhado). Cada formato exige seu próprio parser.
    - **Serializd removido da lista (2026-07-27)** — não tem nenhum export self-service de dados do usuário (CSV/JSON/API), só importação na direção contrária (Trakt → Serializd). Sem dado pra ler, não tem o que parsear.
    - **Trakt e Simkl não seguem o padrão dos 4 anteriores** — ambos têm documentação oficial boa, mas não como arquivo pra baixar e subir: é API REST com OAuth2 (`docs.trakt.tv`, ~150 endpoints, inclusive `llms.txt` pra agentes; `api.simkl.org`, endpoint `/sync/all-items` documentado com `seasons[].episodes[].watched_at`). O CSV de export do Simkl existe mas é fraco (só título + último episódio, sem data). Pra importar de verdade dos dois precisa de fluxo "conectar conta" (OAuth) em vez de upload — exige registrar um app developer em cada serviço pra ter client ID/secret, decisão/passo que só o usuário pode tomar (mesma natureza das pendências de Stripe/Google Ads abaixo). Pausado a pedido do usuário em 2026-07-27 até haver decisão de seguir com OAuth.
 2. [ ] **Calendário + iCal** — visão de calendário das estreias (`/upcoming` hoje é uma lista) + feed iCal assinável; padrão em Trakt e Simkl.
 3. [ ] **Fase 7 — Monetização** — segue especificada e pulada a pedido do usuário; faz mais sentido depois de mais itens do backlog elevarem retenção (stats/retrospectiva e listas, já concluídos, são os candidatos naturais a recurso pago, como no Trakt VIP). Especificação completa abaixo.
 
-_(Itens já concluídos deste backlog — estatísticas/retrospectiva, rewatch/status "pausado", listas personalizadas, layout do e-mail, data de estreia+streaming na Grade — foram movidos pra `PROGRESS_HISTORICO.md` em 2026-07-27.)_
+_(Itens já concluídos deste backlog — notificações push (item 0), estatísticas/retrospectiva, rewatch/status "pausado", listas personalizadas, layout do e-mail, data de estreia+streaming na Grade — foram movidos pra `PROGRESS_HISTORICO.md`.)_
 
 ---
 

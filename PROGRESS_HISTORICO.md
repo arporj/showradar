@@ -328,6 +328,12 @@ Cards de filme ainda não lançado em `/library` ("Minha Grade") mostravam só p
 
 ---
 
+## Item 0 do backlog — Notificações push (concluído, 2026-07-29)
+
+Bugs de entrega (badge do ícone do app, resiliência de assinatura FCM) investigados e corrigidos, instrumentados e enviados em 2026-07-23. Teste ao vivo em dispositivo Android físico via um episódio real de Silo em 2026-07-24 — **validado pelo usuário em 2026-07-29**, primeira confirmação de entrega push num aparelho real (até então só verificado via Playwright + CDP, `ServiceWorker.deliverPushMessage`).
+
+Faltavam dois gatilhos sociais, implementados em 2026-07-29: `sendFollowRequest` e `acceptFollowRequest` (`lib/actions/follow.ts`) agora chamam `notifyCommentEvent` (`lib/comment-notifications.ts`) quando, respectivamente, alguém envia um pedido de follow e quando um pedido enviado é aceito — mesmo padrão de dedup via `notification_log`/quiet-hours/push+email já usado por menções, respostas e reações a comentários. O tipo aceito por `notifyCommentEvent` foi ampliado (`follow_request`/`follow_accepted`) em vez de duplicar a lógica de envio num arquivo novo, já que o helper já era genérico o bastante (só faltavam `titleId`/`episodeId` opcionais, que já existiam). Migration `0017_reflective_ulik.sql` adiciona os valores no enum `notification_type` e as colunas `notify_follow_request`/`notify_follow_accepted` (default `true`) em `notification_preferences`; toggles correspondentes em `/settings` seguem o mesmo componente `NotificationPreferencesForm`. `tsc --noEmit` limpo.
+
 ## Decisões técnicas que valem lembrar
 
 - **Nome do app:** ShowRadar.
