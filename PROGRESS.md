@@ -48,6 +48,7 @@ _(Itens já concluídos deste backlog — notificações push (item 0), estatís
 
 ## Pendências avulsas de rodadas anteriores
 
+- [ ] **Erro ao alterar foto do perfil** — investigar e corrigir falha ao tentar atualizar a foto de perfil do usuário (upload/armazenamento/action de foto em `/settings`).
 - **Google Ads/GA4** — conta ainda não existe; a Google tag já está preparada atrás de `NEXT_PUBLIC_GOOGLE_TAG_ID` e o evento `sign_up` já está instrumentado, faltando só criar a conta e configurar o ID (ver memória `project_google_ads_setup_pending`).
 - **Conta Stripe em modo teste** — pré-requisito da Fase 7 acima, nunca criada.
 
