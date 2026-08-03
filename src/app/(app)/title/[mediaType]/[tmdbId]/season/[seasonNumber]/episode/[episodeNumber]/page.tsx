@@ -18,6 +18,7 @@ import { formatDate } from "@/lib/format-date";
 import { shiftDateString, todayBrDateString } from "@/lib/release-dates";
 import { syncTitleFromTmdb } from "@/lib/tmdb-sync";
 import { tmdbImageUrl } from "@/lib/tmdb";
+import { tmdbImageLoader } from "@/lib/tmdb-image-loader";
 
 // Preview comments stay blurred until this many days after the episode airs
 // — long enough for weekly watchers to catch up before spoilers show up
@@ -80,7 +81,7 @@ export default async function EpisodeDetailPage({
   return (
     <div className="space-y-6">
       <div className="relative -mx-6 -mt-8 aspect-video overflow-hidden bg-muted sm:aspect-[21/9]">
-        {still && <Image src={still} alt="" fill className="object-cover" priority />}
+        {still && <Image loader={tmdbImageLoader} src={still} alt="" fill sizes="100vw" className="object-cover" priority />}
         <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent" />
         <Link
           href={`/title/tv/${tmdbIdNum}`}

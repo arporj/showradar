@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { tmdbImageLoader } from "@/lib/tmdb-image-loader";
 import { tmdbImageUrl } from "@/lib/tmdb";
 
 export function TitleCard({
@@ -21,7 +22,7 @@ export function TitleCard({
     <Link href={href} className="block space-y-2">
       <div className="relative aspect-2/3 overflow-hidden rounded-lg bg-muted">
         {poster ? (
-          <Image src={poster} alt={name} fill sizes="200px" className="object-cover" />
+          <Image loader={tmdbImageLoader} src={poster} alt={name} fill sizes="200px" className="object-cover" />
         ) : (
           <div className="flex h-full items-center justify-center text-center text-xs text-muted-foreground">
             Sem capa

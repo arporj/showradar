@@ -13,6 +13,7 @@ import { formatDate } from "@/lib/format-date";
 import { LIBRARY_STATUS_LABEL, type LibraryStatus } from "@/lib/library-status";
 import { todayBrDateString } from "@/lib/release-dates";
 import { tmdbImageUrl, type TmdbWatchProviderRegion } from "@/lib/tmdb";
+import { tmdbImageLoader } from "@/lib/tmdb-image-loader";
 import { cn } from "@/lib/utils";
 
 const MEDIA_TABS = [
@@ -179,7 +180,7 @@ export function LibraryBody({
                               className="relative size-5 shrink-0 overflow-hidden rounded bg-muted"
                             >
                               {logo && (
-                                <Image src={logo} alt={provider.provider_name} fill sizes="20px" className="object-cover" />
+                                <Image loader={tmdbImageLoader} src={logo} alt={provider.provider_name} fill sizes="20px" className="object-cover" />
                               )}
                             </span>
                           );

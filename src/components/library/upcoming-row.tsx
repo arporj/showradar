@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/format-date";
 import { daysUntil, formatDaysUntil, type UpcomingItem } from "@/lib/upcoming";
 import { tmdbImageUrl } from "@/lib/tmdb";
+import { tmdbImageLoader } from "@/lib/tmdb-image-loader";
 
 export function UpcomingRow({ item }: { item: UpcomingItem }) {
   const image = tmdbImageUrl(item.stillPath ?? item.posterPath, item.stillPath ? "w300" : "w185");
@@ -16,7 +17,7 @@ export function UpcomingRow({ item }: { item: UpcomingItem }) {
   return (
     <Link href={href} className="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/50">
       <div className="relative h-16 w-28 shrink-0 overflow-hidden rounded bg-muted">
-        {image && <Image src={image} alt="" fill sizes="112px" className="object-cover" />}
+        {image && <Image loader={tmdbImageLoader} src={image} alt="" fill sizes="112px" className="object-cover" />}
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">{item.name}</p>

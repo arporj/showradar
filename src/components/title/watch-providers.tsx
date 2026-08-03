@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { tmdbImageUrl, type TmdbWatchProviderRegion } from "@/lib/tmdb";
+import { tmdbImageLoader } from "@/lib/tmdb-image-loader";
 
 // Dedup entre flatrate/free/ads (um provider pode aparecer em mais de um) e
 // ordena pela prioridade de exibição do TMDb — reusado no card compacto da
@@ -41,7 +42,9 @@ export function WatchProviders({ providers }: { providers: TmdbWatchProviderRegi
               title={provider.provider_name}
               className="relative size-9 shrink-0 overflow-hidden rounded-lg bg-muted"
             >
-              {logo && <Image src={logo} alt={provider.provider_name} fill sizes="36px" className="object-cover" />}
+              {logo && (
+                <Image loader={tmdbImageLoader} src={logo} alt={provider.provider_name} fill sizes="36px" className="object-cover" />
+              )}
             </Link>
           );
         })}

@@ -7,6 +7,7 @@ import { RatingStars } from "@/components/title/rating-stars";
 import type { FriendActivityItem } from "@/lib/feed";
 import { formatDate } from "@/lib/format-date";
 import { tmdbImageUrl } from "@/lib/tmdb";
+import { tmdbImageLoader } from "@/lib/tmdb-image-loader";
 
 export function FriendActivityRow({ item }: { item: FriendActivityItem }) {
   const displayName = item.user.name ?? item.user.username ?? "";
@@ -50,7 +51,7 @@ export function FriendActivityRow({ item }: { item: FriendActivityItem }) {
       </div>
 
       <Link href={titleHref} className="relative h-16 w-11 shrink-0 overflow-hidden rounded bg-muted">
-        {poster && <Image src={poster} alt="" fill sizes="44px" className="object-cover" />}
+        {poster && <Image loader={tmdbImageLoader} src={poster} alt="" fill sizes="44px" className="object-cover" />}
       </Link>
     </div>
   );

@@ -10,6 +10,7 @@ import { markDashboardEpisodeWatched } from "@/lib/actions/episodes";
 import type { NextEpisodeItem } from "@/lib/next-episode";
 import { runOrQueue } from "@/lib/offline/run-or-queue";
 import { tmdbImageUrl } from "@/lib/tmdb";
+import { tmdbImageLoader } from "@/lib/tmdb-image-loader";
 
 export function NextEpisodeCard({ item: initialItem }: { item: NextEpisodeItem }) {
   const [item, setItem] = useState(initialItem);
@@ -57,7 +58,7 @@ export function NextEpisodeCard({ item: initialItem }: { item: NextEpisodeItem }
   return (
     <div className="flex items-center gap-3 rounded-lg border p-3">
       <Link href={episodeHref} className="relative h-16 w-28 shrink-0 overflow-hidden rounded bg-muted">
-        {image && <Image src={image} alt="" fill sizes="112px" className="object-cover" />}
+        {image && <Image loader={tmdbImageLoader} src={image} alt="" fill sizes="112px" className="object-cover" />}
       </Link>
       <Link href={episodeHref} className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">{item.showName}</p>

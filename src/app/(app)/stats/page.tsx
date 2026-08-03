@@ -7,6 +7,7 @@ import { auth } from "@/lib/auth";
 import { formatDate } from "@/lib/format-date";
 import { getAvailableStatsYears, getYearStats } from "@/lib/stats";
 import { tmdbImageUrl } from "@/lib/tmdb";
+import { tmdbImageLoader } from "@/lib/tmdb-image-loader";
 
 export default async function StatsPage({ searchParams }: { searchParams: Promise<{ year?: string }> }) {
   const session = await auth();
@@ -102,7 +103,14 @@ export default async function StatsPage({ searchParams }: { searchParams: Promis
                     >
                       <div className="relative h-16 w-11 shrink-0 overflow-hidden rounded bg-muted">
                         {poster && (
-                          <Image src={poster} alt={series.name} fill sizes="44px" className="object-cover" />
+                          <Image
+                            loader={tmdbImageLoader}
+                            src={poster}
+                            alt={series.name}
+                            fill
+                            sizes="44px"
+                            className="object-cover"
+                          />
                         )}
                       </div>
                       <p className="min-w-0 flex-1 truncate text-sm font-medium">{series.name}</p>

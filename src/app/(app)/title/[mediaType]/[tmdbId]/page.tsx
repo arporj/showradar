@@ -22,6 +22,7 @@ import { getTitleRatingSummary } from "@/lib/ratings";
 import { shiftDateString, todayBrDateString } from "@/lib/release-dates";
 import { getTitleCommentPreview, getTitleCommentCount } from "@/lib/title-comments";
 import { tmdbImageUrl, type TmdbCastMember, type TmdbEpisodeRef, type TmdbWatchProviderRegion } from "@/lib/tmdb";
+import { tmdbImageLoader } from "@/lib/tmdb-image-loader";
 import { syncTitleFromTmdb } from "@/lib/tmdb-sync";
 
 // Same window as the episode page's preview — a movie's release date is
@@ -126,7 +127,7 @@ export default async function TitleDetailPage({
     <div className="space-y-8">
       {backdrop ? (
         <div className="relative -mx-6 -mt-8 h-56 overflow-hidden sm:h-72">
-          <Image src={backdrop} alt="" fill className="object-cover" priority />
+          <Image loader={tmdbImageLoader} src={backdrop} alt="" fill sizes="100vw" className="object-cover" priority />
           <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent" />
           <div className="absolute left-4 top-4">
             <BackButton className="bg-black/40 text-white hover:bg-black/60 hover:text-white" />
@@ -139,7 +140,7 @@ export default async function TitleDetailPage({
       <div className="flex flex-col gap-6 sm:flex-row">
         <div className="relative mx-auto h-72 w-48 shrink-0 overflow-hidden rounded-lg bg-muted sm:mx-0">
           {poster ? (
-            <Image src={poster} alt={title.name} fill sizes="192px" className="object-cover" />
+            <Image loader={tmdbImageLoader} src={poster} alt={title.name} fill sizes="192px" className="object-cover" />
           ) : (
             <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
               Sem capa
@@ -190,7 +191,7 @@ export default async function TitleDetailPage({
                     >
                       <div className="relative mx-auto h-20 w-20 overflow-hidden rounded-full bg-muted">
                         {photo && (
-                          <Image src={photo} alt={member.name} fill sizes="80px" className="object-cover" />
+                          <Image loader={tmdbImageLoader} src={photo} alt={member.name} fill sizes="80px" className="object-cover" />
                         )}
                       </div>
                       <p className="mt-1 line-clamp-1 text-xs">{member.name}</p>

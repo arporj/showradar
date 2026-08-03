@@ -15,6 +15,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { formatDate } from "@/lib/format-date";
 import { tmdbImageUrl } from "@/lib/tmdb";
+import { tmdbImageLoader } from "@/lib/tmdb-image-loader";
 
 interface HistoryEntry {
   key: string;
@@ -140,7 +141,9 @@ export default async function HistoryPage() {
                 className="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/50"
               >
                 <div className="relative h-16 w-11 shrink-0 overflow-hidden rounded bg-muted">
-                  {poster && <Image src={poster} alt={entry.name} fill sizes="44px" className="object-cover" />}
+                  {poster && (
+                    <Image loader={tmdbImageLoader} src={poster} alt={entry.name} fill sizes="44px" className="object-cover" />
+                  )}
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{entry.name}</p>

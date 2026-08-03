@@ -32,6 +32,7 @@ import { isOffline } from "@/lib/offline/network-status";
 import { runOrQueue } from "@/lib/offline/run-or-queue";
 import { todayBrDateString } from "@/lib/release-dates";
 import { tmdbImageUrl } from "@/lib/tmdb";
+import { tmdbImageLoader } from "@/lib/tmdb-image-loader";
 import { cn } from "@/lib/utils";
 
 type SeasonRow = typeof seasonsTable.$inferSelect;
@@ -353,7 +354,7 @@ function EpisodeRowItem({ episode, href, onToggle }: { episode: EpisodeRow; href
     <div className="flex items-center gap-3 rounded-md p-2 transition-colors hover:bg-muted/50">
       <Link href={href} className="flex min-w-0 flex-1 items-center gap-3 text-left">
         <div className="relative h-11 w-20 shrink-0 overflow-hidden rounded bg-muted">
-          {still && <Image src={still} alt="" fill sizes="80px" className="object-cover" />}
+          {still && <Image loader={tmdbImageLoader} src={still} alt="" fill sizes="80px" className="object-cover" />}
         </div>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm">

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { AddToLibraryButton } from "@/components/search/add-to-library-button";
 import { Badge } from "@/components/ui/badge";
 import { TMDB_GENRE_NAMES, tmdbImageUrl, type TmdbSearchResult } from "@/lib/tmdb";
+import { tmdbImageLoader } from "@/lib/tmdb-image-loader";
 
 export function SearchResultCard({
   result,
@@ -28,7 +29,9 @@ export function SearchResultCard({
         className="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/50"
       >
         <div className="relative size-14 shrink-0 overflow-hidden rounded-full bg-muted">
-          {photo && <Image src={photo} alt={result.name ?? ""} fill sizes="56px" className="object-cover" />}
+          {photo && (
+            <Image loader={tmdbImageLoader} src={photo} alt={result.name ?? ""} fill sizes="56px" className="object-cover" />
+          )}
         </div>
         <div>
           <p className="font-medium">{result.name}</p>
@@ -60,7 +63,7 @@ export function SearchResultCard({
         className="relative h-28 w-20 shrink-0 overflow-hidden rounded-md bg-muted"
       >
         {poster ? (
-          <Image src={poster} alt={title} fill sizes="80px" className="object-cover" />
+          <Image loader={tmdbImageLoader} src={poster} alt={title} fill sizes="80px" className="object-cover" />
         ) : (
           <div className="flex h-full items-center justify-center text-center text-xs text-muted-foreground">
             Sem capa

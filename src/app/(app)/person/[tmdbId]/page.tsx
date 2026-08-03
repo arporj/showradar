@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 
 import { BackButton } from "@/components/ui/back-button";
 import { getPersonDetail, tmdbImageUrl } from "@/lib/tmdb";
+import { tmdbImageLoader } from "@/lib/tmdb-image-loader";
 
 export default async function PersonPage({ params }: { params: Promise<{ tmdbId: string }> }) {
   const { tmdbId } = await params;
@@ -28,7 +29,7 @@ export default async function PersonPage({ params }: { params: Promise<{ tmdbId:
 
       <div className="flex flex-col gap-6 sm:flex-row">
         <div className="relative mx-auto h-56 w-40 shrink-0 overflow-hidden rounded-lg bg-muted sm:mx-0">
-          {photo && <Image src={photo} alt={person.name} fill sizes="160px" className="object-cover" />}
+          {photo && <Image loader={tmdbImageLoader} src={photo} alt={person.name} fill sizes="160px" className="object-cover" />}
         </div>
         <div className="flex-1 space-y-2">
           <h1 className="text-2xl font-bold tracking-tight">{person.name}</h1>
@@ -56,7 +57,7 @@ export default async function PersonPage({ params }: { params: Promise<{ tmdbId:
                   className="space-y-1"
                 >
                   <div className="relative aspect-2/3 overflow-hidden rounded-md bg-muted">
-                    {poster && <Image src={poster} alt={title} fill sizes="150px" className="object-cover" />}
+                    {poster && <Image loader={tmdbImageLoader} src={poster} alt={title} fill sizes="150px" className="object-cover" />}
                   </div>
                   <p className="line-clamp-2 text-xs">{title}</p>
                 </Link>
