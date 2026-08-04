@@ -1,11 +1,11 @@
 import { RatingStars } from "@/components/title/rating-stars";
 import type { EpisodeRatingSummary } from "@/lib/episode-ratings";
 
-// A title's personal rating is only "final" once it's completed/dropped —
-// while still watching, the series hasn't been rated as a whole yet, so the
-// best signal is the average of episodes rated so far. Both are readOnly
-// displays of someone else's opinion, never editable from here.
-export function FriendTitleRating({
+// A title's personal rating is só "final" quando completed/dropped — enquanto
+// assistindo, o título ainda não foi avaliado como um todo, então o melhor
+// sinal é a média dos episódios já avaliados. Sempre somente leitura aqui
+// (dono ou amigo); editar a nota final é feito na página de detalhe.
+export function TitleRatingDisplay({
   finalRating,
   provisional,
 }: {

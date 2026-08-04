@@ -7,8 +7,14 @@ export function LibraryBodySkeleton() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap gap-2">
-        {Array.from({ length: 5 }).map((_, i) => (
+        {Array.from({ length: 6 }).map((_, i) => (
           <Skeleton key={i} className="h-7 w-20 rounded-full" />
+        ))}
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-7 w-24 rounded-full" />
         ))}
       </div>
 

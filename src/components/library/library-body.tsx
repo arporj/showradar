@@ -1,19 +1,14 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 
+import { GradeSections, type GradeRow } from "@/components/library/grade-sections";
 import { LibraryBodySkeleton } from "@/components/library/library-skeleton";
-import { TitleCard } from "@/components/library/title-card";
-import { Badge } from "@/components/ui/badge";
-import { getStreamingProviders } from "@/components/title/watch-providers";
-import { formatDate } from "@/lib/format-date";
 import { LIBRARY_STATUS_LABEL, type LibraryStatus } from "@/lib/library-status";
+import { RATING_FILTERS } from "@/lib/rating-filter";
 import { todayBrDateString } from "@/lib/release-dates";
-import { tmdbImageUrl, type TmdbWatchProviderRegion } from "@/lib/tmdb";
-import { tmdbImageLoader } from "@/lib/tmdb-image-loader";
 import { cn } from "@/lib/utils";
 
 const MEDIA_TABS = [
@@ -32,37 +27,29 @@ const STATUS_FILTERS: { value: LibraryStatus | undefined; label: string }[] = [
   { value: "dropped", label: LIBRARY_STATUS_LABEL.dropped },
 ];
 
-function libraryHref(mediaType: MediaTab, status?: LibraryStatus, q?: string) {
+function libraryHref(mediaType: MediaTab, status?: LibraryStatus, q?: string, minRating?: number) {
   const params = new URLSearchParams();
   if (mediaType === "movie") params.set("type", "movie");
   if (status) params.set("status", status);
   if (q) params.set("q", q);
+  if (minRating) params.set("minRating", String(minRating));
   const query = params.toString();
   return query ? `/library?${query}` : "/library";
-}
-
-interface LibraryRow {
-  titleId: string;
-  tmdbId: number;
-  mediaType: MediaTab;
-  name: string;
-  posterPath: string | null;
-  status: LibraryStatus;
-  releaseDate: string | null;
-  watchProvidersBr: unknown;
 }
 
 export function LibraryBody({
   mediaType,
   statusFilter,
+  minRating,
   search,
   rows,
   searchSlot,
 }: {
   mediaType: MediaTab;
   statusFilter: LibraryStatus | undefined;
+  minRating: number | undefined;
   search: string;
-  rows: LibraryRow[];
+  rows: GradeRow[];
   searchSlot: React.ReactNode;
 }) {
   const router = useRouter();
@@ -83,7 +70,7 @@ export function LibraryBody({
         <button
           key={tab.value}
           type="button"
-          onClick={() => navigate(libraryHref(tab.value, statusFilter, search))}
+          onClick={() => navigate(libraryHref(tab.value, statusFilter, search, minRating))}
           className={cn(
             "border-b-2 px-1 pb-2 text-sm font-medium transition-colors",
             mediaType === tab.value
@@ -119,7 +106,26 @@ export function LibraryBody({
             <button
               key={filter.label}
               type="button"
-              onClick={() => navigate(libraryHref(mediaType, filter.value, search))}
+              onClick={() => navigate(libraryHref(mediaType, filter.value, search, minRating))}
+              className={cn(
+                "rounded-full border px-3 py-1 text-sm transition-colors",
+                isActive ? "border-foreground bg-foreground text-background" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {filter.label}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {RATING_FILTERS.map((filter) => {
+          const isActive = minRating === filter.value;
+          return (
+            <button
+              key={filter.label}
+              type="button"
+              onClick={() => navigate(libraryHref(mediaType, statusFilter, search, filter.value))}
               className={cn(
                 "rounded-full border px-3 py-1 text-sm transition-colors",
                 isActive ? "border-foreground bg-foreground text-background" : "text-muted-foreground hover:text-foreground",
@@ -132,9 +138,9 @@ export function LibraryBody({
       </div>
 
       {rows.length === 0 ? (
-        search ? (
+        search || minRating ? (
           <p className="text-sm text-muted-foreground">
-            Nada na sua grade de {mediaType === "movie" ? "filmes" : "séries"} bate com &quot;{search}&quot;.
+            Nada na sua grade de {mediaType === "movie" ? "filmes" : "séries"} bate com esse filtro.
           </p>
         ) : (
           <p className="text-sm text-muted-foreground">
@@ -146,53 +152,7 @@ export function LibraryBody({
           </p>
         )
       ) : (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-          {rows.map((row) => {
-            // Só filmes têm release_date único e cedo o bastante pra valer a
-            // pena badge de estreia aqui — episódio futuro de série já tem
-            // seção própria ("Em breve" no dashboard e /upcoming).
-            const isUpcomingMovie = row.mediaType === "movie" && !!row.releaseDate && row.releaseDate > today;
-            const providers = isUpcomingMovie
-              ? getStreamingProviders(row.watchProvidersBr as TmdbWatchProviderRegion | null)
-              : [];
-
-            return (
-              <TitleCard
-                key={row.titleId}
-                href={`/title/${row.mediaType}/${row.tmdbId}`}
-                posterPath={row.posterPath}
-                name={row.name}
-              >
-                <Badge variant="secondary" className="mt-1">
-                  {LIBRARY_STATUS_LABEL[row.status]}
-                </Badge>
-                {isUpcomingMovie && (
-                  <>
-                    <p className="mt-1 text-xs text-muted-foreground">Estreia em {formatDate(row.releaseDate!)}</p>
-                    {providers.length > 0 && (
-                      <div className="mt-1 flex flex-wrap gap-1">
-                        {providers.map((provider) => {
-                          const logo = tmdbImageUrl(provider.logo_path, "w45");
-                          return (
-                            <span
-                              key={provider.provider_id}
-                              title={provider.provider_name}
-                              className="relative size-5 shrink-0 overflow-hidden rounded bg-muted"
-                            >
-                              {logo && (
-                                <Image loader={tmdbImageLoader} src={logo} alt={provider.provider_name} fill sizes="20px" className="object-cover" />
-                              )}
-                            </span>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </>
-                )}
-              </TitleCard>
-            );
-          })}
-        </div>
+        <GradeSections rows={rows} today={today} />
       )}
     </div>
   );
