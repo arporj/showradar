@@ -8,7 +8,10 @@ import { Button } from "@/components/ui/button";
 import { uploadAvatarAction } from "@/lib/actions/profile";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
-const MAX_SIZE_BYTES = 5 * 1024 * 1024;
+// Kept in sync with MAX_AVATAR_SIZE_BYTES in lib/actions/profile.ts (see comment
+// there re: Vercel's 4.5MB serverless body cap) so oversized files are rejected
+// here, before ever hitting the network.
+const MAX_SIZE_BYTES = 4 * 1024 * 1024;
 
 export function AvatarUpload({ initialAvatarUrl, name }: { initialAvatarUrl: string | null; name: string }) {
   const [preview, setPreview] = useState<string | null>(initialAvatarUrl);
@@ -26,7 +29,7 @@ export function AvatarUpload({ initialAvatarUrl, name }: { initialAvatarUrl: str
       return;
     }
     if (file.size > MAX_SIZE_BYTES) {
-      setError("A imagem deve ter no máximo 5MB");
+      setError("A imagem deve ter no máximo 4MB");
       return;
     }
 

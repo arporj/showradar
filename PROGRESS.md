@@ -48,8 +48,8 @@ _(Itens já concluídos deste backlog — notificações push (item 0), estatís
 
 ## Pendências avulsas de rodadas anteriores
 
-- [ ] **Erro ao alterar foto do perfil** — investigar e corrigir falha ao tentar atualizar a foto de perfil do usuário (upload/armazenamento/action de foto em `/settings`).
 - **Google Ads/GA4** — conta ainda não existe; a Google tag já está preparada atrás de `NEXT_PUBLIC_GOOGLE_TAG_ID` e o evento `sign_up` já está instrumentado, faltando só criar a conta e configurar o ID (ver memória `project_google_ads_setup_pending`).
 - **Conta Stripe em modo teste** — pré-requisito da Fase 7 acima, nunca criada.
+- [ ] **Risco latente na importação de histórico — mesmo teto de 4.5MB da Vercel do bug de foto de perfil (corrigido em 2026-08-04, ver `PROGRESS_HISTORICO.md`)** — `lib/actions/import.ts`/`import-upload-form.tsx` permitem até 15MB, mas a Vercel rejeita (413) qualquer corpo de Server Action acima de 4.5MB antes mesmo do código rodar. Um export do TV Time/IMDb/Letterboxd entre 4.5MB e 15MB falha do mesmo jeito que a foto falhava. Não corrigido ainda por estar fora do escopo daquela rodada — considerar reduzir o teto pra abaixo de 4.5MB ou migrar pra upload direto ao Supabase Storage.
 
 _(Fora de escopo por enquanto: wrapper nativo Capacitor + push nativo para lojas de app.)_

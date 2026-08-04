@@ -20,7 +20,11 @@ export async function updateProfileVisibility(isPrivate: boolean) {
 }
 
 const ALLOWED_AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp"];
-const MAX_AVATAR_SIZE_BYTES = 5 * 1024 * 1024;
+// Must stay under Vercel's hard 4.5MB request body cap for serverless functions
+// (platform-level, not configurable via next.config's serverActions.bodySizeLimit —
+// requests over it are rejected before this action even runs). 4MB leaves headroom
+// for multipart overhead so ordinary phone photos don't silently fail.
+const MAX_AVATAR_SIZE_BYTES = 4 * 1024 * 1024;
 
 export async function uploadAvatarAction(formData: FormData): Promise<{ error: string } | { url: string }> {
   const session = await auth();
@@ -34,7 +38,7 @@ export async function uploadAvatarAction(formData: FormData): Promise<{ error: s
     return { error: "Envie uma imagem JPEG, PNG ou WebP" };
   }
   if (file.size > MAX_AVATAR_SIZE_BYTES) {
-    return { error: "A imagem deve ter no máximo 5MB" };
+    return { error: "A imagem deve ter no máximo 4MB" };
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());
