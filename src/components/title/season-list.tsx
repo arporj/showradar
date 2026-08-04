@@ -16,6 +16,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -100,6 +101,7 @@ function SeasonItem({
   const [open, setOpen] = useState(false);
   const [episodeRows, setEpisodeRows] = useState<EpisodeRow[] | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [markingSeason, setMarkingSeason] = useState(false);
   const [confirm, setConfirm] = useState<ConfirmState | null>(null);
   const [, startTransition] = useTransition();
@@ -112,10 +114,10 @@ function SeasonItem({
     (s) => s.seasonNumber < season.seasonNumber && (watchedCounts[s.id] ?? 0) < (s.episodeCount ?? 0),
   );
 
-  async function handleOpenChange(next: boolean) {
-    setOpen(next);
-    if (next && episodeRows === null) {
-      setLoading(true);
+  async function fetchEpisodes() {
+    setLoading(true);
+    setLoadError(null);
+    try {
       const rows = await loadSeasonEpisodes({
         seasonId: season.id,
         titleId,
@@ -123,7 +125,17 @@ function SeasonItem({
         seasonNumber: season.seasonNumber,
       });
       setEpisodeRows(rows);
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : String(err));
+    } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleOpenChange(next: boolean) {
+    setOpen(next);
+    if (next && episodeRows === null) {
+      await fetchEpisodes();
     }
   }
 
@@ -297,7 +309,17 @@ function SeasonItem({
           </div>
         )}
 
-        {!loading && episodeRows && (
+        {!loading && loadError && (
+          <div className="space-y-2 pt-3 text-sm">
+            <p className="text-destructive">Não foi possível carregar os episódios desta temporada.</p>
+            <p className="break-all rounded bg-muted p-2 font-mono text-xs text-muted-foreground">{loadError}</p>
+            <Button variant="outline" size="sm" onClick={fetchEpisodes}>
+              Tentar novamente
+            </Button>
+          </div>
+        )}
+
+        {!loading && !loadError && episodeRows && (
           <div className="space-y-1 pt-3">
             {episodeRows.map((episode) => (
               <EpisodeRowItem
