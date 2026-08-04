@@ -18,6 +18,7 @@ export interface UpcomingItem {
   seasonNumber: number | null;
   episodeNumber: number | null;
   stillPath: string | null;
+  watchProvidersBr: unknown;
 }
 
 /**
@@ -46,6 +47,7 @@ export async function getUpcomingItems(userId: string): Promise<UpcomingItem[]> 
       posterPath: titlesTable.posterPath,
       releaseDate: titlesTable.releaseDate,
       nextEpisodeToAir: titlesTable.nextEpisodeToAir,
+      watchProvidersBr: titlesTable.watchProvidersBr,
     })
     .from(userLibrary)
     .innerJoin(titlesTable, eq(userLibrary.titleId, titlesTable.id))
@@ -66,6 +68,7 @@ export async function getUpcomingItems(userId: string): Promise<UpcomingItem[]> 
       seasonNumber: null,
       episodeNumber: null,
       stillPath: null,
+      watchProvidersBr: row.watchProvidersBr,
     }));
 
   const tvRows = libraryRows.filter((row) => row.mediaType === "tv");
@@ -111,6 +114,7 @@ export async function getUpcomingItems(userId: string): Promise<UpcomingItem[]> 
           seasonNumber: ep.seasonNumber,
           episodeNumber: ep.episodeNumber,
           stillPath: ep.stillPath,
+          watchProvidersBr: row.watchProvidersBr,
         });
       }
       continue;
@@ -131,6 +135,7 @@ export async function getUpcomingItems(userId: string): Promise<UpcomingItem[]> 
         seasonNumber: nextEpisode.season_number,
         episodeNumber: nextEpisode.episode_number,
         stillPath: null,
+        watchProvidersBr: row.watchProvidersBr,
       });
     }
   }

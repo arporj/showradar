@@ -2,9 +2,10 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
+import { getStreamingProviders } from "@/components/title/watch-providers";
 import { formatDate } from "@/lib/format-date";
 import { daysUntil, formatDaysUntil, type UpcomingItem } from "@/lib/upcoming";
-import { tmdbImageUrl } from "@/lib/tmdb";
+import { tmdbImageUrl, type TmdbWatchProviderRegion } from "@/lib/tmdb";
 import { tmdbImageLoader } from "@/lib/tmdb-image-loader";
 
 export function UpcomingRow({ item }: { item: UpcomingItem }) {
@@ -13,11 +14,30 @@ export function UpcomingRow({ item }: { item: UpcomingItem }) {
     item.seasonNumber != null && item.episodeNumber != null
       ? `/title/${item.mediaType}/${item.tmdbId}/season/${item.seasonNumber}/episode/${item.episodeNumber}`
       : `/title/${item.mediaType}/${item.tmdbId}`;
+  // Só o provider de maior prioridade, como selo discreto na capa — mesmo
+  // critério do NextEpisodeCard, pra manter o dashboard limpo.
+  const [provider] = getStreamingProviders(item.watchProvidersBr as TmdbWatchProviderRegion | null);
+  const providerLogo = provider ? tmdbImageUrl(provider.logo_path, "w45") : null;
 
   return (
     <Link href={href} className="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/50">
       <div className="relative h-16 w-28 shrink-0 overflow-hidden rounded bg-muted">
         {image && <Image loader={tmdbImageLoader} src={image} alt="" fill sizes="112px" className="object-cover" />}
+        {providerLogo && (
+          <span
+            title={provider.provider_name}
+            className="absolute bottom-1 right-1 size-5 overflow-hidden rounded ring-1 ring-background"
+          >
+            <Image
+              loader={tmdbImageLoader}
+              src={providerLogo}
+              alt={provider.provider_name}
+              fill
+              sizes="20px"
+              className="object-cover"
+            />
+          </span>
+        )}
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">{item.name}</p>

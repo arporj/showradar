@@ -16,6 +16,7 @@ export interface NextEpisodeItem {
   episodeNumber: number;
   episodeName: string | null;
   stillPath: string | null;
+  watchProvidersBr: unknown;
 }
 
 interface ShowRef {
@@ -23,6 +24,7 @@ interface ShowRef {
   tmdbId: number;
   name: string;
   posterPath: string | null;
+  watchProvidersBr: unknown;
 }
 
 // The next aired-but-unwatched episode for a single show — the "what's next"
@@ -91,6 +93,7 @@ async function computeNextEpisodeForShow(userId: string, show: ShowRef): Promise
     episodeNumber: nextEpisode.episodeNumber,
     episodeName: nextEpisode.name,
     stillPath: nextEpisode.stillPath,
+    watchProvidersBr: show.watchProvidersBr,
   };
 }
 
@@ -103,12 +106,18 @@ export async function getNextEpisodeForShow(
   tmdbId: number,
 ): Promise<NextEpisodeItem | null> {
   const [show] = await db
-    .select({ name: titlesTable.name, posterPath: titlesTable.posterPath })
+    .select({ name: titlesTable.name, posterPath: titlesTable.posterPath, watchProvidersBr: titlesTable.watchProvidersBr })
     .from(titlesTable)
     .where(eq(titlesTable.id, titleId));
   if (!show) return null;
 
-  return computeNextEpisodeForShow(userId, { titleId, tmdbId, name: show.name, posterPath: show.posterPath });
+  return computeNextEpisodeForShow(userId, {
+    titleId,
+    tmdbId,
+    name: show.name,
+    posterPath: show.posterPath,
+    watchProvidersBr: show.watchProvidersBr,
+  });
 }
 
 /**
@@ -130,6 +139,7 @@ export async function getNextEpisodesToWatch(
       tmdbId: titlesTable.tmdbId,
       name: titlesTable.name,
       posterPath: titlesTable.posterPath,
+      watchProvidersBr: titlesTable.watchProvidersBr,
     })
     .from(userLibrary)
     .innerJoin(titlesTable, eq(userLibrary.titleId, titlesTable.id))
