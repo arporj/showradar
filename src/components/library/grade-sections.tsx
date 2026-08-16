@@ -1,13 +1,8 @@
-import Image from "next/image";
-
 import { TitleCard } from "@/components/library/title-card";
 import { TitleRatingDisplay } from "@/components/library/title-rating-display";
-import { getStreamingProviders } from "@/components/title/watch-providers";
 import type { EpisodeRatingSummary } from "@/lib/episode-ratings";
 import { formatDate } from "@/lib/format-date";
 import { LIBRARY_SECTION_LABEL, LIBRARY_STATUS_SECTION_ORDER, type LibraryStatus } from "@/lib/library-status";
-import { tmdbImageUrl, type TmdbWatchProviderRegion } from "@/lib/tmdb";
-import { tmdbImageLoader } from "@/lib/tmdb-image-loader";
 
 export interface GradeRow {
   titleId: string;
@@ -45,9 +40,6 @@ export function GradeSections({ rows, today }: { rows: GradeRow[]; today: string
               // a pena badge de estreia aqui — episódio futuro de série já
               // tem seção própria ("Em breve" no dashboard e /upcoming).
               const isUpcomingMovie = row.mediaType === "movie" && !!row.releaseDate && row.releaseDate > today;
-              const providers = isUpcomingMovie
-                ? getStreamingProviders(row.watchProvidersBr as TmdbWatchProviderRegion | null)
-                : [];
               const finalRating = status === "completed" || status === "dropped" ? row.personalRating : null;
               const provisional = status === "watching" || status === "on_hold" ? row.provisional : null;
 
@@ -57,39 +49,13 @@ export function GradeSections({ rows, today }: { rows: GradeRow[]; today: string
                   href={`/title/${row.mediaType}/${row.tmdbId}`}
                   posterPath={row.posterPath}
                   name={row.name}
+                  watchProvidersBr={row.watchProvidersBr}
                 >
                   <div className="mt-1">
                     <TitleRatingDisplay finalRating={finalRating} provisional={provisional} />
                   </div>
                   {isUpcomingMovie && (
-                    <>
-                      <p className="mt-1 text-xs text-muted-foreground">Estreia em {formatDate(row.releaseDate!)}</p>
-                      {providers.length > 0 && (
-                        <div className="mt-1 flex flex-wrap gap-1">
-                          {providers.map((provider) => {
-                            const logo = tmdbImageUrl(provider.logo_path, "w45");
-                            return (
-                              <span
-                                key={provider.provider_id}
-                                title={provider.provider_name}
-                                className="relative size-5 shrink-0 overflow-hidden rounded bg-muted"
-                              >
-                                {logo && (
-                                  <Image
-                                    loader={tmdbImageLoader}
-                                    src={logo}
-                                    alt={provider.provider_name}
-                                    fill
-                                    sizes="20px"
-                                    className="object-cover"
-                                  />
-                                )}
-                              </span>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </>
+                    <p className="mt-1 text-xs text-muted-foreground">Estreia em {formatDate(row.releaseDate!)}</p>
                   )}
                 </TitleCard>
               );
