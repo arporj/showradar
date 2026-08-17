@@ -39,6 +39,10 @@ export function WatchProgress({
   const [celebration, setCelebration] = useState<{ title: string; description: string } | null>(null);
   const [confirmMarkAll, setConfirmMarkAll] = useState(false);
   const [isMarkingAll, startMarkingAll] = useTransition();
+  // Temporada até onde um backfill ("marcar anteriores") está rodando agora.
+  // Mora aqui, e não no SeasonItem, porque o bulk mexe em várias temporadas
+  // ao mesmo tempo e cada uma delas precisa mostrar que está em andamento.
+  const [pendingBulkThrough, setPendingBulkThrough] = useState<number | null>(null);
 
   // Season 0 (specials) is excluded here too, so this sum lines up with
   // `totalEpisodes` (already specials-free, see the title page) instead of
@@ -100,6 +104,23 @@ export function WatchProgress({
 
   const pct = totalEpisodes > 0 ? Math.round((totalWatched / totalEpisodes) * 100) : 0;
 
+  // Mesmo recorte que markWatchedThroughSeason aplica no servidor (a
+  // temporada 0 só entra quando é ela própria o alvo), para o spinner
+  // aparecer exatamente nas temporadas que vão mudar.
+  const pendingSeasonIds = new Set(
+    isMarkingAll
+      ? seasons.map((s) => s.id)
+      : pendingBulkThrough == null
+        ? []
+        : seasons
+            .filter(
+              (s) =>
+                s.seasonNumber === pendingBulkThrough ||
+                (s.seasonNumber !== 0 && s.seasonNumber < pendingBulkThrough),
+            )
+            .map((s) => s.id),
+  );
+
   return (
     <div className="space-y-4">
       {totalEpisodes > 0 && (
@@ -135,6 +156,8 @@ export function WatchProgress({
         tmdbId={tmdbId}
         onSeasonCountChange={handleSeasonCountChange}
         onSeasonCountsChange={applySeasonCounts}
+        pendingSeasonIds={pendingSeasonIds}
+        onBulkPendingChange={setPendingBulkThrough}
       />
 
       <CelebrationOverlay

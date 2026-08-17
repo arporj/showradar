@@ -58,6 +58,8 @@ export function SeasonList({
   tmdbId,
   onSeasonCountChange,
   onSeasonCountsChange,
+  pendingSeasonIds,
+  onBulkPendingChange,
 }: {
   seasons: SeasonRow[];
   watchedCounts: Record<string, number>;
@@ -65,6 +67,8 @@ export function SeasonList({
   tmdbId: number;
   onSeasonCountChange: (seasonId: string, count: number) => void;
   onSeasonCountsChange: (counts: Record<string, number>) => void;
+  pendingSeasonIds: Set<string>;
+  onBulkPendingChange: (throughSeasonNumber: number | null) => void;
 }) {
   return (
     <div className="space-y-2">
@@ -79,6 +83,8 @@ export function SeasonList({
           tmdbId={tmdbId}
           onSeasonCountChange={onSeasonCountChange}
           onSeasonCountsChange={onSeasonCountsChange}
+          bulkPending={pendingSeasonIds.has(season.id)}
+          onBulkPendingChange={onBulkPendingChange}
         />
       ))}
     </div>
@@ -94,6 +100,8 @@ function SeasonItem({
   tmdbId,
   onSeasonCountChange,
   onSeasonCountsChange,
+  bulkPending,
+  onBulkPendingChange,
 }: {
   season: SeasonRow;
   seasons: SeasonRow[];
@@ -103,6 +111,8 @@ function SeasonItem({
   tmdbId: number;
   onSeasonCountChange: (seasonId: string, count: number) => void;
   onSeasonCountsChange: (counts: Record<string, number>) => void;
+  bulkPending: boolean;
+  onBulkPendingChange: (throughSeasonNumber: number | null) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [episodeRows, setEpisodeRows] = useState<EpisodeRow[] | null>(null);
@@ -110,6 +120,11 @@ function SeasonItem({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [markingSeason, setMarkingSeason] = useState(false);
   const [confirm, setConfirm] = useState<ConfirmState | null>(null);
+  // Recorte do bulk em andamento *iniciado nesta temporada*: `through` é o
+  // último episódio incluído, ou null quando a temporada entra inteira. As
+  // temporadas anteriores varridas pelo mesmo bulk sabem que estão pendentes
+  // por `bulkPending` (que vem de cima), sem esse recorte por episódio.
+  const [bulkThrough, setBulkThrough] = useState<{ through: number | null } | null>(null);
   const [, startTransition] = useTransition();
 
   const total = season.episodeCount ?? 0;
@@ -159,7 +174,11 @@ function SeasonItem({
   // juntas, então a tela atualiza de uma vez e a comemoração de série
   // concluída dispara uma única vez, no fim.
   function markThroughHere(throughEpisodeNumber?: number) {
-    setMarkingSeason(true);
+    // Marca como pendente antes de disparar a action: o diálogo acabou de
+    // fechar e o backfill pode levar segundos (sync de temporada no TMDb),
+    // então cada episódio e cada temporada afetada já entra em spinner.
+    setBulkThrough({ through: throughEpisodeNumber ?? null });
+    onBulkPendingChange(season.seasonNumber);
     startTransition(async () => {
       try {
         const { watchedCountsBySeasonId, watchedEpisodeIds } = await markWatchedThroughSeason({
@@ -182,9 +201,19 @@ function SeasonItem({
       } catch {
         toast.error("Não foi possível marcar os episódios anteriores. Tente novamente.");
       } finally {
-        setMarkingSeason(false);
+        setBulkThrough(null);
+        onBulkPendingChange(null);
       }
     });
+  }
+
+  // Um episódio entra em spinner quando o bulk que está rodando vai marcá-lo:
+  // os já assistidos e os não exibidos ficam de fora, e na temporada que
+  // iniciou o backfill o corte respeita o episódio escolhido.
+  function isEpisodePending(episode: EpisodeRow) {
+    if (!bulkPending || episode.watched || !isAired(episode.airDate)) return false;
+    if (bulkThrough?.through != null) return episode.episodeNumber <= bulkThrough.through;
+    return true;
   }
 
   function applyEpisodeToggle(episode: EpisodeRow, nextWatched: boolean) {
@@ -304,7 +333,8 @@ function SeasonItem({
 
         <WatchToggleButton
           watched={seasonComplete}
-          disabled={markingSeason || total === 0}
+          disabled={markingSeason || bulkPending || total === 0}
+          loading={markingSeason || bulkPending}
           onToggle={handleMarkSeason}
           icon={CheckCheck}
           size="lg"
@@ -338,6 +368,7 @@ function SeasonItem({
                 key={episode.id}
                 episode={episode}
                 href={`/title/tv/${tmdbId}/season/${season.seasonNumber}/episode/${episode.episodeNumber}`}
+                pending={isEpisodePending(episode)}
                 onToggle={() => handleToggleEpisode(episode)}
               />
             ))}
@@ -380,7 +411,17 @@ function SeasonItem({
   );
 }
 
-function EpisodeRowItem({ episode, href, onToggle }: { episode: EpisodeRow; href: string; onToggle: () => void }) {
+function EpisodeRowItem({
+  episode,
+  href,
+  pending,
+  onToggle,
+}: {
+  episode: EpisodeRow;
+  href: string;
+  pending: boolean;
+  onToggle: () => void;
+}) {
   const aired = isAired(episode.airDate);
   const still = tmdbImageUrl(episode.stillPath, "w300");
 
@@ -406,7 +447,8 @@ function EpisodeRowItem({ episode, href, onToggle }: { episode: EpisodeRow; href
       </Link>
       <WatchToggleButton
         watched={episode.watched}
-        disabled={!aired}
+        disabled={!aired || pending}
+        loading={pending}
         onToggle={onToggle}
         label={episode.watched ? `Desmarcar episódio ${episode.episodeNumber}` : `Marcar episódio ${episode.episodeNumber} como assistido`}
       />
