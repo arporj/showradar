@@ -138,6 +138,12 @@ export async function syncTitleFromTmdb(mediaType: TmdbMediaType, tmdbId: number
 // dashboard load (once per show whose "next episode" is being recomputed),
 // and skipping the query entirely for an already-fresh season saves both the
 // TMDb round trip and the per-episode upserts.
+// O gate usa `episodes_synced_at`, e não `last_synced_at`: este último é
+// reescrito com `now()` pelo upsert de temporadas do syncTitleFromTmdb a cada
+// visita à página do título, então usá-lo aqui deixava a temporada
+// permanentemente "fresca" e os episódios nunca eram buscados — a lista de
+// episódios ficava vazia e todo bulk ("marcar temporada/série inteira") não
+// tinha nada para marcar.
 const SEASON_RESYNC_INTERVAL_MS = 60 * 60 * 1000;
 
 /**
@@ -154,10 +160,10 @@ export async function syncSeasonEpisodes(
   seasonNumber: number,
 ) {
   const [seasonRow] = await db
-    .select({ lastSyncedAt: seasons.lastSyncedAt })
+    .select({ episodesSyncedAt: seasons.episodesSyncedAt })
     .from(seasons)
     .where(eq(seasons.id, seasonId));
-  if (seasonRow?.lastSyncedAt && Date.now() - seasonRow.lastSyncedAt.getTime() < SEASON_RESYNC_INTERVAL_MS) {
+  if (seasonRow?.episodesSyncedAt && Date.now() - seasonRow.episodesSyncedAt.getTime() < SEASON_RESYNC_INTERVAL_MS) {
     return;
   }
 
@@ -194,6 +200,11 @@ export async function syncSeasonEpisodes(
         .onConflictDoUpdate({ target: [episodes.seasonId, episodes.episodeNumber], set: values });
     }),
   );
+
+  // Só depois do upsert — se o fetch ou a gravação falharem, a temporada
+  // continua marcada como não sincronizada e a próxima chamada tenta de novo,
+  // em vez de ficar uma hora servindo uma lista de episódios incompleta.
+  await db.update(seasons).set({ episodesSyncedAt: new Date() }).where(eq(seasons.id, seasonId));
 }
 
 export async function getCachedTitleId(mediaType: TmdbMediaType, tmdbId: number) {

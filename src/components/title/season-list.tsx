@@ -4,6 +4,7 @@ import { CheckCheck, ChevronDown } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useState, useTransition } from "react";
+import { toast } from "sonner";
 
 import {
   AlertDialog,
@@ -24,7 +25,7 @@ import { WatchToggleButton } from "@/components/title/episode-watch-button";
 import type { seasons as seasonsTable } from "@/db/schema";
 import {
   loadSeasonEpisodes,
-  markEpisodesWatchedThrough,
+  markWatchedThroughSeason,
   setSeasonWatched,
   toggleEpisodeWatched,
 } from "@/lib/actions/episodes";
@@ -56,12 +57,14 @@ export function SeasonList({
   titleId,
   tmdbId,
   onSeasonCountChange,
+  onSeasonCountsChange,
 }: {
   seasons: SeasonRow[];
   watchedCounts: Record<string, number>;
   titleId: string;
   tmdbId: number;
   onSeasonCountChange: (seasonId: string, count: number) => void;
+  onSeasonCountsChange: (counts: Record<string, number>) => void;
 }) {
   return (
     <div className="space-y-2">
@@ -75,6 +78,7 @@ export function SeasonList({
           titleId={titleId}
           tmdbId={tmdbId}
           onSeasonCountChange={onSeasonCountChange}
+          onSeasonCountsChange={onSeasonCountsChange}
         />
       ))}
     </div>
@@ -89,6 +93,7 @@ function SeasonItem({
   titleId,
   tmdbId,
   onSeasonCountChange,
+  onSeasonCountsChange,
 }: {
   season: SeasonRow;
   seasons: SeasonRow[];
@@ -97,6 +102,7 @@ function SeasonItem({
   titleId: string;
   tmdbId: number;
   onSeasonCountChange: (seasonId: string, count: number) => void;
+  onSeasonCountsChange: (counts: Record<string, number>) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [episodeRows, setEpisodeRows] = useState<EpisodeRow[] | null>(null);
@@ -110,8 +116,15 @@ function SeasonItem({
   const pct = total > 0 ? Math.round((watchedCount / total) * 100) : 0;
   const seasonComplete = total > 0 && watchedCount >= total;
 
+  // Temporada 0 (especiais) fora: não é "anterior" na ordem de exibição, então
+  // especiais não assistidos não devem disparar o diálogo de backfill nem ser
+  // varridos por ele — mesmo recorte que markWatchedThroughSeason aplica no
+  // servidor.
   const incompleteEarlierSeasons = seasons.filter(
-    (s) => s.seasonNumber < season.seasonNumber && (watchedCounts[s.id] ?? 0) < (s.episodeCount ?? 0),
+    (s) =>
+      s.seasonNumber !== 0 &&
+      s.seasonNumber < season.seasonNumber &&
+      (watchedCounts[s.id] ?? 0) < (s.episodeCount ?? 0),
   );
 
   async function fetchEpisodes() {
@@ -139,21 +152,39 @@ function SeasonItem({
     }
   }
 
-  // Bulk-marks every earlier season fully watched, in the background —
-  // used after the user confirms "yes, mark previous ones too".
-  function markEarlierSeasonsInBackground() {
-    for (const s of incompleteEarlierSeasons) {
-      startTransition(async () => {
-        const { airedCount } = await setSeasonWatched({
-          seasonId: s.id,
+  // "Sim, marcar todos": marca tudo até este ponto — as temporadas anteriores
+  // inteiras e, nesta temporada, até `throughEpisodeNumber` (ou a temporada
+  // toda, quando omitido). Uma server action só, em vez de uma por temporada
+  // anterior: o servidor faz um INSERT único e devolve todas as contagens
+  // juntas, então a tela atualiza de uma vez e a comemoração de série
+  // concluída dispara uma única vez, no fim.
+  function markThroughHere(throughEpisodeNumber?: number) {
+    setMarkingSeason(true);
+    startTransition(async () => {
+      try {
+        const { watchedCountsBySeasonId, watchedEpisodeIds } = await markWatchedThroughSeason({
           titleId,
           tmdbTvId: tmdbId,
-          seasonNumber: s.seasonNumber,
-          watched: true,
+          throughSeasonNumber: season.seasonNumber,
+          throughEpisodeNumber,
         });
-        onSeasonCountChange(s.id, airedCount);
-      });
-    }
+        const watchedSet = new Set(watchedEpisodeIds);
+        // O servidor conta só o que entra no recorte; episódios desta
+        // temporada já assistidos *depois* do ponto marcado continuam valendo.
+        const alreadyWatchedBeyond = episodeRows
+          ? episodeRows.filter((e) => e.watched && !watchedSet.has(e.id)).length
+          : 0;
+        onSeasonCountsChange({
+          ...watchedCountsBySeasonId,
+          [season.id]: (watchedCountsBySeasonId[season.id] ?? 0) + alreadyWatchedBeyond,
+        });
+        setEpisodeRows((prev) => (prev ? prev.map((e) => (watchedSet.has(e.id) ? { ...e, watched: true } : e)) : prev));
+      } catch {
+        toast.error("Não foi possível marcar os episódios anteriores. Tente novamente.");
+      } finally {
+        setMarkingSeason(false);
+      }
+    });
   }
 
   function applyEpisodeToggle(episode: EpisodeRow, nextWatched: boolean) {
@@ -178,9 +209,9 @@ function SeasonItem({
     );
 
     // Offline, the "mark previous too?" backfill flow is out of scope (see
-    // markEarlierSeasonsInBackground/markEpisodesWatchedThrough below) — a
-    // click always just marks the one episode clicked, as if the user had
-    // answered "No, just this one".
+    // markThroughHere above — não passa pela fila offline) — a click always
+    // just marks the one episode clicked, as if the user had answered "No,
+    // just this one".
     if (!isOffline() && (earlierInSeasonUnwatched || incompleteEarlierSeasons.length > 0)) {
       setConfirm({ type: "episode", episode });
       return;
@@ -195,26 +226,7 @@ function SeasonItem({
       applyEpisodeToggle(episode, true);
       return;
     }
-
-    markEarlierSeasonsInBackground();
-    startTransition(async () => {
-      const { watchedEpisodeIds } = await markEpisodesWatchedThrough({
-        seasonId: season.id,
-        titleId,
-        tmdbTvId: tmdbId,
-        seasonNumber: season.seasonNumber,
-        throughEpisodeNumber: episode.episodeNumber,
-      });
-      const watchedSet = new Set(watchedEpisodeIds);
-      // Computed from the current episodeRows closure (not from inside the
-      // setEpisodeRows updater below) — calling another component's setState
-      // from within a setState updater triggers a React warning.
-      const newCount = episodeRows
-        ? episodeRows.filter((e) => e.watched || watchedSet.has(e.id)).length
-        : watchedEpisodeIds.length;
-      onSeasonCountChange(season.id, newCount);
-      setEpisodeRows((prev) => prev!.map((e) => (watchedSet.has(e.id) ? { ...e, watched: true } : e)));
-    });
+    markThroughHere(episode.episodeNumber);
   }
 
   function applySeasonToggle(nextWatched: boolean) {
@@ -253,7 +265,7 @@ function SeasonItem({
   function handleMarkSeason() {
     const nextWatched = !seasonComplete;
     // Offline, the "mark previous seasons too?" flow is out of scope (see
-    // markEarlierSeasonsInBackground below) — always just toggles this season.
+    // markThroughHere above) — always just toggles this season.
     if (!isOffline() && nextWatched && incompleteEarlierSeasons.length > 0) {
       setConfirm({ type: "season" });
       return;
@@ -263,8 +275,8 @@ function SeasonItem({
 
   function handleConfirmSeason(markPrevious: boolean) {
     setConfirm(null);
-    if (markPrevious) markEarlierSeasonsInBackground();
-    applySeasonToggle(true);
+    if (markPrevious) markThroughHere();
+    else applySeasonToggle(true);
   }
 
   return (

@@ -1,6 +1,6 @@
 "use server";
 
-import { and, desc, eq, inArray, isNull, lte, or } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, lte, not, or } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -275,6 +275,87 @@ export async function markEpisodesWatchedThrough(input: {
   revalidatePath("/dashboard");
 
   return { watchedEpisodeIds: episodeIds };
+}
+
+// Backfill "até aqui": marca de uma vez todas as temporadas anteriores a
+// `throughSeasonNumber` e, na temporada alvo, ou tudo (quando
+// `throughEpisodeNumber` é omitido) ou até o episódio informado. Substitui o
+// laço que disparava uma server action por temporada anterior — com uma
+// única action, é um INSERT só, um recálculo de status só e um
+// revalidatePath só, em vez de N de cada; e o cliente recebe todas as
+// contagens juntas, então a comemoração de série concluída dispara uma vez.
+export async function markWatchedThroughSeason(input: {
+  titleId: string;
+  tmdbTvId: number;
+  throughSeasonNumber: number;
+  throughEpisodeNumber?: number;
+}) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
+
+  const allEarlier = await db
+    .select({ id: seasons.id, seasonNumber: seasons.seasonNumber })
+    .from(seasons)
+    .where(and(eq(seasons.titleId, input.titleId), lte(seasons.seasonNumber, input.throughSeasonNumber)));
+
+  // A temporada 0 (especiais/extras) não é "anterior" a nada na ordem de
+  // exibição — varrê-la junto marcava dezenas de bastidores como assistidos
+  // só porque o usuário fez backfill até a 3ª temporada. Ela só entra quando
+  // é ela própria o alvo. "Marcar série inteira" continua incluindo tudo,
+  // porque ali o texto do diálogo promete exatamente isso.
+  const seasonRows = allEarlier.filter((s) => s.seasonNumber !== 0 || input.throughSeasonNumber === 0);
+  if (seasonRows.length === 0) {
+    return { watchedCountsBySeasonId: {} as Record<string, number>, watchedEpisodeIds: [] as string[] };
+  }
+
+  await Promise.all(seasonRows.map((s) => syncSeasonEpisodes(s.id, input.titleId, input.tmdbTvId, s.seasonNumber)));
+
+  const targetSeasonId = seasonRows.find((s) => s.seasonNumber === input.throughSeasonNumber)?.id;
+
+  // Um único SELECT para as temporadas todas: as anteriores entram inteiras,
+  // e a temporada alvo entra limitada a `throughEpisodeNumber` quando ele foi
+  // informado (o caminho "marcar este episódio e os anteriores").
+  const targetLimit =
+    input.throughEpisodeNumber != null && targetSeasonId
+      ? or(
+          not(eq(episodes.seasonId, targetSeasonId)),
+          lte(episodes.episodeNumber, input.throughEpisodeNumber),
+        )
+      : undefined;
+
+  const airedEpisodes = await db
+    .select({ id: episodes.id, seasonId: episodes.seasonId })
+    .from(episodes)
+    .where(
+      and(
+        inArray(
+          episodes.seasonId,
+          seasonRows.map((s) => s.id),
+        ),
+        airedCondition(),
+        targetLimit,
+      ),
+    );
+
+  await markEpisodesWatched(
+    session.user.id,
+    airedEpisodes.map((e) => e.id),
+  );
+
+  await syncLibraryStatusFromProgress(session.user.id, input.titleId);
+
+  revalidatePath(`/title/tv/${input.tmdbTvId}`);
+  revalidatePath("/library");
+  revalidatePath("/dashboard");
+
+  const watchedCountsBySeasonId: Record<string, number> = {};
+  for (const s of seasonRows) watchedCountsBySeasonId[s.id] = 0;
+  for (const e of airedEpisodes) watchedCountsBySeasonId[e.seasonId] += 1;
+
+  return {
+    watchedCountsBySeasonId,
+    watchedEpisodeIds: airedEpisodes.filter((e) => e.seasonId === targetSeasonId).map((e) => e.id),
+  };
 }
 
 // Catch-up action for a show the user already watched outside the app (or

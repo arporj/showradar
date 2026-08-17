@@ -186,6 +186,12 @@ export const seasons = appSchema.table(
     posterPath: text("poster_path"),
     episodeCount: integer("episode_count"),
     lastSyncedAt: timestamp("last_synced_at", { mode: "date" }),
+    // Frescor da *lista de episódios* desta temporada — separado de
+    // lastSyncedAt, que cobre apenas os metadados da temporada e é reescrito
+    // a cada visita à página do título (syncTitleFromTmdb). Enquanto as duas
+    // coisas dividiam a mesma coluna, o carimbo do título mantinha o gate de
+    // episódios sempre "fresco" e os episódios nunca chegavam a ser buscados.
+    episodesSyncedAt: timestamp("episodes_synced_at", { mode: "date" }),
   },
   (t) => [uniqueIndex("seasons_title_id_season_number_idx").on(t.titleId, t.seasonNumber)],
 );

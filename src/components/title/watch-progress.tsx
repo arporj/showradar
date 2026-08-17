@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
+import { toast } from "sonner";
 
 import {
   AlertDialog,
@@ -52,12 +53,17 @@ export function WatchProgress({
   // show that was *already* complete on page load doesn't celebrate either.
   const wasCompleteRef = useRef(totalEpisodes > 0 && totalWatched >= totalEpisodes);
 
+  // Único ponto que aplica contagens novas — seja de uma temporada só ou de
+  // várias de uma vez (bulk). Aplicar tudo em um `setState` é o que garante
+  // uma comemoração só: um bulk que fecha a série cruza o total uma vez,
+  // não uma vez por temporada.
+  //
   // Only the series-level completion celebrates — finishing an individual
   // season (even the latest one) doesn't, since there's nothing to interrupt
   // for until the whole show is actually done.
-  function handleSeasonCountChange(seasonId: string, count: number) {
+  function applySeasonCounts(counts: Record<string, number>) {
     setWatchedCounts((prev) => {
-      const next = { ...prev, [seasonId]: count };
+      const next = { ...prev, ...counts };
       const nextTotal = sumWatched(next);
       const nowComplete = totalEpisodes > 0 && nextTotal >= totalEpisodes;
 
@@ -73,28 +79,22 @@ export function WatchProgress({
     });
   }
 
-  // Merges every season's new count in one state update instead of looping
-  // handleSeasonCountChange per season, which would trigger a render (and a
-  // wasCompleteRef check) per season instead of one combined update.
+  function handleSeasonCountChange(seasonId: string, count: number) {
+    applySeasonCounts({ [seasonId]: count });
+  }
+
   function handleMarkAllWatched() {
     setConfirmMarkAll(false);
     startMarkingAll(async () => {
-      const { watchedCountsBySeasonId } = await markAllEpisodesWatched(titleId, tmdbId);
-      setWatchedCounts((prev) => {
-        const next = { ...prev, ...watchedCountsBySeasonId };
-        const nextTotal = sumWatched(next);
-        const nowComplete = totalEpisodes > 0 && nextTotal >= totalEpisodes;
-
-        if (nowComplete && !wasCompleteRef.current) {
-          setCelebration({
-            title: "Série concluída!",
-            description: `Você assistiu a todos os episódios de ${showName}.`,
-          });
-        }
-        wasCompleteRef.current = nowComplete;
-
-        return next;
-      });
+      try {
+        const { watchedCountsBySeasonId } = await markAllEpisodesWatched(titleId, tmdbId);
+        applySeasonCounts(watchedCountsBySeasonId);
+      } catch {
+        // Sem isso a ação falha em silêncio: a transição termina, o botão
+        // volta ao normal e nada muda na tela — exatamente o "não acontece
+        // nada" que não dá para distinguir de um bug de marcação.
+        toast.error("Não foi possível marcar a série inteira. Tente novamente.");
+      }
     });
   }
 
@@ -134,6 +134,7 @@ export function WatchProgress({
         titleId={titleId}
         tmdbId={tmdbId}
         onSeasonCountChange={handleSeasonCountChange}
+        onSeasonCountsChange={applySeasonCounts}
       />
 
       <CelebrationOverlay

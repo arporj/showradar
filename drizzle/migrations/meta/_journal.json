@@ -127,6 +127,13 @@
       "when": 1785332519207,
       "tag": "0017_reflective_ulik",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1786964475916,
+      "tag": "0018_fair_night_thrasher",
+      "breakpoints": true
     }
   ]
 }
