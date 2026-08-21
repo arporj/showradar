@@ -18,6 +18,7 @@ import { CelebrationOverlay } from "@/components/title/celebration-overlay";
 import { SeasonList } from "@/components/title/season-list";
 import { Progress } from "@/components/ui/progress";
 import type { seasons as seasonsTable } from "@/db/schema";
+import { useSignInRedirect } from "@/hooks/use-sign-in-redirect";
 import { markAllEpisodesWatched } from "@/lib/actions/episodes";
 
 export function WatchProgress({
@@ -27,6 +28,7 @@ export function WatchProgress({
   titleId,
   tmdbId,
   showName,
+  signedIn = true,
 }: {
   seasons: (typeof seasonsTable.$inferSelect)[];
   watchedCounts: Record<string, number>;
@@ -34,6 +36,7 @@ export function WatchProgress({
   titleId: string;
   tmdbId: number;
   showName: string;
+  signedIn?: boolean;
 }) {
   const [watchedCounts, setWatchedCounts] = useState(initialWatchedCounts);
   const [celebration, setCelebration] = useState<{ title: string; description: string } | null>(null);
@@ -43,6 +46,7 @@ export function WatchProgress({
   // Mora aqui, e não no SeasonItem, porque o bulk mexe em várias temporadas
   // ao mesmo tempo e cada uma delas precisa mostrar que está em andamento.
   const [pendingBulkThrough, setPendingBulkThrough] = useState<number | null>(null);
+  const goToSignIn = useSignInRedirect();
 
   // Season 0 (specials) is excluded here too, so this sum lines up with
   // `totalEpisodes` (already specials-free, see the title page) instead of
@@ -141,9 +145,13 @@ export function WatchProgress({
               variant="outline"
               size="sm"
               disabled={isMarkingAll}
-              onClick={() => setConfirmMarkAll(true)}
+              onClick={() => (signedIn ? setConfirmMarkAll(true) : goToSignIn())}
             >
-              {isMarkingAll ? "Marcando..." : "Marcar série inteira como assistida"}
+              {!signedIn
+                ? "Entrar para marcar como assistida"
+                : isMarkingAll
+                  ? "Marcando..."
+                  : "Marcar série inteira como assistida"}
             </Button>
           )}
         </div>
@@ -156,6 +164,7 @@ export function WatchProgress({
         tmdbId={tmdbId}
         onSeasonCountChange={handleSeasonCountChange}
         onSeasonCountsChange={applySeasonCounts}
+        signedIn={signedIn}
         pendingSeasonIds={pendingSeasonIds}
         onBulkPendingChange={setPendingBulkThrough}
       />

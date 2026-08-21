@@ -134,6 +134,13 @@
       "when": 1786964475916,
       "tag": "0018_fair_night_thrasher",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1787339095623,
+      "tag": "0019_clear_johnny_blaze",
+      "breakpoints": true
     }
   ]
 }

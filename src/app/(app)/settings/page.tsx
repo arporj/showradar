@@ -57,6 +57,7 @@ export default async function SettingsPage() {
             notifyReactions: prefs?.notifyReactions ?? true,
             notifyFollowRequest: prefs?.notifyFollowRequest ?? true,
             notifyFollowAccepted: prefs?.notifyFollowAccepted ?? true,
+            notifyTitleShared: prefs?.notifyTitleShared ?? true,
           }}
         />
       </div>

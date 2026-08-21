@@ -344,6 +344,24 @@ Bugs de entrega (badge do ícone do app, resiliência de assinatura FCM) investi
 
 Faltavam dois gatilhos sociais, implementados em 2026-07-29: `sendFollowRequest` e `acceptFollowRequest` (`lib/actions/follow.ts`) agora chamam `notifyCommentEvent` (`lib/comment-notifications.ts`) quando, respectivamente, alguém envia um pedido de follow e quando um pedido enviado é aceito — mesmo padrão de dedup via `notification_log`/quiet-hours/push+email já usado por menções, respostas e reações a comentários. O tipo aceito por `notifyCommentEvent` foi ampliado (`follow_request`/`follow_accepted`) em vez de duplicar a lógica de envio num arquivo novo, já que o helper já era genérico o bastante (só faltavam `titleId`/`episodeId` opcionais, que já existiam). Migration `0017_reflective_ulik.sql` adiciona os valores no enum `notification_type` e as colunas `notify_follow_request`/`notify_follow_accepted` (default `true`) em `notification_preferences`; toggles correspondentes em `/settings` seguem o mesmo componente `NotificationPreferencesForm`. `tsc --noEmit` limpo.
 
+## Item 4 do backlog — Compartilhamento de filmes e séries (concluído, 2026-08-21)
+
+Duas metades: link externo com página pública, e recomendação para um amigo dentro do app.
+
+**Página de título pública, mesma URL.** `/title/{movie|tv}/{id}` passou a abrir sem sessão — não existe versão "de convidado" separada, o link que o usuário compartilha é a própria página. Para isso a rota saiu de `app/(app)/` (cujo layout redireciona quem não tem sessão) para `app/(shared)/`, cujo layout escolhe o chrome: `AuthedShell` para quem está logado, `PublicShell` para o visitante. Os dois shells foram extraídos de `(app)/layout.tsx` e de `l/layout.tsx` respectivamente, que agora só os consomem — sem cópia de header em três lugares.
+
+O proxy libera a rota com casamento **exato** (`/^/title/(movie|tv)/d+$/`), não `startsWith`: os comentários e as páginas de episódio moram debaixo do mesmo caminho e continuam exigindo conta. A decisão foi deliberada — menor superfície pública, e a discussão dos usuários não vira conteúdo aberto sem eles terem escolhido isso.
+
+**Ações bloqueadas viram convite, não botão apagado.** Os controles (grade, listas, favoritar, avaliar, marcar temporada/episódio/série) recebem `signedIn` e, quando falso, o clique chama `useSignInRedirect()` (`hooks/use-sign-in-redirect.ts`), que leva para `/login?callbackUrl=<página atual>`. O clique é o momento em que a pessoa demonstra interesse, então ele vira a porta de entrada em vez de um controle desabilitado que não explica nada. Ler continua livre: expandir temporadas e ver a lista de episódios não pede conta. O que é navegação (link de comentários, página de episódio) cai no redirect do próprio proxy, sem código extra.
+
+**`generateMetadata` na página de título** — antes não existia, então todo link compartilhado mostrava o cartão genérico do site. Agora sai nome + ano + sinopse e o backdrop 16:9 do TMDb como `og:image` (o pôster vertical sai cortado no card do WhatsApp). Lê só o cache local via `getCachedTitleId`, sem sincronizar: o Next chama `generateMetadata` e a página em paralelo, e dois `syncTitleFromTmdb` concorrentes dobrariam as chamadas à API.
+
+**Compartilhamento interno** — `lib/actions/share.ts::shareTitleWithFriends`. Não existe caixa de entrada in-app no produto, então "mandar para um amigo" é uma notificação com link, reaproveitando `notifyCommentEvent` (push + e-mail, com dedup, quiet-hours e preferência do destinatário) em vez de um canal novo. Tipo `title_shared` no enum `notification_type` e preferência `notify_title_shared` (migration 0019), com toggle em `/settings`, mesmo padrão do `follow_request` da 0017. A chave de dedup é (destinatário, tipo, remetente, título, dia): recomendar o mesmo título duas vezes no mesmo dia não duplica, recomendar de novo semanas depois volta a notificar.
+
+Os ids de destinatário vêm do cliente, então são revalidados no servidor contra a **mesma** relação que `lib/friends.ts::getFriends` usa — um follow do remetente já aceito pelo destinatário. Uma primeira versão exigia follow nos dois sentidos e teria recusado amizades legítimas de mão única; pego na verificação, antes de ir para o commit.
+
+**Verificação (Playwright, build de produção):** anônimo recebe 200 na página de título com chrome público, `og:title`/`og:image` corretos e temporadas visíveis; clique em ação leva a `/login?callbackUrl=%2Ftitle%2Ftv%2F87917`; `/comments`, página de episódio e `/dashboard` seguem redirecionando para login. Logado, a mesma URL traz o app inteiro e o menu de compartilhar lista os amigos; o envio grava `notification_log` com `title_shared`. Com a relação de amizade desfeita entre o carregamento da página e o clique, o servidor recusa e não grava nada.
+
 ## Decisões técnicas que valem lembrar
 
 - **Nome do app:** ShowRadar.

@@ -1,6 +1,6 @@
 # ShowRadar — Status do Projeto (Pendências)
 
-_Atualizado em: 2026-07-29 — item 0 do backlog (notificações push) concluído por inteiro e movido para `PROGRESS_HISTORICO.md`. Atualizado em: 2026-07-27 — arquivo reorganizado: todo o histórico do que já foi entregue (Fases 0-13, complementos, decisões técnicas, bugs já corrigidos) foi movido para `PROGRESS_HISTORICO.md`, porque este arquivo estava ficando grande demais. **Volte a checar o histórico sempre que precisar entender como algo pronto foi implementado — não redescubra por leitura de código o que já está documentado lá.** Este arquivo passa a listar só o que falta fazer._
+_Atualizado em: 2026-08-21 — item 4 do backlog (compartilhamento de filmes e séries) concluído e detalhado em `PROGRESS_HISTORICO.md`. Atualizado em: 2026-07-29 — item 0 do backlog (notificações push) concluído por inteiro e movido para `PROGRESS_HISTORICO.md`. Atualizado em: 2026-07-27 — arquivo reorganizado: todo o histórico do que já foi entregue (Fases 0-13, complementos, decisões técnicas, bugs já corrigidos) foi movido para `PROGRESS_HISTORICO.md`, porque este arquivo estava ficando grande demais. **Volte a checar o histórico sempre que precisar entender como algo pronto foi implementado — não redescubra por leitura de código o que já está documentado lá.** Este arquivo passa a listar só o que falta fazer._
 
 Referência do plano completo: `C:\Users\andre\.claude\plans\quero-fazer-um-sistema-magical-kite.md`
 Histórico completo (tudo que já foi construído, fase por fase): `PROGRESS_HISTORICO.md`
@@ -18,11 +18,9 @@ Comparação do ShowRadar contra Trakt, Simkl e Serializd, feita no dia em que o
    - **Trakt e Simkl não seguem o padrão dos 4 anteriores** — ambos têm documentação oficial boa, mas não como arquivo pra baixar e subir: é API REST com OAuth2 (`docs.trakt.tv`, ~150 endpoints, inclusive `llms.txt` pra agentes; `api.simkl.org`, endpoint `/sync/all-items` documentado com `seasons[].episodes[].watched_at`). O CSV de export do Simkl existe mas é fraco (só título + último episódio, sem data). Pra importar de verdade dos dois precisa de fluxo "conectar conta" (OAuth) em vez de upload — exige registrar um app developer em cada serviço pra ter client ID/secret, decisão/passo que só o usuário pode tomar (mesma natureza das pendências de Stripe/Google Ads abaixo). Pausado a pedido do usuário em 2026-07-27 até haver decisão de seguir com OAuth.
 2. [ ] **Calendário + iCal** — visão de calendário das estreias (`/upcoming` hoje é uma lista) + feed iCal assinável; padrão em Trakt e Simkl.
 3. [ ] **Fase 7 — Monetização** — segue especificada e pulada a pedido do usuário; faz mais sentido depois de mais itens do backlog elevarem retenção (stats/retrospectiva e listas, já concluídos, são os candidatos naturais a recurso pago, como no Trakt VIP). Especificação completa abaixo.
-4. [ ] **Compartilhamento de filmes e séries** — permitir que o usuário compartilhe um filme ou uma série por dentro do sistema ou através de um link externo.
-   - **Link externo e acesso anônimo**: o link externo pode ser acessado por qualquer pessoa, inclusive usuários que não estejam logados.
-   - **Bloqueio de ações para usuários não autenticados**: visitantes não logados podem apenas visualizar as informações da página. Para realizar qualquer ação (avaliar, marcar episódios/filmes como vistos, comentar, adicionar às listas, etc.), será necessário fazer login ou criar uma conta.
+4. [x] **Compartilhamento de filmes e séries** — concluído em 2026-08-21 (ver `PROGRESS_HISTORICO.md` para o detalhe da implementação).
 
-_(Itens já concluídos deste backlog — notificações push (item 0), estatísticas/retrospectiva, rewatch/status "pausado", listas personalizadas, layout do e-mail, data de estreia+streaming na Grade — foram movidos pra `PROGRESS_HISTORICO.md`.)_
+_(Itens já concluídos deste backlog — notificações push (item 0), estatísticas/retrospectiva, rewatch/status "pausado", listas personalizadas, layout do e-mail, data de estreia+streaming na Grade, compartilhamento de títulos (item 4) — foram movidos pra `PROGRESS_HISTORICO.md`.)_
 
 ---
 

@@ -15,6 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useSignInRedirect } from "@/hooks/use-sign-in-redirect";
 import { addTitleToList, createList, removeTitleFromList, toggleFavorite } from "@/lib/actions/lists";
 import type { getUserListsWithMembership } from "@/lib/lists";
 import type { TmdbMediaType } from "@/lib/tmdb";
@@ -27,21 +28,25 @@ export function AddToListButton({
   mediaType,
   tmdbId,
   initialLists,
+  signedIn = true,
 }: {
   titleId: string;
   mediaType: TmdbMediaType;
   tmdbId: number;
   initialLists: ListOption[];
+  signedIn?: boolean;
 }) {
   const [lists, setLists] = useState(initialLists);
   const [isPending, startTransition] = useTransition();
   const [creating, setCreating] = useState(false);
   const [newListTitle, setNewListTitle] = useState("");
+  const goToSignIn = useSignInRedirect();
 
   const favorites = lists.find((list) => list.isFavorites);
   const customLists = lists.filter((list) => !list.isFavorites);
 
   function handleFavoriteToggle() {
+    if (!signedIn) return goToSignIn();
     setLists((prev) => prev.map((list) => (list.isFavorites ? { ...list, hasTitle: !list.hasTitle } : list)));
     startTransition(async () => {
       await toggleFavorite(titleId, mediaType, tmdbId);
@@ -49,6 +54,7 @@ export function AddToListButton({
   }
 
   function handleToggleList(list: ListOption) {
+    if (!signedIn) return goToSignIn();
     setLists((prev) => prev.map((l) => (l.id === list.id ? { ...l, hasTitle: !l.hasTitle } : l)));
     startTransition(async () => {
       if (list.hasTitle) {
@@ -60,6 +66,7 @@ export function AddToListButton({
   }
 
   function handleCreateList() {
+    if (!signedIn) return goToSignIn();
     const trimmed = newListTitle.trim();
     if (!trimmed) return;
     setNewListTitle("");
@@ -87,6 +94,11 @@ export function AddToListButton({
         <Heart className={cn("size-4", favorites?.hasTitle && "fill-destructive text-destructive")} />
       </Button>
 
+      {!signedIn ? (
+        <Button type="button" variant="outline" size="sm" onClick={goToSignIn}>
+          <ListPlus className="size-4" /> Listas
+        </Button>
+      ) : (
       <DropdownMenu>
         <DropdownMenuTrigger render={<Button type="button" variant="outline" size="sm" />}>
           <ListPlus className="size-4" /> Listas
@@ -134,6 +146,7 @@ export function AddToListButton({
           )}
         </DropdownMenuContent>
       </DropdownMenu>
+      )}
     </div>
   );
 }

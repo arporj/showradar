@@ -32,11 +32,19 @@ const ALWAYS_ACCESSIBLE_PATHS = [
 const ONBOARDING_PATH = "/onboarding";
 const ADMIN_PATH = "/admin";
 
+// A página de um título é compartilhável por link externo, então precisa
+// abrir sem sessão. O casamento é exato de propósito: um `startsWith`
+// liberaria junto `/title/tv/123/comments` e as páginas de episódio, que
+// continuam sendo só para quem tem conta. Quem visita anônimo vê a página
+// inteira, mas os botões de ação levam para o cadastro — ver (shared)/layout.tsx.
+const PUBLIC_TITLE_PATH = /^\/title\/(movie|tv)\/\d+$/;
+
 export default auth((req) => {
   const { pathname } = req.nextUrl;
   const isAuthed = !!req.auth?.user;
   const isPublicPath = PUBLIC_PATHS.some((path) => pathname.startsWith(path));
-  const isAlwaysAccessible = ALWAYS_ACCESSIBLE_PATHS.some((path) => pathname.startsWith(path));
+  const isAlwaysAccessible =
+    ALWAYS_ACCESSIBLE_PATHS.some((path) => pathname.startsWith(path)) || PUBLIC_TITLE_PATH.test(pathname);
   const isOnboardingPath = pathname.startsWith(ONBOARDING_PATH);
 
   if (isAlwaysAccessible) return NextResponse.next();

@@ -45,6 +45,7 @@ export const notificationTypeEnum = appSchema.enum("notification_type", [
   "reaction",
   "follow_request",
   "follow_accepted",
+  "title_shared",
 ]);
 export const commentReactionEnum = appSchema.enum("comment_reaction_type", ["like", "dislike"]);
 export const notificationStatusEnum = appSchema.enum("notification_status", [
@@ -573,6 +574,7 @@ export const notificationPreferences = appSchema.table(
     notifyReactions: boolean("notify_reactions").notNull().default(true),
     notifyFollowRequest: boolean("notify_follow_request").notNull().default(true),
     notifyFollowAccepted: boolean("notify_follow_accepted").notNull().default(true),
+    notifyTitleShared: boolean("notify_title_shared").notNull().default(true),
     quietHoursStart: time("quiet_hours_start"),
     quietHoursEnd: time("quiet_hours_end"),
     timezone: text("timezone").notNull().default("UTC"),

@@ -1,4 +1,5 @@
 import { and, eq, sql } from "drizzle-orm";
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -7,6 +8,7 @@ import { BackButton } from "@/components/ui/back-button";
 import { AddToListButton } from "@/components/title/add-to-list-button";
 import { LibraryStatusControl } from "@/components/title/library-status-control";
 import { SearchResultCard } from "@/components/search/result-card";
+import { ShareTitleButton } from "@/components/title/share-title-button";
 import { TitleRatingsSection } from "@/components/title/title-ratings-section";
 import { WatchProgress } from "@/components/title/watch-progress";
 import { WatchProviders } from "@/components/title/watch-providers";
@@ -15,21 +17,86 @@ import { auth } from "@/lib/auth";
 import { deleteRating, submitRating } from "@/lib/actions/ratings";
 import { db } from "@/lib/db";
 import { getSimilarTitles } from "@/lib/discovery";
+import { getFriends } from "@/lib/friends";
 import { LIBRARY_STATUSES } from "@/lib/library-status";
 import { getUserListsWithMembership } from "@/lib/lists";
 import { getWatchedEpisodeCounts } from "@/lib/progress";
 import { getTitleRatingSummary } from "@/lib/ratings";
+import { getSiteUrl } from "@/lib/site";
 import { shiftDateString, todayBrDateString } from "@/lib/release-dates";
 import { getTitleCommentPreview, getTitleCommentCount } from "@/lib/title-comments";
 import { tmdbImageUrl, type TmdbCastMember, type TmdbEpisodeRef, type TmdbWatchProviderRegion } from "@/lib/tmdb";
 import { tmdbImageLoader } from "@/lib/tmdb-image-loader";
-import { syncTitleFromTmdb } from "@/lib/tmdb-sync";
+import { getCachedTitleId, syncTitleFromTmdb } from "@/lib/tmdb-sync";
 
 // Same window as the episode page's preview — a movie's release date is
 // clear-cut; a series (which can have aired for years) uses the most
 // recently aired episode already cached on the title, same field "Em breve"
 // reads (titles.last_episode_to_air).
 const SPOILER_PREVIEW_WINDOW_DAYS = 2;
+
+// Lê só o cache local (getCachedTitleId), sem sincronizar com o TMDb: o
+// Next chama generateMetadata e a página em paralelo, e disparar dois
+// syncTitleFromTmdb concorrentes para o mesmo título dobraria as chamadas à
+// API. Quando o título ainda não está em cache, a página (que sincroniza de
+// verdade) preenche o cache e o metadata cai no genérico só nesse primeiro
+// acesso.
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ mediaType: string; tmdbId: string }>;
+}): Promise<Metadata> {
+  const { mediaType, tmdbId } = await params;
+  if (mediaType !== "movie" && mediaType !== "tv") return {};
+
+  const tmdbIdNum = Number(tmdbId);
+  if (!Number.isInteger(tmdbIdNum)) return {};
+
+  const cachedId = await getCachedTitleId(mediaType, tmdbIdNum);
+  if (!cachedId) return {};
+
+  const [row] = await db
+    .select({
+      name: titles.name,
+      overview: titles.overview,
+      posterPath: titles.posterPath,
+      backdropPath: titles.backdropPath,
+      releaseDate: titles.releaseDate,
+      firstAirDate: titles.firstAirDate,
+    })
+    .from(titles)
+    .where(eq(titles.id, cachedId));
+  if (!row) return {};
+
+  const year = (row.releaseDate ?? row.firstAirDate ?? "").slice(0, 4);
+  const name = year ? `${row.name} (${year})` : row.name;
+  const pageTitle = `${name} — ${mediaType === "movie" ? "filme" : "série"} no ShowRadar`;
+  const description =
+    row.overview?.slice(0, 200) ||
+    `Veja onde assistir, avaliações e acompanhe ${row.name} no ShowRadar.`;
+  // Backdrop (16:9) antes do pôster: é o formato que WhatsApp e Twitter
+  // renderizam inteiro no card, enquanto o pôster vertical sai cortado.
+  const image = tmdbImageUrl(row.backdropPath, "w1280") ?? tmdbImageUrl(row.posterPath, "w500");
+
+  return {
+    title: pageTitle,
+    description,
+    alternates: { canonical: `/title/${mediaType}/${tmdbIdNum}` },
+    openGraph: {
+      type: mediaType === "movie" ? "video.movie" : "video.tv_show",
+      title: pageTitle,
+      description,
+      url: `${getSiteUrl()}/title/${mediaType}/${tmdbIdNum}`,
+      images: image ? [{ url: image }] : undefined,
+    },
+    twitter: {
+      card: image ? "summary_large_image" : "summary",
+      title: pageTitle,
+      description,
+      images: image ? [image] : undefined,
+    },
+  };
+}
 
 export default async function TitleDetailPage({
   params,
@@ -74,6 +141,7 @@ export default async function TitleDetailPage({
     similarTitles,
     movieWatchCount,
     userLists,
+    friends,
   ] = await Promise.all([
     session?.user
       ? db
@@ -97,6 +165,7 @@ export default async function TitleDetailPage({
           .then((rows) => rows[0]?.count ?? 0)
       : Promise.resolve(0),
     session?.user ? getUserListsWithMembership(session.user.id, titleId) : Promise.resolve([]),
+    session?.user ? getFriends(session.user.id) : Promise.resolve([]),
   ]);
   const libraryEntry = libraryRows[0];
   const currentStatus =
@@ -116,6 +185,9 @@ export default async function TitleDetailPage({
   const totalEpisodes = seasonRows
     .filter((s) => s.seasonNumber !== 0)
     .reduce((sum, s) => sum + (s.episodeCount ?? 0), 0);
+
+  const signedIn = !!session?.user;
+  const shareUrl = `${getSiteUrl()}/title/${mediaType}/${tmdbIdNum}`;
 
   const cast = (title.credits as TmdbCastMember[] | null) ?? [];
   const genres = (title.genres as { id: number; name: string }[] | null) ?? [];
@@ -166,9 +238,27 @@ export default async function TitleDetailPage({
             currentStatus={currentStatus}
             mediaType={mediaType}
             watchCount={movieWatchCount}
+            signedIn={signedIn}
           />
 
-          <AddToListButton titleId={titleId} mediaType={mediaType} tmdbId={tmdbIdNum} initialLists={userLists} />
+          <div className="flex flex-wrap items-center gap-2">
+            <AddToListButton
+              titleId={titleId}
+              mediaType={mediaType}
+              tmdbId={tmdbIdNum}
+              initialLists={userLists}
+              signedIn={signedIn}
+            />
+            <ShareTitleButton
+              url={shareUrl}
+              name={title.name}
+              titleId={titleId}
+              mediaType={mediaType}
+              tmdbId={tmdbIdNum}
+              friends={friends}
+              signedIn={signedIn}
+            />
+          </div>
 
           <WatchProviders providers={title.watchProvidersBr as TmdbWatchProviderRegion | null} />
 
@@ -216,6 +306,7 @@ export default async function TitleDetailPage({
         commentCount={commentCount}
         commentsBlurred={commentsBlurred}
         commentsHref={`/title/${mediaType}/${tmdbIdNum}/comments`}
+        signedIn={signedIn}
       />
 
       {mediaType === "tv" && seasonRows.length > 0 && (
@@ -228,6 +319,7 @@ export default async function TitleDetailPage({
             titleId={titleId}
             tmdbId={tmdbIdNum}
             showName={title.name}
+            signedIn={signedIn}
           />
         </div>
       )}

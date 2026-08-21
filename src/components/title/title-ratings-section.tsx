@@ -15,6 +15,7 @@ export function TitleRatingsSection({
   commentCount,
   commentsBlurred,
   commentsHref,
+  signedIn = true,
 }: {
   voteAverage: string | null;
   summary: RatingSummary | null;
@@ -26,6 +27,7 @@ export function TitleRatingsSection({
   commentCount: number;
   commentsBlurred: boolean;
   commentsHref: string;
+  signedIn?: boolean;
 }) {
   return (
     <div className="space-y-4">
@@ -55,7 +57,9 @@ export function TitleRatingsSection({
         {canRate ? (
           <RatingForm initialRating={currentUserRating} onChange={onRatingChange} onDelete={onRatingDelete} />
         ) : (
-          <p className="text-xs text-muted-foreground">Marque como assistido para avaliar.</p>
+          <p className="text-xs text-muted-foreground">
+            {signedIn ? "Marque como assistido para avaliar." : "Entre para avaliar este título."}
+          </p>
         )}
       </div>
 

@@ -29,6 +29,7 @@ import {
   setSeasonWatched,
   toggleEpisodeWatched,
 } from "@/lib/actions/episodes";
+import { useSignInRedirect } from "@/hooks/use-sign-in-redirect";
 import { formatDate } from "@/lib/format-date";
 import { isOffline } from "@/lib/offline/network-status";
 import { runOrQueue } from "@/lib/offline/run-or-queue";
@@ -58,6 +59,7 @@ export function SeasonList({
   tmdbId,
   onSeasonCountChange,
   onSeasonCountsChange,
+  signedIn,
   pendingSeasonIds,
   onBulkPendingChange,
 }: {
@@ -67,6 +69,7 @@ export function SeasonList({
   tmdbId: number;
   onSeasonCountChange: (seasonId: string, count: number) => void;
   onSeasonCountsChange: (counts: Record<string, number>) => void;
+  signedIn: boolean;
   pendingSeasonIds: Set<string>;
   onBulkPendingChange: (throughSeasonNumber: number | null) => void;
 }) {
@@ -83,6 +86,7 @@ export function SeasonList({
           tmdbId={tmdbId}
           onSeasonCountChange={onSeasonCountChange}
           onSeasonCountsChange={onSeasonCountsChange}
+          signedIn={signedIn}
           bulkPending={pendingSeasonIds.has(season.id)}
           onBulkPendingChange={onBulkPendingChange}
         />
@@ -100,6 +104,7 @@ function SeasonItem({
   tmdbId,
   onSeasonCountChange,
   onSeasonCountsChange,
+  signedIn,
   bulkPending,
   onBulkPendingChange,
 }: {
@@ -111,6 +116,7 @@ function SeasonItem({
   tmdbId: number;
   onSeasonCountChange: (seasonId: string, count: number) => void;
   onSeasonCountsChange: (counts: Record<string, number>) => void;
+  signedIn: boolean;
   bulkPending: boolean;
   onBulkPendingChange: (throughSeasonNumber: number | null) => void;
 }) {
@@ -126,6 +132,7 @@ function SeasonItem({
   // por `bulkPending` (que vem de cima), sem esse recorte por episódio.
   const [bulkThrough, setBulkThrough] = useState<{ through: number | null } | null>(null);
   const [, startTransition] = useTransition();
+  const goToSignIn = useSignInRedirect();
 
   const total = season.episodeCount ?? 0;
   const pct = total > 0 ? Math.round((watchedCount / total) * 100) : 0;
@@ -228,6 +235,7 @@ function SeasonItem({
   }
 
   function handleToggleEpisode(episode: EpisodeRow) {
+    if (!signedIn) return goToSignIn();
     if (episode.watched) {
       applyEpisodeToggle(episode, false);
       return;
@@ -292,6 +300,7 @@ function SeasonItem({
   }
 
   function handleMarkSeason() {
+    if (!signedIn) return goToSignIn();
     const nextWatched = !seasonComplete;
     // Offline, the "mark previous seasons too?" flow is out of scope (see
     // markThroughHere above) — always just toggles this season.

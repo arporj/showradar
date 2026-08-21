@@ -6,7 +6,13 @@ import { notificationEmailHtml, sendEmail } from "@/lib/email";
 import { sendPushNotification } from "@/lib/push";
 import { isWithinQuietHours } from "@/lib/quiet-hours";
 
-type CommentNotificationType = "mention" | "reply" | "reaction" | "follow_request" | "follow_accepted";
+type CommentNotificationType =
+  | "mention"
+  | "reply"
+  | "reaction"
+  | "follow_request"
+  | "follow_accepted"
+  | "title_shared";
 
 const MENTION_PATTERN = /@([a-z0-9_]+)/g;
 
@@ -55,6 +61,7 @@ export async function notifyCommentEvent(input: {
         notifyReactions: sql<boolean>`coalesce(${notificationPreferences.notifyReactions}, true)`,
         notifyFollowRequest: sql<boolean>`coalesce(${notificationPreferences.notifyFollowRequest}, true)`,
         notifyFollowAccepted: sql<boolean>`coalesce(${notificationPreferences.notifyFollowAccepted}, true)`,
+        notifyTitleShared: sql<boolean>`coalesce(${notificationPreferences.notifyTitleShared}, true)`,
         quietHoursStart: notificationPreferences.quietHoursStart,
         quietHoursEnd: notificationPreferences.quietHoursEnd,
         timezone: sql<string>`coalesce(${notificationPreferences.timezone}, 'UTC')`,
@@ -70,6 +77,7 @@ export async function notifyCommentEvent(input: {
       reaction: recipient.notifyReactions,
       follow_request: recipient.notifyFollowRequest,
       follow_accepted: recipient.notifyFollowAccepted,
+      title_shared: recipient.notifyTitleShared,
     }[input.type];
     if (!typeEnabled) return;
 

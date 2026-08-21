@@ -13,6 +13,7 @@ import {
   undoMovieRewatch,
   updateLibraryStatus,
 } from "@/lib/actions/library";
+import { useSignInRedirect } from "@/hooks/use-sign-in-redirect";
 import { LIBRARY_STATUS_LABEL, type LibraryStatus } from "@/lib/library-status";
 import { runOrQueue } from "@/lib/offline/run-or-queue";
 
@@ -26,12 +27,14 @@ export function LibraryStatusControl({
   currentStatus,
   mediaType,
   watchCount,
+  signedIn = true,
 }: {
   titleId: string;
   tmdbId: number;
   currentStatus: LibraryStatus | null;
   mediaType: "movie" | "tv";
   watchCount: number;
+  signedIn?: boolean;
 }) {
   const [optimisticStatus, setOptimisticStatus] = useOptimistic(
     currentStatus,
@@ -39,8 +42,10 @@ export function LibraryStatusControl({
   );
   const [count, setCount] = useState(watchCount);
   const [isPending, startTransition] = useTransition();
+  const goToSignIn = useSignInRedirect();
 
   function handleAdd() {
+    if (!signedIn) return goToSignIn();
     startTransition(async () => {
       setOptimisticStatus("plan_to_watch");
       await addExistingTitleToLibrary(titleId);
@@ -48,6 +53,7 @@ export function LibraryStatusControl({
   }
 
   function handleChangeStatus(status: LibraryStatus) {
+    if (!signedIn) return goToSignIn();
     // Mirrors the server-side rule in updateLibraryStatus: a genuine
     // transition into "completed" logs a watch event too, so the counter
     // shown right after clicking "Assistido" isn't stuck at the stale
@@ -65,6 +71,7 @@ export function LibraryStatusControl({
   }
 
   function handleRemove() {
+    if (!signedIn) return goToSignIn();
     startTransition(async () => {
       setOptimisticStatus(null);
       await removeFromLibrary(titleId);
@@ -72,6 +79,7 @@ export function LibraryStatusControl({
   }
 
   function handleRewatch() {
+    if (!signedIn) return goToSignIn();
     setCount((c) => c + 1);
     startTransition(async () => {
       await rewatchMovie(titleId, "movie", tmdbId);
@@ -80,6 +88,7 @@ export function LibraryStatusControl({
   }
 
   function handleUndoRewatch() {
+    if (!signedIn) return goToSignIn();
     setCount((c) => Math.max(1, c - 1));
     startTransition(async () => {
       await undoMovieRewatch(titleId, "movie", tmdbId);
@@ -89,7 +98,7 @@ export function LibraryStatusControl({
   if (!optimisticStatus) {
     return (
       <Button type="button" onClick={handleAdd} disabled={isPending}>
-        {isPending ? "Adicionando..." : "Adicionar à grade"}
+        {!signedIn ? "Entrar para acompanhar" : isPending ? "Adicionando..." : "Adicionar à grade"}
       </Button>
     );
   }

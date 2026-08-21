@@ -1,0 +1,2 @@
+ALTER TYPE "showradar"."notification_type" ADD VALUE 'title_shared';--> statement-breakpoint
+ALTER TABLE "showradar"."notification_preferences" ADD COLUMN "notify_title_shared" boolean DEFAULT true NOT NULL;

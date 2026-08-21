@@ -14,6 +14,7 @@ interface Prefs {
   notifyReactions: boolean;
   notifyFollowRequest: boolean;
   notifyFollowAccepted: boolean;
+  notifyTitleShared: boolean;
 }
 
 export function NotificationPreferencesForm({ initial }: { initial: Prefs }) {
@@ -128,6 +129,20 @@ export function NotificationPreferencesForm({ initial }: { initial: Prefs }) {
           checked={prefs.notifyFollowAccepted}
           disabled={isPending}
           onCheckedChange={(checked) => toggle("notifyFollowAccepted", checked)}
+        />
+      </label>
+
+      <label className="flex items-center justify-between gap-4 rounded-lg border p-4">
+        <div>
+          <p className="text-sm font-medium">Recomendação de amigo</p>
+          <p className="text-xs text-muted-foreground">
+            Avisar quando um amigo compartilhar um filme ou série com você.
+          </p>
+        </div>
+        <Switch
+          checked={prefs.notifyTitleShared}
+          disabled={isPending}
+          onCheckedChange={(checked) => toggle("notifyTitleShared", checked)}
         />
       </label>
     </div>
