@@ -1,6 +1,9 @@
 import { ImageResponse } from "next/og";
 
-export const runtime = "edge";
+// Next.js 15+ passou a tratar GET handlers como dinâmicos por padrão — sem
+// isso, essa imagem (sempre igual, sem params) seria recalculada a cada
+// e-mail aberto em vez de gerada uma vez no build.
+export const dynamic = "force-static";
 
 // Lockup horizontal do logo (ver components/layout/logo.tsx), fundo
 // transparente de propósito: fica embutido no cabeçalho escuro do e-mail
