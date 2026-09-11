@@ -7,7 +7,9 @@ import { useState, useTransition } from "react";
 import { CelebrationOverlay } from "@/components/title/celebration-overlay";
 import { WatchToggleButton } from "@/components/title/episode-watch-button";
 import { ProviderBadge } from "@/components/title/provider-badge";
+import { RateAfterWatchDialog } from "@/components/title/rate-after-watch-dialog";
 import { markDashboardEpisodeWatched } from "@/lib/actions/episodes";
+import { submitEpisodeRating } from "@/lib/actions/episode-ratings";
 import type { NextEpisodeItem } from "@/lib/next-episode";
 import { runOrQueue } from "@/lib/offline/run-or-queue";
 import { tmdbImageUrl } from "@/lib/tmdb";
@@ -18,12 +20,14 @@ export function NextEpisodeCard({ item: initialItem }: { item: NextEpisodeItem }
   const [hidden, setHidden] = useState(false);
   const [justMarked, setJustMarked] = useState(false);
   const [celebration, setCelebration] = useState<{ title: string; description: string } | null>(null);
+  const [ratedItem, setRatedItem] = useState<NextEpisodeItem | null>(null);
   const [isPending, startTransition] = useTransition();
   const image = tmdbImageUrl(item.stillPath ?? item.posterPath, item.stillPath ? "w300" : "w185");
   const episodeHref = `/title/tv/${item.tmdbId}/season/${item.seasonNumber}/episode/${item.episodeNumber}`;
 
   function handleMarkWatched() {
     setJustMarked(true);
+    const watchedItem = item;
     startTransition(async () => {
       // Doesn't touch /dashboard's server-side cache at all — the action
       // returns this show's own next episode directly, so the card updates
@@ -35,6 +39,10 @@ export function NextEpisodeCard({ item: initialItem }: { item: NextEpisodeItem }
         { type: "episode-toggle", payload: { episodeId: item.episodeId, watched: true, titleId: item.titleId, tmdbTvId: item.tmdbId } },
       );
       if (!result) return;
+      // `result` only comes back non-undefined once the write actually ran
+      // (see runOrQueue) — so the episode is confirmed watched by now and
+      // submitEpisodeRating's guard won't reject the rating.
+      setRatedItem(watchedItem);
       if (result.seriesCompleted) {
         setCelebration({
           title: "Série concluída!",
@@ -54,7 +62,7 @@ export function NextEpisodeCard({ item: initialItem }: { item: NextEpisodeItem }
     });
   }
 
-  if (hidden && !celebration) return null;
+  if (hidden && !celebration && !ratedItem) return null;
 
   return (
     <div className="flex items-center gap-3 rounded-lg border p-3">
@@ -83,6 +91,25 @@ export function NextEpisodeCard({ item: initialItem }: { item: NextEpisodeItem }
         title={celebration?.title ?? ""}
         description={celebration?.description ?? ""}
         onClose={() => setCelebration(null)}
+      />
+
+      <RateAfterWatchDialog
+        open={ratedItem !== null}
+        onOpenChange={(next) => !next && setRatedItem(null)}
+        label={
+          ratedItem
+            ? `${ratedItem.showName} · T${ratedItem.seasonNumber}E${ratedItem.episodeNumber}${ratedItem.episodeName ? ` · ${ratedItem.episodeName}` : ""}`
+            : ""
+        }
+        onRate={(rating) =>
+          submitEpisodeRating({
+            episodeId: ratedItem!.episodeId,
+            tmdbTvId: ratedItem!.tmdbId,
+            seasonNumber: ratedItem!.seasonNumber,
+            episodeNumber: ratedItem!.episodeNumber,
+            rating,
+          })
+        }
       />
     </div>
   );

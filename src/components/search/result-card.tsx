@@ -83,7 +83,7 @@ export function SearchResultCard({
         {meta.length > 0 && <p className="text-xs text-muted-foreground">{meta.join(" · ")}</p>}
         <p className="line-clamp-2 text-sm text-muted-foreground">{result.overview}</p>
         <div className="mt-auto flex flex-wrap gap-2 pt-1">
-          <AddToLibraryButton mediaType={mediaType} tmdbId={result.id} initiallyAdded={!!result.inLibrary} />
+          <AddToLibraryButton mediaType={mediaType} tmdbId={result.id} title={title} initiallyAdded={!!result.inLibrary} />
         </div>
       </div>
     </div>

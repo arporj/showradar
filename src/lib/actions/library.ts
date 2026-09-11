@@ -61,6 +61,8 @@ export async function addTitleToLibraryAsWatched(mediaType: TmdbMediaType, tmdbI
   revalidatePath("/library");
   revalidatePath("/dashboard");
   revalidatePath(`/title/${mediaType}/${tmdbId}`);
+
+  return { titleId };
 }
 
 // For contexts where the title was already synced moments ago (e.g. the

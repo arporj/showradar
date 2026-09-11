@@ -5,7 +5,10 @@ import { toast } from "sonner";
 
 import { WatchToggleButton } from "@/components/title/episode-watch-button";
 import { WatchCountControl } from "@/components/title/watch-count-control";
+import { RateAfterWatchDialog } from "@/components/title/rate-after-watch-dialog";
 import { rewatchEpisode, toggleEpisodeWatched, undoEpisodeRewatch } from "@/lib/actions/episodes";
+import { submitEpisodeRating } from "@/lib/actions/episode-ratings";
+import { isOffline } from "@/lib/offline/network-status";
 import { runOrQueue } from "@/lib/offline/run-or-queue";
 
 export function EpisodePageWatchToggle({
@@ -14,6 +17,7 @@ export function EpisodePageWatchToggle({
   tmdbTvId,
   seasonNumber,
   episodeNumber,
+  episodeName,
   initialWatched,
   initialWatchCount,
   aired,
@@ -23,12 +27,14 @@ export function EpisodePageWatchToggle({
   tmdbTvId: number;
   seasonNumber: number;
   episodeNumber: number;
+  episodeName: string;
   initialWatched: boolean;
   initialWatchCount: number;
   aired: boolean;
 }) {
   const [watched, setWatched] = useState(initialWatched);
   const [count, setCount] = useState(initialWatchCount);
+  const [ratingOpen, setRatingOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   function handleToggle() {
@@ -43,6 +49,11 @@ export function EpisodePageWatchToggle({
         () => toggleEpisodeWatched(episodeId, next, titleId, tmdbTvId, seasonNumber, episodeNumber),
         { type: "episode-toggle", payload: { episodeId, watched: next, titleId, tmdbTvId } },
       );
+      // Offline, the write is only queued (not actually confirmed by the
+      // server yet), so submitEpisodeRating's "must have watched it" guard
+      // would silently reject a rating submitted from the dialog — skip it
+      // in that case, same as the "mark previous episodes too?" dialog does.
+      if (next && !isOffline()) setRatingOpen(true);
     });
   }
 
@@ -78,6 +89,13 @@ export function EpisodePageWatchToggle({
           onDecrement={handleUndoRewatch}
         />
       )}
+
+      <RateAfterWatchDialog
+        open={ratingOpen}
+        onOpenChange={setRatingOpen}
+        label={`${episodeNumber}. ${episodeName}`}
+        onRate={(rating) => submitEpisodeRating({ episodeId, tmdbTvId, seasonNumber, episodeNumber, rating })}
+      />
     </div>
   );
 }

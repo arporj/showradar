@@ -235,9 +235,11 @@ export default async function TitleDetailPage({
           <LibraryStatusControl
             titleId={titleId}
             tmdbId={tmdbIdNum}
+            titleName={title.name}
             currentStatus={currentStatus}
             mediaType={mediaType}
             watchCount={movieWatchCount}
+            onRate={submitRating.bind(null, titleId, mediaType, tmdbIdNum)}
             signedIn={signedIn}
           />
 

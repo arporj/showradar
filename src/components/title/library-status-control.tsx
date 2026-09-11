@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { RateAfterWatchDialog } from "@/components/title/rate-after-watch-dialog";
 import { WatchCountControl } from "@/components/title/watch-count-control";
 import {
   addExistingTitleToLibrary,
@@ -15,6 +16,7 @@ import {
 } from "@/lib/actions/library";
 import { useSignInRedirect } from "@/hooks/use-sign-in-redirect";
 import { LIBRARY_STATUS_LABEL, type LibraryStatus } from "@/lib/library-status";
+import { isOffline } from "@/lib/offline/network-status";
 import { runOrQueue } from "@/lib/offline/run-or-queue";
 
 // Movies have no episode-level signal to derive status from, so all five
@@ -24,16 +26,20 @@ const MOVIE_STATUS_BUTTONS: LibraryStatus[] = ["plan_to_watch", "watching", "on_
 export function LibraryStatusControl({
   titleId,
   tmdbId,
+  titleName,
   currentStatus,
   mediaType,
   watchCount,
+  onRate,
   signedIn = true,
 }: {
   titleId: string;
   tmdbId: number;
+  titleName: string;
   currentStatus: LibraryStatus | null;
   mediaType: "movie" | "tv";
   watchCount: number;
+  onRate: (rating: number) => Promise<void>;
   signedIn?: boolean;
 }) {
   const [optimisticStatus, setOptimisticStatus] = useOptimistic(
@@ -41,6 +47,7 @@ export function LibraryStatusControl({
     (_state: LibraryStatus | null, next: LibraryStatus | null) => next,
   );
   const [count, setCount] = useState(watchCount);
+  const [ratingOpen, setRatingOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const goToSignIn = useSignInRedirect();
 
@@ -58,7 +65,8 @@ export function LibraryStatusControl({
     // transition into "completed" logs a watch event too, so the counter
     // shown right after clicking "Assistido" isn't stuck at the stale
     // pre-completion count from page load.
-    if (mediaType === "movie" && status === "completed" && optimisticStatus !== "completed") {
+    const justWatchedMovie = mediaType === "movie" && status === "completed" && optimisticStatus !== "completed";
+    if (justWatchedMovie) {
       setCount((c) => c + 1);
     }
     startTransition(async () => {
@@ -67,6 +75,12 @@ export function LibraryStatusControl({
         type: "library-status",
         payload: { titleId, status },
       });
+      // updateLibraryStatus doesn't return anything to tell an online write
+      // apart from an offline-queued one, unlike the episode actions — so
+      // the offline check happens here instead, same effect as gating on a
+      // truthy result: skip the prompt when the write hasn't actually
+      // landed yet.
+      if (justWatchedMovie && !isOffline()) setRatingOpen(true);
     });
   }
 
@@ -150,6 +164,8 @@ export function LibraryStatusControl({
       <Button type="button" variant="ghost" size="sm" disabled={isPending} onClick={handleRemove}>
         Remover
       </Button>
+
+      <RateAfterWatchDialog open={ratingOpen} onOpenChange={setRatingOpen} label={titleName} onRate={onRate} />
     </div>
   );
 }

@@ -14,28 +14,36 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { RateAfterWatchDialog } from "@/components/title/rate-after-watch-dialog";
 import { addTitleToLibrary, addTitleToLibraryAsWatched } from "@/lib/actions/library";
+import { submitRating } from "@/lib/actions/ratings";
 import type { TmdbMediaType } from "@/lib/tmdb";
 
 export function AddToLibraryButton({
   mediaType,
   tmdbId,
+  title,
   initiallyAdded,
 }: {
   mediaType: TmdbMediaType;
   tmdbId: number;
+  title: string;
   initiallyAdded: boolean;
 }) {
   const [state, setState] = useState<"none" | "added" | "watched">(initiallyAdded ? "added" : "none");
   const [pendingAction, setPendingAction] = useState<"add" | "watch" | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [ratingTitleId, setRatingTitleId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   function markWatched() {
     setPendingAction("watch");
     startTransition(async () => {
-      await addTitleToLibraryAsWatched(mediaType, tmdbId);
+      const { titleId } = await addTitleToLibraryAsWatched(mediaType, tmdbId);
       setState("watched");
+      // Only the movie quick-action rates here — the TV path below marks
+      // the whole series watched at once, not "a specific episode or movie".
+      if (mediaType === "movie") setRatingTitleId(titleId);
     });
   }
 
@@ -49,9 +57,17 @@ export function AddToLibraryButton({
 
   if (state === "watched") {
     return (
-      <Button type="button" size="sm" variant="secondary" disabled>
-        <Check /> Assistido
-      </Button>
+      <>
+        <Button type="button" size="sm" variant="secondary" disabled>
+          <Check /> Assistido
+        </Button>
+        <RateAfterWatchDialog
+          open={ratingTitleId !== null}
+          onOpenChange={(next) => !next && setRatingTitleId(null)}
+          label={title}
+          onRate={(rating) => submitRating(ratingTitleId!, mediaType, tmdbId, rating)}
+        />
+      </>
     );
   }
 

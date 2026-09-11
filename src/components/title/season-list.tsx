@@ -22,6 +22,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WatchToggleButton } from "@/components/title/episode-watch-button";
+import { RateAfterWatchDialog } from "@/components/title/rate-after-watch-dialog";
 import type { seasons as seasonsTable } from "@/db/schema";
 import {
   loadSeasonEpisodes,
@@ -29,6 +30,7 @@ import {
   setSeasonWatched,
   toggleEpisodeWatched,
 } from "@/lib/actions/episodes";
+import { submitEpisodeRating } from "@/lib/actions/episode-ratings";
 import { useSignInRedirect } from "@/hooks/use-sign-in-redirect";
 import { formatDate } from "@/lib/format-date";
 import { isOffline } from "@/lib/offline/network-status";
@@ -126,6 +128,7 @@ function SeasonItem({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [markingSeason, setMarkingSeason] = useState(false);
   const [confirm, setConfirm] = useState<ConfirmState | null>(null);
+  const [ratingEpisode, setRatingEpisode] = useState<EpisodeRow | null>(null);
   // Recorte do bulk em andamento *iniciado nesta temporada*: `through` é o
   // último episódio incluído, ou null quando a temporada entra inteira. As
   // temporadas anteriores varridas pelo mesmo bulk sabem que estão pendentes
@@ -231,6 +234,10 @@ function SeasonItem({
         type: "episode-toggle",
         payload: { episodeId: episode.id, watched: nextWatched, titleId, tmdbTvId: tmdbId },
       });
+      // Same offline caveat as elsewhere: a queued (not yet confirmed) write
+      // would make submitEpisodeRating's "must have watched it" guard reject
+      // silently, so the rating prompt only shows once actually online.
+      if (nextWatched && !isOffline()) setRatingEpisode(episode);
     });
   }
 
@@ -416,6 +423,21 @@ function SeasonItem({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <RateAfterWatchDialog
+        open={ratingEpisode !== null}
+        onOpenChange={(next) => !next && setRatingEpisode(null)}
+        label={ratingEpisode ? `${ratingEpisode.episodeNumber}. ${ratingEpisode.name}` : ""}
+        onRate={(rating) =>
+          submitEpisodeRating({
+            episodeId: ratingEpisode!.id,
+            tmdbTvId: tmdbId,
+            seasonNumber: season.seasonNumber,
+            episodeNumber: ratingEpisode!.episodeNumber,
+            rating,
+          })
+        }
+      />
     </Collapsible>
   );
 }

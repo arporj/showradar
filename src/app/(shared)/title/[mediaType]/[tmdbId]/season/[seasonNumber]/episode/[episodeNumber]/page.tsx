@@ -111,6 +111,7 @@ export default async function EpisodeDetailPage({
             tmdbTvId={tmdbIdNum}
             seasonNumber={seasonNumberNum}
             episodeNumber={episodeNumberNum}
+            episodeName={episode.name ?? ""}
             initialWatched={watched}
             initialWatchCount={watchCount}
             aired={aired}
