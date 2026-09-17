@@ -31,6 +31,24 @@ function realEpisodeName(name: string | null | undefined): string | null {
   return GENERIC_EPISODE_NAME.test(name.trim()) ? null : name;
 }
 
+// O título da notificação some truncado na barra de status do Android até o
+// usuário expandi-la — o nome da série precisa vir primeiro pra aparecer
+// mesmo sem expandir, em vez de ficar escondido no fim da frase.
+const NEW_EPISODE_BODY_PHRASES = [
+  "divirta-se!",
+  "bora maratonar?",
+  "já pode dar o play",
+  "prepara a pipoca",
+  "sofá reservado",
+  "não perca esse",
+  "play liberado",
+  "hora de descobrir o que rola",
+];
+
+function randomEpisodePhrase(): string {
+  return NEW_EPISODE_BODY_PHRASES[Math.floor(Math.random() * NEW_EPISODE_BODY_PHRASES.length)];
+}
+
 type NotificationType = "new_episode" | "new_season" | "new_movie_release";
 
 interface ReleaseEvent {
@@ -188,12 +206,12 @@ export async function GET(request: NextRequest) {
         event.notificationType === "new_movie_release"
           ? `${event.name} já está disponível`
           : event.notificationType === "new_season"
-            ? `Hoje tem uma nova temporada de ${event.name}!`
-            : `Hoje tem um novo episódio de ${event.name}!`;
+            ? `${event.name}: nova temporada hoje!`
+            : `${event.name}: novo episódio hoje!`;
       const body =
         event.notificationType === "new_movie_release"
           ? "Já disponível para assistir"
-          : `Divirta-se com o episódio ${episodeSuffix}`;
+          : `${episodeSuffix}: ${randomEpisodePhrase()}`;
       const url = `${process.env.NEXT_PUBLIC_APP_URL}/title/${event.mediaType}/${event.tmdbId}`;
 
       if (user.pushEnabled) {
