@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
                 cy="256"
                 r="200"
                 fill="none"
-                stroke="#64748B"
+                stroke="#22D3EE"
                 strokeWidth="20"
                 strokeLinecap="round"
                 strokeDasharray="1029.744 226.893"
@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
                 cy="256"
                 r="80"
                 fill="none"
-                stroke="#22D3EE"
+                stroke="#64748B"
                 strokeWidth="20"
                 strokeLinecap="round"
                 strokeDasharray="411.898 90.757"
@@ -110,14 +110,14 @@ export async function GET(request: NextRequest) {
               />
               <polygon
                 points="211,171 211,341 356,256"
-                fill="#22D3EE"
-                stroke="#22D3EE"
+                fill="#64748B"
+                stroke="#64748B"
                 strokeWidth="20"
                 strokeLinejoin="round"
                 transform="rotate(315 256 256)"
               />
-              <circle cx="256" cy="256" r="18" fill="#22D3EE" />
-              <line x1="256" y1="256" x2="114" y2="398" stroke="#22D3EE" strokeWidth="20" strokeLinecap="round" />
+              <circle cx="256" cy="256" r="18" fill="#64748B" />
+              <line x1="256" y1="256" x2="114" y2="398" stroke="#64748B" strokeWidth="20" strokeLinecap="round" />
             </svg>
             <div style={{ fontSize: 36, fontWeight: 700, color: "#ffffff", letterSpacing: "-0.03em" }}>ShowRadar</div>
           </div>
