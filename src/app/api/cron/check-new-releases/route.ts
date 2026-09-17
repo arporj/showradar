@@ -11,6 +11,7 @@ import {
 } from "@/db/schema";
 import { db } from "@/lib/db";
 import { notificationEmailHtml, sendEmail } from "@/lib/email";
+import { buildNotificationContent, type NotificationType } from "@/lib/notification-content";
 import { sendPushNotification } from "@/lib/push";
 import { isWithinQuietHours } from "@/lib/quiet-hours";
 import { todayBrDateString } from "@/lib/release-dates";
@@ -30,26 +31,6 @@ function realEpisodeName(name: string | null | undefined): string | null {
   if (!name) return null;
   return GENERIC_EPISODE_NAME.test(name.trim()) ? null : name;
 }
-
-// O título da notificação some truncado na barra de status do Android até o
-// usuário expandi-la — o nome da série precisa vir primeiro pra aparecer
-// mesmo sem expandir, em vez de ficar escondido no fim da frase.
-const NEW_EPISODE_BODY_PHRASES = [
-  "divirta-se!",
-  "bora maratonar?",
-  "já pode dar o play",
-  "prepara a pipoca",
-  "sofá reservado",
-  "não perca esse",
-  "play liberado",
-  "hora de descobrir o que rola",
-];
-
-function randomEpisodePhrase(): string {
-  return NEW_EPISODE_BODY_PHRASES[Math.floor(Math.random() * NEW_EPISODE_BODY_PHRASES.length)];
-}
-
-type NotificationType = "new_episode" | "new_season" | "new_movie_release";
 
 interface ReleaseEvent {
   titleId: string;
@@ -201,17 +182,7 @@ export async function GET(request: NextRequest) {
       // lançamento (ex.: HBO solta episódios só às 22h) — o cron roda de
       // manhã, então a notificação chegava horas antes do episódio existir
       // de fato. A frase agora não promete disponibilidade imediata.
-      const episodeSuffix = event.episodeName ? `${event.episodeLabel} - ${event.episodeName}` : event.episodeLabel;
-      const title =
-        event.notificationType === "new_movie_release"
-          ? `${event.name} já está disponível`
-          : event.notificationType === "new_season"
-            ? `${event.name}: nova temporada hoje!`
-            : `${event.name}: novo episódio hoje!`;
-      const body =
-        event.notificationType === "new_movie_release"
-          ? "Já disponível para assistir"
-          : `${episodeSuffix}: ${randomEpisodePhrase()}`;
+      const { title, body } = buildNotificationContent(event);
       const url = `${process.env.NEXT_PUBLIC_APP_URL}/title/${event.mediaType}/${event.tmdbId}`;
 
       if (user.pushEnabled) {
