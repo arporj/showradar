@@ -81,8 +81,8 @@ export default function OpengraphImage() {
           />
           <polygon
             points="211,171 211,341 356,256"
-            fill="#64748B"
-            stroke="#64748B"
+            fill="#22D3EE"
+            stroke="#22D3EE"
             strokeWidth="20"
             strokeLinejoin="round"
             transform="rotate(315 256 256)"

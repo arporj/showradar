@@ -66,10 +66,10 @@ export function LogoMark({ className }: { className?: string }) {
         transform="rotate(168 256 256)"
       />
 
-      {/* 4. Play Sólido - Rotacionado a 315° (ponta para Nordeste, base perpendicular a 225°), tamanho r=110 */}
+      {/* 4. Play Sólido - Rotacionado a 315° (ponta para Nordeste, base perpendicular a 225°), tamanho r=110 - Ciano, mesma cor do anel externo */}
       <polygon
         points="211,171 211,341 356,256"
-        className="fill-slate-400/70 dark:fill-slate-700/60 stroke-slate-400/70 dark:stroke-slate-700/60"
+        className="fill-cyan-500 dark:fill-cyan-400 stroke-cyan-500 dark:stroke-cyan-400"
         strokeWidth="20"
         strokeLinejoin="round"
         transform="rotate(315 256 256)"
