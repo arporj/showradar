@@ -75,14 +75,14 @@ export function LogoMark({ className }: { className?: string }) {
         transform="rotate(315 256 256)"
       />
 
-      {/* 5. Círculo Central e Traço (Varredura a 225° / Sudoeste - passa na bissetriz da base do play) */}
+      {/* 5. Círculo Central (slate) e Traço de Varredura (a 225° / Sudoeste, ciano - mesma cor do play/anel externo) */}
       <circle cx="256" cy="256" r="18" className="fill-slate-400/70 dark:fill-slate-700/60" />
       <line
         x1="256"
         y1="256"
         x2="114"
         y2="398"
-        className="stroke-slate-400/70 dark:stroke-slate-700/60"
+        className="stroke-cyan-500 dark:stroke-cyan-400"
         strokeWidth="20"
         strokeLinecap="round"
       />

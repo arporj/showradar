@@ -56,7 +56,7 @@ export async function GET() {
             transform="rotate(315 256 256)"
           />
           <circle cx="256" cy="256" r="18" fill="#64748B" />
-          <line x1="256" y1="256" x2="114" y2="398" stroke="#64748B" strokeWidth="20" strokeLinecap="round" />
+          <line x1="256" y1="256" x2="114" y2="398" stroke="#22D3EE" strokeWidth="20" strokeLinecap="round" />
         </svg>
         <div style={{ fontSize: 34, fontWeight: 700, color: "#ffffff", letterSpacing: "-0.03em" }}>ShowRadar</div>
       </div>
