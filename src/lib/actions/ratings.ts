@@ -11,7 +11,7 @@ import type { TmdbMediaType } from "@/lib/tmdb";
 
 function revalidateRatingPaths(mediaType: TmdbMediaType, tmdbId: number) {
   revalidatePath(`/title/${mediaType}/${tmdbId}`);
-  revalidatePath("/feed");
+  revalidatePath("/social");
   revalidatePath("/search");
 }
 

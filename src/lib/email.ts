@@ -162,6 +162,32 @@ export function passwordResetEmailHtml(resetUrl: string): string {
   });
 }
 
+export function newUserAdminEmailHtml({
+  displayName,
+  username,
+  email,
+  method,
+  totalUsers,
+  profileUrl,
+}: {
+  displayName: string;
+  username: string;
+  email: string;
+  method: "credentials" | "google";
+  totalUsers: number;
+  profileUrl: string;
+}): string {
+  const methodLabel = method === "google" ? "com a conta Google" : "com e-mail e senha";
+  return emailShell({
+    preheader: `${displayName} (@${username}) acabou de criar uma conta`,
+    title: "Novo cadastro no ShowRadar",
+    body: `${displayName} (@${username} · ${email}) criou uma conta ${methodLabel}. O ShowRadar agora tem ${totalUsers} ${totalUsers === 1 ? "usuário" : "usuários"}.`,
+    ctaLabel: "Ver no painel admin",
+    ctaUrl: profileUrl,
+    footerNote: "Você recebeu este e-mail porque é administrador do ShowRadar.",
+  });
+}
+
 const SYNOPSIS_MAX_LENGTH = 220;
 
 function truncateSynopsis(text: string): string {

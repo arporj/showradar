@@ -4,8 +4,10 @@ import { hash } from "@node-rs/argon2";
 import { eq, or, sql } from "drizzle-orm";
 import { AuthError } from "next-auth";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 
 import { users } from "@/db/schema";
+import { notifyAdminsOfSignup } from "@/lib/admin-notifications";
 import { auth, signIn, updateSession } from "@/lib/auth";
 import { getDefaultAvatarUrl } from "@/lib/avatar";
 import { db } from "@/lib/db";
@@ -49,14 +51,21 @@ export async function signupAction(_prevState: ActionState, formData: FormData):
 
   const passwordHash = await hash(password);
 
-  await db.insert(users).values({
-    username,
-    name,
-    email,
-    passwordHash,
-    avatarUrl: getDefaultAvatarUrl(username),
-    avatarSource: "default",
-  });
+  const [created] = await db
+    .insert(users)
+    .values({
+      username,
+      name,
+      email,
+      passwordHash,
+      avatarUrl: getDefaultAvatarUrl(username),
+      avatarSource: "default",
+    })
+    .returning({ id: users.id });
+
+  // after(): o e-mail pros admins sai depois da resposta — o Brevo lento ou
+  // fora do ar nunca atrasa nem quebra o cadastro.
+  after(() => notifyAdminsOfSignup(created.id, "credentials"));
 
   try {
     // ?signup=... marca o redirect pós-cadastro pro dashboard disparar a
@@ -119,6 +128,13 @@ export async function setUsernameAction(_prevState: ActionState, formData: FormD
       updatedAt: new Date(),
     })
     .where(eq(users.id, session.user.id));
+
+  // Só na primeira vez que o username é definido (fim do cadastro via
+  // Google) — reenviar o formulário depois não conta como cadastro novo.
+  if (!session.user.username) {
+    const userId = session.user.id;
+    after(() => notifyAdminsOfSignup(userId, "google"));
+  }
 
   // The JWT cookie still has the pre-onboarding claims (username: null) until
   // refreshed — without this, the proxy would bounce us right back here.

@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 import { follows, userLibrary, users } from "@/db/schema";
@@ -14,8 +14,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const query = req.nextUrl.searchParams.get("q")?.trim();
-  if (!query || query.length < 2) {
+  // Empty query = list everyone (aba "Pessoas" do /social); a one-letter
+  // query is still too broad to be a meaningful filter.
+  const query = req.nextUrl.searchParams.get("q")?.trim() ?? "";
+  if (query.length === 1) {
     return NextResponse.json({ results: [], hasMore: false });
   }
 
@@ -43,7 +45,9 @@ export async function GET(req: NextRequest) {
     .from(users)
     .leftJoin(follows, and(eq(follows.followerId, session.user.id), eq(follows.followingId, users.id)))
     .where(buildUserSearchCondition(session.user.id, query))
-    .orderBy(desc(titlesInCommon))
+    // Username tiebreak keeps offset pagination stable — without it, users
+    // tied on titlesInCommon (very common: 0) could repeat or vanish between pages.
+    .orderBy(desc(titlesInCommon), asc(users.username))
     // Fetch one extra row as a cheap "is there a next page" peek.
     .limit(PAGE_SIZE + 1)
     .offset((page - 1) * PAGE_SIZE);

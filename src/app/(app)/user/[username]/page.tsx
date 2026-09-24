@@ -1,10 +1,12 @@
 import { and, desc, eq } from "drizzle-orm";
+import { MessagesSquare } from "lucide-react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { GradeSections, type GradeRow } from "@/components/library/grade-sections";
 import { FollowButton } from "@/components/social/follow-button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { buttonVariants } from "@/components/ui/button";
 import { follows, titles as titlesTable, userLibrary, users } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -132,6 +134,13 @@ export default async function UserProfilePage({
           />
         )}
       </div>
+
+      {/* Sempre visível: comentários já são públicos, e a página filtra as
+          notas pela mesma regra de privacidade da grade abaixo. */}
+      <Link href={`/user/${username}/social`} className={buttonVariants({ variant: "outline", size: "sm" })}>
+        <MessagesSquare className="size-4" />
+        Notas e comentários
+      </Link>
 
       {canSeeFullLibrary ? (
         <div className="space-y-6">
