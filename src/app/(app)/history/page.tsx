@@ -14,7 +14,7 @@ import {
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { formatDate } from "@/lib/format-date";
-import { tmdbImageUrl } from "@/lib/tmdb";
+import { formatGenreLabel, tmdbImageUrl } from "@/lib/tmdb";
 import { tmdbImageLoader } from "@/lib/tmdb-image-loader";
 
 interface HistoryEntry {
@@ -23,6 +23,7 @@ interface HistoryEntry {
   tmdbId: number;
   mediaType: "movie" | "tv";
   name: string;
+  genreLabel: string | null;
   posterPath: string | null;
   progress: { watched: number; total: number } | null;
 }
@@ -39,6 +40,7 @@ export default async function HistoryPage() {
         tmdbId: titlesTable.tmdbId,
         name: titlesTable.name,
         posterPath: titlesTable.posterPath,
+        genres: titlesTable.genres,
         watchedAt: userEpisodeProgress.watchedAt,
       })
       .from(userEpisodeProgress)
@@ -51,6 +53,7 @@ export default async function HistoryPage() {
         tmdbId: titlesTable.tmdbId,
         name: titlesTable.name,
         posterPath: titlesTable.posterPath,
+        genres: titlesTable.genres,
       })
       .from(userLibrary)
       .innerJoin(titlesTable, eq(userLibrary.titleId, titlesTable.id))
@@ -63,7 +66,14 @@ export default async function HistoryPage() {
   // episode, with the show's most recent watch deciding where it sorts.
   const byTitle = new Map<
     string,
-    { tmdbId: number; name: string; posterPath: string | null; watchedCount: number; lastWatchedAt: Date }
+    {
+      tmdbId: number;
+      name: string;
+      genreLabel: string | null;
+      posterPath: string | null;
+      watchedCount: number;
+      lastWatchedAt: Date;
+    }
   >();
   for (const row of episodeWatchRows) {
     const existing = byTitle.get(row.titleId);
@@ -74,6 +84,7 @@ export default async function HistoryPage() {
       byTitle.set(row.titleId, {
         tmdbId: row.tmdbId,
         name: row.name,
+        genreLabel: formatGenreLabel(row.genres),
         posterPath: row.posterPath,
         watchedCount: 1,
         lastWatchedAt: row.watchedAt,
@@ -100,6 +111,7 @@ export default async function HistoryPage() {
       tmdbId: info.tmdbId,
       mediaType: "tv" as const,
       name: info.name,
+      genreLabel: info.genreLabel,
       posterPath: info.posterPath,
       progress: { watched: info.watchedCount, total: totalByTitle.get(titleId) ?? info.watchedCount },
     })),
@@ -111,6 +123,7 @@ export default async function HistoryPage() {
         tmdbId: m.tmdbId,
         mediaType: "movie" as const,
         name: m.name,
+        genreLabel: formatGenreLabel(m.genres),
         posterPath: m.posterPath,
         progress: null,
       })),
@@ -147,6 +160,7 @@ export default async function HistoryPage() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{entry.name}</p>
+                  {entry.genreLabel && <p className="truncate text-xs text-muted-foreground">{entry.genreLabel}</p>}
                   {entry.progress ? (
                     <div className="mt-1 flex items-center gap-2">
                       <Progress value={pct ?? 0} className="h-1 max-w-40 flex-1" />

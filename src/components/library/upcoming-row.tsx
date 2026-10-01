@@ -26,6 +26,7 @@ export function UpcomingRow({ item }: { item: UpcomingItem }) {
         <p className="truncate text-xs text-muted-foreground">
           {item.episodeLabel ? `${item.episodeLabel}${item.episodeName ? ` • ${item.episodeName}` : ""}` : "Filme"}
         </p>
+        {item.genreLabel && <p className="truncate text-xs text-muted-foreground">{item.genreLabel}</p>}
       </div>
       <div className="shrink-0 text-right">
         <Badge variant="secondary">{formatDaysUntil(daysUntil(item.nextDate))}</Badge>

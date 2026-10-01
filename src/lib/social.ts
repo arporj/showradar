@@ -13,7 +13,7 @@ import {
 } from "@/db/schema";
 import { db } from "@/lib/db";
 import { shiftDateString, todayBrDateString } from "@/lib/release-dates";
-import type { TmdbMediaType } from "@/lib/tmdb";
+import { formatGenreLabel, type TmdbMediaType } from "@/lib/tmdb";
 
 // Mesma janela das prévias de comentário nas páginas de título e episódio
 // (SPOILER_PREVIEW_WINDOW_DAYS lá) — um comentário recém-postado sobre algo
@@ -65,6 +65,7 @@ export interface RankingItem {
   mediaType: TmdbMediaType;
   name: string;
   posterPath: string | null;
+  genreLabel: string | null;
   seasonNumber: number | null;
   episodeNumber: number | null;
   episodeName: string | null;
@@ -83,6 +84,7 @@ interface RankingRow extends Record<string, unknown> {
   media_type: TmdbMediaType;
   name: string;
   poster_path: string | null;
+  genres: unknown;
   season_number: number | null;
   episode_number: number | null;
   episode_name: string | null;
@@ -120,6 +122,7 @@ export async function getSocialRanking({
       ${titles.mediaType}::text as media_type,
       ${titles.name} as name,
       ${titles.posterPath} as poster_path,
+      ${titles.genres} as genres,
       null::int as season_number,
       null::int as episode_number,
       null::text as episode_name,
@@ -140,6 +143,7 @@ export async function getSocialRanking({
       ${titles.mediaType}::text as media_type,
       ${titles.name} as name,
       ${titles.posterPath} as poster_path,
+      ${titles.genres} as genres,
       ${seasons.seasonNumber} as season_number,
       ${episodes.episodeNumber} as episode_number,
       ${episodes.name} as episode_name,
@@ -170,6 +174,7 @@ export async function getSocialRanking({
       mediaType: row.media_type,
       name: row.name,
       posterPath: row.poster_path,
+      genreLabel: formatGenreLabel(row.genres),
       seasonNumber: row.season_number,
       episodeNumber: row.episode_number,
       episodeName: row.episode_name,
@@ -193,6 +198,7 @@ export interface SocialActivityItem {
   mediaType: TmdbMediaType;
   name: string;
   posterPath: string | null;
+  genreLabel: string | null;
   seasonNumber: number | null;
   episodeNumber: number | null;
   episodeName: string | null;
@@ -216,6 +222,7 @@ interface ActivityRow extends Record<string, unknown> {
   media_type: TmdbMediaType;
   name: string;
   poster_path: string | null;
+  genres: unknown;
   season_number: number | null;
   episode_number: number | null;
   episode_name: string | null;
@@ -263,7 +270,8 @@ export async function getSocialActivity({
     ${titles.tmdbId} as tmdb_id,
     ${titles.mediaType}::text as media_type,
     ${titles.name} as name,
-    ${titles.posterPath} as poster_path`;
+    ${titles.posterPath} as poster_path,
+    ${titles.genres} as genres`;
   const noEpisodeColumns = sql`null::int as season_number, null::int as episode_number, null::text as episode_name`;
   const episodeColumns = sql`
     ${seasons.seasonNumber} as season_number,
@@ -357,6 +365,7 @@ export async function getSocialActivity({
       mediaType: row.media_type,
       name: row.name,
       posterPath: row.poster_path,
+      genreLabel: formatGenreLabel(row.genres),
       seasonNumber: row.season_number,
       episodeNumber: row.episode_number,
       episodeName: row.episode_name,

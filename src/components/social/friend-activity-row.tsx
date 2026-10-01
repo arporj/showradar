@@ -47,7 +47,10 @@ export function FriendActivityRow({ item }: { item: FriendActivityItem }) {
             <RatingStars value={item.rating} readOnly size="sm" />
           </div>
         )}
-        <p className="text-xs text-muted-foreground">{formatDate(item.watchedAt)}</p>
+        <p className="truncate text-xs text-muted-foreground">
+          {formatDate(item.watchedAt)}
+          {item.genreLabel ? ` • ${item.genreLabel}` : ""}
+        </p>
       </div>
 
       <Link href={titleHref} className="relative h-16 w-11 shrink-0 overflow-hidden rounded bg-muted">

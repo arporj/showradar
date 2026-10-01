@@ -3,7 +3,7 @@ import { and, eq, gt, inArray, ne } from "drizzle-orm";
 import { episodes, seasons as seasonsTable, titles as titlesTable, userLibrary } from "@/db/schema";
 import { db } from "@/lib/db";
 import { todayBrDateString } from "@/lib/release-dates";
-import type { TmdbEpisodeRef, TmdbMediaType } from "@/lib/tmdb";
+import { formatGenreLabel, type TmdbEpisodeRef, type TmdbMediaType } from "@/lib/tmdb";
 
 export interface UpcomingItem {
   key: string;
@@ -11,6 +11,7 @@ export interface UpcomingItem {
   tmdbId: number;
   mediaType: TmdbMediaType;
   name: string;
+  genreLabel: string | null;
   posterPath: string | null;
   nextDate: string;
   episodeLabel: string | null;
@@ -45,6 +46,7 @@ export async function getUpcomingItems(userId: string): Promise<UpcomingItem[]> 
       mediaType: titlesTable.mediaType,
       name: titlesTable.name,
       posterPath: titlesTable.posterPath,
+      genres: titlesTable.genres,
       releaseDate: titlesTable.releaseDate,
       nextEpisodeToAir: titlesTable.nextEpisodeToAir,
       watchProvidersBr: titlesTable.watchProvidersBr,
@@ -61,6 +63,7 @@ export async function getUpcomingItems(userId: string): Promise<UpcomingItem[]> 
       tmdbId: row.tmdbId,
       mediaType: "movie" as const,
       name: row.name,
+      genreLabel: formatGenreLabel(row.genres),
       posterPath: row.posterPath,
       nextDate: row.releaseDate,
       episodeLabel: null,
@@ -107,6 +110,7 @@ export async function getUpcomingItems(userId: string): Promise<UpcomingItem[]> 
           tmdbId: row.tmdbId,
           mediaType: "tv",
           name: row.name,
+          genreLabel: formatGenreLabel(row.genres),
           posterPath: row.posterPath,
           nextDate: ep.airDate!,
           episodeLabel: `T${ep.seasonNumber}E${ep.episodeNumber}`,
@@ -128,6 +132,7 @@ export async function getUpcomingItems(userId: string): Promise<UpcomingItem[]> 
         tmdbId: row.tmdbId,
         mediaType: "tv",
         name: row.name,
+        genreLabel: formatGenreLabel(row.genres),
         posterPath: row.posterPath,
         nextDate: nextEpisode.air_date,
         episodeLabel: `T${nextEpisode.season_number}E${nextEpisode.episode_number}`,

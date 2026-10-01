@@ -336,6 +336,22 @@ export const TMDB_GENRE_NAMES: Record<number, string> = {
 };
 
 /**
+ * Short pt-BR genre label for list rows (e.g. "Drama, Mistério"), from a
+ * title's stored `genres` column. Translated by id through TMDB_GENRE_NAMES
+ * rather than trusting the stored name: TMDb returns several TV-only genres
+ * untranslated even with language=pt-BR ("Sci-Fi & Fantasy", "Action &
+ * Adventure", ...). Falls back to the stored name for any unmapped id.
+ */
+export function formatGenreLabel(genres: unknown, max = 2): string | null {
+  if (!Array.isArray(genres)) return null;
+  const names = (genres as { id: number; name: string }[])
+    .map((g) => TMDB_GENRE_NAMES[g.id] ?? g.name)
+    .filter(Boolean)
+    .slice(0, max);
+  return names.length > 0 ? names.join(", ") : null;
+}
+
+/**
  * Curated franchise/studio shortcuts, keyed by TMDb company id (looked up via
  * /search/company). There's no generic "franchise" facet in TMDb like there is
  * for genre, so this list is hand-picked rather than fetched.

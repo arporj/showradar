@@ -2,7 +2,7 @@ import { and, desc, eq, inArray, isNotNull } from "drizzle-orm";
 
 import { episodes, follows, seasons, titles as titlesTable, userEpisodeProgress, userLibrary, users } from "@/db/schema";
 import { db } from "@/lib/db";
-import type { TmdbMediaType } from "@/lib/tmdb";
+import { formatGenreLabel, type TmdbMediaType } from "@/lib/tmdb";
 
 interface ActivityUser {
   id: string;
@@ -28,6 +28,7 @@ export interface FriendActivityItem {
   tmdbId: number;
   mediaType: TmdbMediaType;
   name: string;
+  genreLabel: string | null;
   posterPath: string | null;
   seasonNumber: number | null;
   episodeNumber: number | null;
@@ -78,6 +79,7 @@ export async function getFriendActivity(userId: string, limit = 30): Promise<Fri
         mediaType: titlesTable.mediaType,
         titleName: titlesTable.name,
         posterPath: titlesTable.posterPath,
+        genres: titlesTable.genres,
         seasonNumber: seasons.seasonNumber,
         episodeNumber: episodes.episodeNumber,
         episodeName: episodes.name,
@@ -103,6 +105,7 @@ export async function getFriendActivity(userId: string, limit = 30): Promise<Fri
         mediaType: titlesTable.mediaType,
         titleName: titlesTable.name,
         posterPath: titlesTable.posterPath,
+        genres: titlesTable.genres,
       })
       .from(userLibrary)
       .innerJoin(users, eq(userLibrary.userId, users.id))
@@ -130,6 +133,7 @@ export async function getFriendActivity(userId: string, limit = 30): Promise<Fri
         mediaType: titlesTable.mediaType,
         titleName: titlesTable.name,
         posterPath: titlesTable.posterPath,
+        genres: titlesTable.genres,
         rating: userLibrary.personalRating,
       })
       .from(userLibrary)
@@ -167,6 +171,7 @@ export async function getFriendActivity(userId: string, limit = 30): Promise<Fri
       tmdbId: primary.tmdbId,
       mediaType: primary.mediaType,
       name: primary.titleName,
+      genreLabel: formatGenreLabel(primary.genres),
       posterPath: primary.posterPath,
       seasonNumber: primary.seasonNumber,
       episodeNumber: primary.episodeNumber,
@@ -193,6 +198,7 @@ export async function getFriendActivity(userId: string, limit = 30): Promise<Fri
       tmdbId: row.tmdbId,
       mediaType: row.mediaType,
       name: row.titleName,
+      genreLabel: formatGenreLabel(row.genres),
       posterPath: row.posterPath,
       seasonNumber: null,
       episodeNumber: null,
@@ -209,6 +215,7 @@ export async function getFriendActivity(userId: string, limit = 30): Promise<Fri
       tmdbId: row.tmdbId,
       mediaType: row.mediaType,
       name: row.titleName,
+      genreLabel: formatGenreLabel(row.genres),
       posterPath: row.posterPath,
       seasonNumber: null,
       episodeNumber: null,

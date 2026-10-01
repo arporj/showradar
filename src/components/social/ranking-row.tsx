@@ -35,6 +35,7 @@ export function RankingRow({ item, position }: { item: RankingItem; position: nu
           {typeLabel}
           {item.kind === "episode" &&
             ` • T${item.seasonNumber}E${item.episodeNumber}${item.episodeName ? ` • ${item.episodeName}` : ""}`}
+          {item.genreLabel ? ` • ${item.genreLabel}` : ""}
         </p>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <div className="flex items-center gap-1.5">

@@ -76,6 +76,7 @@ export function NextEpisodeCard({ item: initialItem }: { item: NextEpisodeItem }
           T{item.seasonNumber}E{item.episodeNumber}
           {item.episodeName ? ` • ${item.episodeName}` : ""}
         </p>
+        {item.genreLabel && <p className="truncate text-xs text-muted-foreground">{item.genreLabel}</p>}
       </Link>
       <WatchToggleButton
         watched={justMarked}

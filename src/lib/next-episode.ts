@@ -4,12 +4,14 @@ import { episodes, seasons, titles as titlesTable, userEpisodeProgress, userLibr
 import { db } from "@/lib/db";
 import { getWatchedEpisodeCounts } from "@/lib/progress";
 import { todayBrDateString } from "@/lib/release-dates";
+import { formatGenreLabel } from "@/lib/tmdb";
 import { syncSeasonEpisodes } from "@/lib/tmdb-sync";
 
 export interface NextEpisodeItem {
   titleId: string;
   tmdbId: number;
   showName: string;
+  genreLabel: string | null;
   posterPath: string | null;
   episodeId: string;
   seasonNumber: number;
@@ -24,6 +26,7 @@ interface ShowRef {
   tmdbId: number;
   name: string;
   posterPath: string | null;
+  genres: unknown;
   watchProvidersBr: unknown;
 }
 
@@ -87,6 +90,7 @@ async function computeNextEpisodeForShow(userId: string, show: ShowRef): Promise
     titleId: show.titleId,
     tmdbId: show.tmdbId,
     showName: show.name,
+    genreLabel: formatGenreLabel(show.genres),
     posterPath: show.posterPath,
     episodeId: nextEpisode.id,
     seasonNumber: candidateSeason.seasonNumber,
@@ -106,7 +110,12 @@ export async function getNextEpisodeForShow(
   tmdbId: number,
 ): Promise<NextEpisodeItem | null> {
   const [show] = await db
-    .select({ name: titlesTable.name, posterPath: titlesTable.posterPath, watchProvidersBr: titlesTable.watchProvidersBr })
+    .select({
+      name: titlesTable.name,
+      posterPath: titlesTable.posterPath,
+      genres: titlesTable.genres,
+      watchProvidersBr: titlesTable.watchProvidersBr,
+    })
     .from(titlesTable)
     .where(eq(titlesTable.id, titleId));
   if (!show) return null;
@@ -116,6 +125,7 @@ export async function getNextEpisodeForShow(
     tmdbId,
     name: show.name,
     posterPath: show.posterPath,
+    genres: show.genres,
     watchProvidersBr: show.watchProvidersBr,
   });
 }
@@ -139,6 +149,7 @@ export async function getNextEpisodesToWatch(
       tmdbId: titlesTable.tmdbId,
       name: titlesTable.name,
       posterPath: titlesTable.posterPath,
+      genres: titlesTable.genres,
       watchProvidersBr: titlesTable.watchProvidersBr,
     })
     .from(userLibrary)

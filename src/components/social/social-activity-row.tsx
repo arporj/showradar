@@ -55,7 +55,10 @@ export function SocialActivityRow({ item }: { item: SocialActivityItem }) {
         )}
 
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
-          <span>{formatRelativeTime(item.at)}</span>
+          <span className="min-w-0 truncate">
+            {formatRelativeTime(item.at)}
+            {item.genreLabel ? ` • ${item.genreLabel}` : ""}
+          </span>
           <Link href={item.commentsHref} prefetch={false} className="hover:text-foreground hover:underline">
             {item.kind === "comment" ? "Responder" : "Comentar"}
           </Link>
