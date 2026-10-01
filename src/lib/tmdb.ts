@@ -329,7 +329,7 @@ export const TMDB_GENRE_NAMES: Record<number, string> = {
   10762: "Infantil",
   10763: "Notícias",
   10764: "Reality",
-  10765: "Ficção científica e fantasia",
+  10765: "Ficção e fantasia",
   10766: "Novela",
   10767: "Talk show",
   10768: "Guerra e política",
