@@ -41,7 +41,8 @@ yarn-error.log*
 .vercel
 
 # claude code local state
-.claude/
+.claude/*
+!.claude/launch.json
 
 # typescript
 *.tsbuildinfo
