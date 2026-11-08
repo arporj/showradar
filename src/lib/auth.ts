@@ -7,6 +7,7 @@ import Credentials from "next-auth/providers/credentials";
 import { accounts, users } from "@/db/schema";
 import { authConfig } from "@/lib/auth.config";
 import { db } from "@/lib/db";
+import { shouldRecordLastActive } from "@/lib/last-active";
 
 export const { handlers, auth, signIn, signOut, unstable_update: updateSession } = NextAuth({
   ...authConfig,
@@ -77,6 +78,16 @@ export const { handlers, auth, signIn, signOut, unstable_update: updateSession }
         (token.sessionVersion !== undefined && dbUser.sessionVersion !== token.sessionVersion)
       ) {
         return null;
+      }
+
+      const now = new Date();
+      if (shouldRecordLastActive(dbUser.lastActiveAt, now)) {
+        // Falha aqui não pode derrubar a sessão: é só métrica do admin.
+        try {
+          await db.update(users).set({ lastActiveAt: now }).where(eq(users.id, dbUser.id));
+        } catch (err) {
+          console.error("Failed to record last_active_at", err);
+        }
       }
 
       token.sub = dbUser.id;

@@ -1,12 +1,16 @@
-import { and, desc, eq, gte, ilike, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ilike, or, sql } from "drizzle-orm";
 
 import { titles, userLibrary, users, type userPlanEnum } from "@/db/schema";
 import { db } from "@/lib/db";
 import { escapeLikePattern } from "@/lib/user-search";
 
 export async function getAdminUserMetrics() {
-  const [[{ totalUsers }], signupsByDay] = await Promise.all([
+  const [[{ totalUsers }], [{ activeUsers30d }], signupsByDay] = await Promise.all([
     db.select({ totalUsers: sql<number>`count(*)::int` }).from(users),
+    db
+      .select({ activeUsers30d: sql<number>`count(*)::int` })
+      .from(users)
+      .where(gte(users.lastActiveAt, sql`now() - interval '30 days'`)),
     db
       .select({
         day: sql<string>`to_char(date_trunc('day', ${users.createdAt}), 'YYYY-MM-DD')`,
@@ -20,6 +24,7 @@ export async function getAdminUserMetrics() {
 
   return {
     totalUsers,
+    activeUsers30d,
     newSignups30d: signupsByDay.reduce((sum, day) => sum + day.count, 0),
   };
 }
@@ -41,14 +46,42 @@ export async function getAdminTopTitles() {
 
 const PAGE_SIZE = 20;
 
+export const ADMIN_USER_SORTS = ["cadastro", "acesso"] as const;
+export type AdminUserSort = (typeof ADMIN_USER_SORTS)[number];
+export type SortDirection = "asc" | "desc";
+
+// Lê `?sort=` e `?dir=` da URL; qualquer valor fora da lista cai no padrão
+// (cadastro mais recente primeiro).
+export function parseAdminUserSort(sort?: string, dir?: string): { sort: AdminUserSort; dir: SortDirection } {
+  return {
+    sort: ADMIN_USER_SORTS.find((value) => value === sort) ?? "cadastro",
+    dir: dir === "asc" ? "asc" : "desc",
+  };
+}
+
+function adminUserOrderBy(sort: AdminUserSort, dir: SortDirection) {
+  if (sort === "acesso") {
+    // Quem nunca acessou conta como o acesso mais antigo: fim da lista em
+    // "mais recente primeiro", início em "mais antigo primeiro".
+    return dir === "desc"
+      ? [sql`${users.lastActiveAt} desc nulls last`, asc(users.id)]
+      : [sql`${users.lastActiveAt} asc nulls first`, asc(users.id)];
+  }
+  return [dir === "desc" ? desc(users.createdAt) : asc(users.createdAt), asc(users.id)];
+}
+
 export async function searchAdminUsers({
   query,
   plan,
   page,
+  sort = "cadastro",
+  dir = "desc",
 }: {
   query?: string;
   plan?: (typeof userPlanEnum.enumValues)[number];
   page: number;
+  sort?: AdminUserSort;
+  dir?: SortDirection;
 }) {
   const conditions = [];
   if (query) {
@@ -61,7 +94,7 @@ export async function searchAdminUsers({
     .select()
     .from(users)
     .where(conditions.length ? and(...conditions) : undefined)
-    .orderBy(desc(users.createdAt))
+    .orderBy(...adminUserOrderBy(sort, dir))
     // Fetch one extra row as a cheap "is there a next page" peek.
     .limit(PAGE_SIZE + 1)
     .offset((page - 1) * PAGE_SIZE);

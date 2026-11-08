@@ -103,9 +103,13 @@ export const users = appSchema.table("users", {
   // this same column later instead of replacing it).
   plan: userPlanEnum("plan").notNull().default("free"),
   isSuspended: boolean("is_suspended").notNull().default(false),
+  // Último uso do app, não último login: a sessão JWT se renova a cada acesso
+  // e quem usa todo dia quase nunca loga de novo. Gravado pelo callback `jwt`
+  // (lib/auth.ts) no máximo uma vez por hora — ver lib/last-active.ts.
+  lastActiveAt: timestamp("last_active_at", { mode: "date" }),
   createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
-});
+}, (t) => [index("users_last_active_at_idx").on(t.lastActiveAt)]);
 
 export const accounts = appSchema.table(
   "accounts",

@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { BackButton } from "@/components/ui/back-button";
 import { getAdminUserDetail } from "@/lib/admin";
-import { formatDate } from "@/lib/format-date";
+import { formatDate, formatRelativeTime } from "@/lib/format-date";
 
 export default async function AdminUserDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -38,6 +38,10 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
         <div className="rounded-lg border p-3">
           <p className="text-muted-foreground">Membro desde</p>
           <p className="font-medium">{formatDate(user.createdAt)}</p>
+        </div>
+        <div className="rounded-lg border p-3">
+          <p className="text-muted-foreground">Último acesso</p>
+          <p className="font-medium">{user.lastActiveAt ? formatRelativeTime(user.lastActiveAt) : "—"}</p>
         </div>
         <div className="rounded-lg border p-3">
           <p className="text-muted-foreground">Itens na grade</p>
