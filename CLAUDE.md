@@ -20,3 +20,20 @@ worker, cache, localStorage e IndexedDB com outros projetos da pasta
   precisa ter `http://localhost:3200/api/auth/callback/google` em "URIs de
   redirecionamento autorizados" (Auth.js monta a URL de retorno pelo endereço
   da requisição).
+
+## Pacote semanal de posts (decisões de 11/11/2026)
+
+- A rotina de domingo (tarefa agendada local "Posts semanais do ShowRadar",
+  00:16) roda `npm run gerar-semana` e `npm run renderizar-semana`, sem Chrome,
+  para economizar tokens. A rotina antiga na nuvem ficou desativada (não apagada).
+- Saída em `marketing/semanas/<segunda>/`, fora do Git: o repositório é público
+  e as imagens são dos estúdios.
+- Imagens de divulgação nas artes, com 5 regras: só arte oficial (André confere
+  na aprovação); crédito "Imagem: divulgação/<streaming ou produtora>"; sem
+  montagem; imagens só nos slides de título e na capa (capa sem chamada de
+  cadastro), nunca no slide final; se algum post for removido por direito
+  autoral, voltar às artes sem imagem.
+- Fase 1: André agenda os posts à mão (Instagram com "Compartilhar em"
+  Facebook/Threads, e x.com). A API do X não tem mais plano gratuito (cobrança
+  por uso desde fev/2026). Fase 2 (pendente): publicação e leitura de
+  comentários pelas APIs da Meta, com agendador no Supabase.
