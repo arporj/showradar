@@ -20,7 +20,7 @@ function accessToken() {
   return token;
 }
 
-async function tmdbFetch<T>(path: string, params: Record<string, string> = {}): Promise<T> {
+export async function tmdbFetch<T>(path: string, params: Record<string, string> = {}): Promise<T> {
   const url = new URL(`${API_BASE}${path}`);
   url.searchParams.set("language", DEFAULT_LANGUAGE);
   for (const [key, value] of Object.entries(params)) {

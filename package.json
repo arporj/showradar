@@ -8,7 +8,9 @@
     "start": "next start -p 3200",
     "lint": "eslint",
     "test:unit": "node --import tsx --test src/**/*.test.ts",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "gerar-semana": "node --env-file=.env.local --import tsx scripts/marketing/gerar-semana.ts",
+    "renderizar-semana": "node --env-file=.env.local --import tsx scripts/marketing/renderizar-semana.ts"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.2",
