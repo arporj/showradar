@@ -49,3 +49,18 @@ worker, cache, localStorage e IndexedDB com outros projetos da pasta
   do cache do TMDb, então vale para as datas do site, o "Em breve", os avisos
   e o pacote semanal de posts.
 - Se o TMDb passar a registrar a data brasileira, o ajuste precisa ser removido.
+
+## Dependências e `npm audit` (decisão de 13/11/2026)
+
+- `shadcn` fica em `devDependencies`: é a ferramenta de linha de comando que
+  gera componentes, e o app só usa o `shadcn/tailwind.css` no build. Em
+  `dependencies` ele levava express, hono, undici e o SDK do MCP para o audit
+  de produção.
+- `next-auth` fica com a versão beta fixa (sem `^`), porque uma beta nova pode
+  mudar comportamento. Subir de propósito, lendo as notas da versão.
+- Critério de publicação: `npm audit --omit=dev` sem vulnerabilidades críticas
+  nem altas. Restam só moderadas e baixas em ferramentas de desenvolvimento
+  (CLI do `shadcn` via ts-morph/minimatch, `drizzle-kit` via esbuild antigo,
+  `typescript-eslint`), cuja "correção" sugerida pelo npm é rebaixar o
+  `shadcn` para 1.0.0 e o `drizzle-kit` para 0.18.1. Não rodar
+  `npm audit fix --force`.
