@@ -72,7 +72,7 @@ export async function salvarAjusteDataLancamento(entrada: AjusteDataLancamentoEn
     return { ok: false, erro: ERRO_GENERICO_AJUSTE };
   }
 
-  revalidatePath("/admin/titles");
+  revalidatePath("/admin/titles/datas");
   return { ok: true };
 }
 
@@ -94,6 +94,6 @@ export async function removerAjusteDataLancamento(titleId: string): Promise<Resu
     return { ok: false, erro: ERRO_GENERICO_AJUSTE };
   }
 
-  revalidatePath("/admin/titles");
+  revalidatePath("/admin/titles/datas");
   return { ok: true };
 }

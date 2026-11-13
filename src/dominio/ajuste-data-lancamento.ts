@@ -8,9 +8,9 @@ export const AJUSTE_DIAS_MAXIMO = 7;
 
 export const ajusteDataLancamentoSchema = z.object({
   tmdbId: z.coerce
-    .number({ error: "Informe o número da série no TMDb." })
-    .int("Informe só números.")
-    .positive("Informe o número da série no TMDb."),
+    .number({ error: "Escolha a série na busca." })
+    .int("Escolha a série na busca.")
+    .positive("Escolha a série na busca."),
   dias: z.coerce
     .number({ error: "Informe quantos dias." })
     .int("Use um número inteiro de dias.")

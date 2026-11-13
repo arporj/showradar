@@ -43,7 +43,7 @@ worker, cache, localStorage e IndexedDB com outros projetos da pasta
 - O TMDb registra a data da exibição nos EUA. Quando o streaming lança em
   outro dia no Brasil (ex.: Dexter: Ressurreição, sexta no Paramount+ e
   domingo no Showtime), a administração cadastra um ajuste por série em
-  Admin → Séries (tabela `showradar.ajustes_data_lancamento`, de −7 a +7 dias).
+  Admin → Séries → Data de lançamento, buscando a série pelo nome (tabela `showradar.ajustes_data_lancamento`, de −7 a +7 dias).
 - O ajuste manual substitui o +1 automático da Apple TV+
   (`diasDeAjusteBr` em `src/lib/release-dates.ts`) e é aplicado na gravação
   do cache do TMDb, então vale para as datas do site, o "Em breve", os avisos
