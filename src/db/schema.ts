@@ -1,6 +1,7 @@
 import { relations, sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   date,
   foreignKey,
   index,
@@ -222,6 +223,28 @@ export const episodes = appSchema.table(
     lastSyncedAt: timestamp("last_synced_at", { mode: "date" }),
   },
   (t) => [uniqueIndex("episodes_season_id_episode_number_idx").on(t.seasonId, t.episodeNumber)],
+);
+
+// Ajuste manual, feito pela administração, da data de lançamento no Brasil de
+// uma série. Fica fora de `titles` porque aquela tabela é só cópia do TMDb.
+// Quando existe, substitui o ajuste automático de release-dates.ts — ex.:
+// Dexter: Ressurreição sai na sexta no Paramount+, mas o TMDb registra o
+// domingo do Showtime (dias = -2).
+export const ajustesDataLancamento = appSchema.table(
+  "ajustes_data_lancamento",
+  {
+    titleId: uuid("title_id")
+      .primaryKey()
+      .references(() => titles.id, { onDelete: "cascade" }),
+    dias: smallint("dias").notNull(),
+    motivo: text("motivo").notNull(),
+    atualizadoPor: uuid("atualizado_por").references(() => users.id, { onDelete: "set null" }),
+    atualizadoEm: timestamp("atualizado_em", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [
+    check("ajustes_data_lancamento_dias_check", sql`${t.dias} between -7 and 7 and ${t.dias} <> 0`),
+    index("ajustes_data_lancamento_atualizado_por_idx").on(t.atualizadoPor),
+  ],
 );
 
 // One row per post — a user can comment on the same episode more than once

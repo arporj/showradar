@@ -37,3 +37,15 @@ worker, cache, localStorage e IndexedDB com outros projetos da pasta
   Facebook/Threads, e x.com). A API do X não tem mais plano gratuito (cobrança
   por uso desde fev/2026). Fase 2 (pendente): publicação e leitura de
   comentários pelas APIs da Meta, com agendador no Supabase.
+
+## Ajuste de data de lançamento no Brasil (decisão de 13/11/2026)
+
+- O TMDb registra a data da exibição nos EUA. Quando o streaming lança em
+  outro dia no Brasil (ex.: Dexter: Ressurreição, sexta no Paramount+ e
+  domingo no Showtime), a administração cadastra um ajuste por série em
+  Admin → Séries (tabela `showradar.ajustes_data_lancamento`, de −7 a +7 dias).
+- O ajuste manual substitui o +1 automático da Apple TV+
+  (`diasDeAjusteBr` em `src/lib/release-dates.ts`) e é aplicado na gravação
+  do cache do TMDb, então vale para as datas do site, o "Em breve", os avisos
+  e o pacote semanal de posts.
+- Se o TMDb passar a registrar a data brasileira, o ajuste precisa ser removido.

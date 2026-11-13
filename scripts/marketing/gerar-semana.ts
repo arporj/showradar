@@ -16,6 +16,9 @@ import {
   type DataDeLancamento,
   type Intervalo,
 } from "@/dominio/marketing/semana";
+import { listarAjustesDataLancamento } from "@/lib/ajustes-data-lancamento";
+import { db } from "@/lib/db";
+import { diasDeAjusteBr } from "@/lib/release-dates";
 import {
   tmdbFetch,
   type TmdbMovieDetail,
@@ -48,7 +51,7 @@ async function descobrir(rota: "/discover/tv" | "/discover/movie", filtros: Reco
   return resultados;
 }
 
-async function series(intervalo: Intervalo): Promise<Candidato[]> {
+async function series(intervalo: Intervalo, ajustes: Map<number, number>): Promise<Candidato[]> {
   const encontrados = await descobrir(
     "/discover/tv",
     {
@@ -60,8 +63,13 @@ async function series(intervalo: Intervalo): Promise<Candidato[]> {
     2,
   );
   const filtrados = encontrados.filter((s) => !generoExcluido(s.genre_ids ?? []));
-  const detalhes = await emLotes(filtrados, 5, (s) =>
-    tmdbFetch<TmdbTvDetail>(`/tv/${s.id}`, { append_to_response: "watch/providers" }),
+  // A busca do TMDb filtra pela data dos EUA: uma série com ajuste manual
+  // (ex.: domingo no TMDb, sexta no Brasil) pode lançar nesta semana com a
+  // data americana fora dela, então as séries ajustadas entram sempre e o
+  // filtro pela data brasileira acontece em episodioNaSemana.
+  const ids = [...new Set([...filtrados.map((s) => s.id), ...ajustes.keys()])];
+  const detalhes = await emLotes(ids, 5, (id) =>
+    tmdbFetch<TmdbTvDetail>(`/tv/${id}`, { append_to_response: "watch/providers" }),
   );
   // O próximo episódio do TMDb é o desta semana, não o da semana alvo: a data
   // certa vem da lista de episódios da temporada em exibição.
@@ -76,7 +84,7 @@ async function series(intervalo: Intervalo): Promise<Candidato[]> {
     const episodios = temporada
       ? temporada.episodes.map((e) => ({ ...e, season_number: temporada.season_number }))
       : [];
-    const ep = episodioNaSemana(episodios, regiao, intervalo);
+    const ep = episodioNaSemana(episodios, diasDeAjusteBr(regiao, ajustes.get(d.id)), intervalo);
     if (!ep) continue;
     candidatos.push({
       tipo: "tv",
@@ -130,8 +138,9 @@ async function filmes(intervalo: Intervalo, meio: "cinema" | "digital"): Promise
 
 async function principal() {
   const intervalo = semanaAlvo(process.argv[2]);
+  const ajustes = new Map((await listarAjustesDataLancamento()).map((a) => [a.tmdbId, a.dias]));
   const [s, cinema, digital] = await Promise.all([
-    series(intervalo),
+    series(intervalo, ajustes),
     filmes(intervalo, "cinema"),
     filmes(intervalo, "digital"),
   ]);
@@ -145,7 +154,9 @@ async function principal() {
   );
 }
 
-principal().catch((erro: unknown) => {
-  console.error("Falha ao gerar a semana:", erro instanceof Error ? erro.message : erro);
-  process.exit(1);
-});
+principal()
+  .catch((erro: unknown) => {
+    console.error("Falha ao gerar a semana:", erro instanceof Error ? erro.message : erro);
+    process.exitCode = 1;
+  })
+  .finally(() => db.$client.end());

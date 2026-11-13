@@ -4,7 +4,7 @@
 // funções para decidir o que entra e como é escrito.
 import { z } from "zod";
 
-import { hasDelayedBrRelease, shiftDateString } from "@/lib/release-dates";
+import { shiftDateString } from "@/lib/release-dates";
 import type { TmdbWatchProviderRegion } from "@/lib/tmdb";
 
 /** Endereço público usado nos posts (nunca o localhost do ambiente local). */
@@ -131,17 +131,17 @@ export interface EpisodioRef {
 
 /**
  * Episódio que sai no Brasil dentro da semana. O TMDb registra a data dos EUA;
- * para a Apple TV a data brasileira é o dia seguinte (ver release-dates.ts).
+ * `ajusteDias` leva à data brasileira (diasDeAjusteBr em release-dates.ts:
+ * +1 na Apple TV, ou o ajuste manual da administração).
  */
 export function episodioNaSemana(
   episodios: (EpisodioRef | null | undefined)[],
-  regiaoBr: TmdbWatchProviderRegion | null | undefined,
+  ajusteDias: number,
   intervalo: Intervalo,
 ): { data: string; detalhe: string } | null {
-  const atraso = hasDelayedBrRelease(regiaoBr) ? 1 : 0;
   for (const ep of episodios) {
     if (!ep?.air_date) continue;
-    const data = shiftDateString(ep.air_date, atraso);
+    const data = shiftDateString(ep.air_date, ajusteDias);
     if (dentroDoIntervalo(data, intervalo)) {
       return { data, detalhe: `T${ep.season_number} E${ep.episode_number}` };
     }

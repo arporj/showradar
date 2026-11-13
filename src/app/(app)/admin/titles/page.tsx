@@ -1,8 +1,11 @@
 import { AdminTabs } from "@/components/admin/admin-tabs";
+import { AjustesDataLancamento } from "@/components/admin/ajustes-data-lancamento";
 import { getAdminTopTitles } from "@/lib/admin";
+import { listarAjustesDataLancamento } from "@/lib/ajustes-data-lancamento";
+import { formatDateTime } from "@/lib/format-date";
 
 export default async function AdminTitlesPage() {
-  const topTitles = await getAdminTopTitles();
+  const [topTitles, ajustes] = await Promise.all([getAdminTopTitles(), listarAjustesDataLancamento()]);
 
   return (
     <div className="space-y-6">
@@ -12,6 +15,10 @@ export default async function AdminTitlesPage() {
       </div>
 
       <AdminTabs active="/admin/titles" />
+
+      <AjustesDataLancamento
+        ajustes={ajustes.map((a) => ({ ...a, atualizadoEm: formatDateTime(a.atualizadoEm) }))}
+      />
 
       <div>
         <h2 className="mb-3 text-lg font-medium">Títulos mais adicionados</h2>

@@ -33,3 +33,11 @@ export function shiftDateString(date: string, days: number): string {
 export function todayBrDateString(): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
 }
+
+// Dias a somar ao air_date do TMDb para chegar à data de lançamento no
+// Brasil. O ajuste manual da administração (tabela ajustes_data_lancamento)
+// tem prioridade; sem ele, vale a regra automática da Apple TV+ acima.
+export function diasDeAjusteBr(providersBr: unknown, ajusteManual: number | null | undefined): number {
+  if (ajusteManual != null) return ajusteManual;
+  return hasDelayedBrRelease(providersBr) ? 1 : 0;
+}

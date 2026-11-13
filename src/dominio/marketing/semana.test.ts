@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
+import { diasDeAjusteBr } from "@/lib/release-dates";
+
 import {
   agendaDePublicacao,
   diaDaSemanaCurto,
@@ -79,14 +81,22 @@ test("reality, jornalismo, novela e entrevistas ficam de fora", () => {
 
 test("episódio da semana usa a data do TMDb", () => {
   const ep = { season_number: 1, episode_number: 9, air_date: "2026-11-16" };
-  assert.deepEqual(episodioNaSemana([null, ep], prime, semana), { data: "2026-11-16", detalhe: "T1 E9" });
+  assert.deepEqual(episodioNaSemana([null, ep], diasDeAjusteBr(prime, null), semana), { data: "2026-11-16", detalhe: "T1 E9" });
 });
 
 test("episódio da Apple TV sai no Brasil no dia seguinte", () => {
   const domingo = { season_number: 2, episode_number: 1, air_date: "2026-11-15" };
-  assert.deepEqual(episodioNaSemana([domingo], apple, semana), { data: "2026-11-16", detalhe: "T2 E1" });
+  assert.deepEqual(episodioNaSemana([domingo], diasDeAjusteBr(apple, null), semana), { data: "2026-11-16", detalhe: "T2 E1" });
   const ultimoDia = { season_number: 2, episode_number: 2, air_date: "2026-11-22" };
-  assert.equal(episodioNaSemana([ultimoDia], apple, semana), null);
+  assert.equal(episodioNaSemana([ultimoDia], diasDeAjusteBr(apple, null), semana), null);
+});
+
+test("ajuste manual leva o domingo do TMDb para a sexta", () => {
+  const domingo = { season_number: 2, episode_number: 4, air_date: "2026-11-22" };
+  assert.deepEqual(episodioNaSemana([domingo], -2, semana), { data: "2026-11-20", detalhe: "T2 E4" });
+  // Domingo do TMDb na semana seguinte cai na sexta desta semana.
+  const seguinte = { season_number: 2, episode_number: 5, air_date: "2026-11-23" };
+  assert.deepEqual(episodioNaSemana([seguinte], -2, semana), { data: "2026-11-21", detalhe: "T2 E5" });
 });
 
 test("estreia no cinema usa a data ampla, não a pré-estreia limitada", () => {

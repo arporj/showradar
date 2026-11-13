@@ -1,8 +1,8 @@
-import { eq, and } from "drizzle-orm";
+import { and, eq, isNotNull } from "drizzle-orm";
 
-import { episodes, seasons, titles } from "@/db/schema";
+import { ajustesDataLancamento, episodes, seasons, titles } from "@/db/schema";
 import { db } from "@/lib/db";
-import { hasDelayedBrRelease, shiftDateString } from "@/lib/release-dates";
+import { diasDeAjusteBr, shiftDateString } from "@/lib/release-dates";
 import {
   getMovieDetail,
   getTvDetail,
@@ -24,9 +24,21 @@ function watchProvidersBr(detail: { "watch/providers"?: TmdbWatchProviders }) {
   return detail["watch/providers"]?.results?.BR ?? null;
 }
 
+// Ajuste manual da administração para a série, se houver (null quando não há
+// linha em ajustes_data_lancamento ou a série ainda não está no cache).
+async function ajusteManualDaSerie(tmdbId: number): Promise<number | null> {
+  const [row] = await db
+    .select({ dias: ajustesDataLancamento.dias })
+    .from(ajustesDataLancamento)
+    .innerJoin(titles, eq(titles.id, ajustesDataLancamento.titleId))
+    .where(and(eq(titles.tmdbId, tmdbId), eq(titles.mediaType, "tv")));
+  return row?.dias ?? null;
+}
+
 // Este cache guarda a data de disponibilidade *no Brasil*, não o air_date cru
 // do TMDb: para títulos de rede com drop na madrugada seguinte (Apple TV+ —
-// ver release-dates.ts), tudo que é data de episódio entra com +1 dia. O
+// ver release-dates.ts), tudo que é data de episódio entra com +1 dia, e uma
+// série com ajuste manual da administração entra com os dias desse ajuste. O
 // deslocamento acontece aqui na escrita, e não nas leituras, para que todos
 // os consumidores (dashboard, checklist, "Em breve", cron de notificações e
 // as datas exibidas) concordem sem lógica condicional espalhada — e como o
@@ -74,9 +86,9 @@ export async function syncTitleFromTmdb(mediaType: TmdbMediaType, tmdbId: number
     return row.id;
   }
 
-  const detail = await getTvDetail(tmdbId);
+  const [detail, ajusteManual] = await Promise.all([getTvDetail(tmdbId), ajusteManualDaSerie(tmdbId)]);
   const providersBr = watchProvidersBr(detail);
-  const delayDays = hasDelayedBrRelease(providersBr) ? 1 : 0;
+  const delayDays = diasDeAjusteBr(providersBr, ajusteManual);
   const values = {
     tmdbId: detail.id,
     mediaType: "tv" as const,
@@ -167,14 +179,15 @@ export async function syncSeasonEpisodes(
     return;
   }
 
-  // O flag de atraso vem do jsonb já cacheado no título (sempre gravado antes
-  // de qualquer sync de temporada) — o payload de temporada do TMDb não traz
-  // watch providers.
+  // O ajuste vem do jsonb já cacheado no título (sempre gravado antes de
+  // qualquer sync de temporada) — o payload de temporada do TMDb não traz
+  // watch providers — e do ajuste manual da administração, se houver.
   const [titleRow] = await db
-    .select({ watchProvidersBr: titles.watchProvidersBr })
+    .select({ watchProvidersBr: titles.watchProvidersBr, ajusteManual: ajustesDataLancamento.dias })
     .from(titles)
+    .leftJoin(ajustesDataLancamento, eq(ajustesDataLancamento.titleId, titles.id))
     .where(eq(titles.id, titleId));
-  const delayDays = hasDelayedBrRelease(titleRow?.watchProvidersBr) ? 1 : 0;
+  const delayDays = diasDeAjusteBr(titleRow?.watchProvidersBr, titleRow?.ajusteManual);
 
   const detail = await getTvSeason(tmdbTvId, seasonNumber);
 
@@ -213,4 +226,20 @@ export async function getCachedTitleId(mediaType: TmdbMediaType, tmdbId: number)
     .from(titles)
     .where(and(eq(titles.tmdbId, tmdbId), eq(titles.mediaType, mediaType)));
   return row?.id ?? null;
+}
+
+/**
+ * Regrava as datas de uma série já em cache logo depois de um ajuste manual
+ * mudar: título (próximo/último episódio e temporadas) e os episódios das
+ * temporadas que já tinham sido buscadas, furando a janela de 1 hora do
+ * syncSeasonEpisodes. Temporadas nunca abertas pegam o ajuste quando forem.
+ */
+export async function ressincronizarDatasDaSerie(tmdbId: number): Promise<void> {
+  const titleId = await syncTitleFromTmdb("tv", tmdbId);
+  const temporadas = await db
+    .update(seasons)
+    .set({ episodesSyncedAt: null })
+    .where(and(eq(seasons.titleId, titleId), isNotNull(seasons.episodesSyncedAt)))
+    .returning({ id: seasons.id, seasonNumber: seasons.seasonNumber });
+  await Promise.all(temporadas.map((s) => syncSeasonEpisodes(s.id, titleId, tmdbId, s.seasonNumber)));
 }

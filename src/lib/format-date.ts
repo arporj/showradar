@@ -30,3 +30,18 @@ export function formatRelativeTime(value: Date): string {
 
   return formatDate(value);
 }
+
+// Data e hora no fuso de Brasília, "dd/mm/aaaa hh:mm" — para registros de
+// quando algo foi alterado (ex.: ajustes da administração).
+export function formatDateTime(value: Date): string {
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  })
+    .format(value)
+    .replace(",", "");
+}

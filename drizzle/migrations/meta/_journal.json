@@ -148,6 +148,13 @@
       "when": 1794170250875,
       "tag": "0020_last_active_at",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1794599226216,
+      "tag": "0021_ajustes_data_lancamento",
+      "breakpoints": true
     }
   ]
 }
