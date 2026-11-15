@@ -71,16 +71,16 @@ const SELO_ALUGAR_DEF = `<svg width="0" height="0" style="position:absolute"><sy
 <circle cx="100" cy="100" r="97" style="fill:var(--fundo)" fill-opacity=".85"/>
 <circle cx="100" cy="100" r="94" fill="none" style="stroke:var(--ciano)" stroke-width="5"/>
 <circle cx="100" cy="100" r="87" fill="none" style="stroke:var(--ciano)" stroke-width="1.5"/>
-<circle cx="100" cy="100" r="57" fill="none" style="stroke:var(--ciano)" stroke-width="2.5"/>
-<path id="selo-arco-cima" d="M 33,100 A 67,67 0 0 1 167,100" fill="none"/>
-<path id="selo-arco-baixo" d="M 15,100 A 85,85 0 0 0 185,100" fill="none"/>
-<text text-anchor="middle" font-family="Geist Mono" font-weight="700" font-size="24" letter-spacing="5" style="fill:var(--ciano)">
-<textPath href="#selo-arco-cima" startOffset="51.2%">COMPRAR</textPath></text>
-<text text-anchor="middle" font-family="Geist Mono" font-weight="700" font-size="24" letter-spacing="5" style="fill:var(--ciano)">
-<textPath href="#selo-arco-baixo" startOffset="51%">ALUGAR</textPath></text>
-<text x="22" y="105" text-anchor="middle" font-size="14" style="fill:var(--ciano)">★</text>
-<text x="178" y="105" text-anchor="middle" font-size="14" style="fill:var(--ciano)">★</text>
-<text x="100" y="117" text-anchor="middle" font-family="Geist" font-weight="900" font-style="italic" font-size="50" style="fill:var(--texto)">ou</text>
+<circle cx="100" cy="100" r="46" fill="none" style="stroke:var(--ciano)" stroke-width="2.5"/>
+<path id="selo-arco-cima" d="M 43,100 A 57,57 0 0 1 157,100" fill="none"/>
+<path id="selo-arco-baixo" d="M 24,100 A 76,76 0 0 0 176,100" fill="none"/>
+<text text-anchor="middle" font-family="Geist Mono" font-weight="700" font-size="28" letter-spacing="3" style="fill:var(--ciano)">
+<textPath href="#selo-arco-cima" startOffset="50.8%">COMPRAR</textPath></text>
+<text text-anchor="middle" font-family="Geist Mono" font-weight="700" font-size="28" letter-spacing="3" style="fill:var(--ciano)">
+<textPath href="#selo-arco-baixo" startOffset="50.6%">ALUGAR</textPath></text>
+<text x="33" y="105" text-anchor="middle" font-size="14" style="fill:var(--ciano)">★</text>
+<text x="167" y="105" text-anchor="middle" font-size="14" style="fill:var(--ciano)">★</text>
+<text x="100" y="110" text-anchor="middle" font-family="Geist" font-weight="900" font-style="italic" font-size="36" style="fill:var(--texto)">ou</text>
 </symbol></svg>`;
 
 const seloAlugar = `<svg class="selo-postal" viewBox="0 0 200 200" role="img" aria-label="Comprar ou alugar"><use href="#selo-alugar"/></svg>`;
