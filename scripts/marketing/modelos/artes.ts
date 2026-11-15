@@ -15,6 +15,8 @@ export interface ArteDoTitulo {
   detalhe: string;
   /** null = streaming ainda não confirmado. */
   streaming: Streaming | null;
+  /** Só para compra ou aluguel digital: mostra o selo na capa e no slide. */
+  alugarOuComprar: boolean;
   /** Caminhos relativos ao HTML; null quando o TMDb não tem a imagem. */
   poster: string | null;
   fundo: string | null;
@@ -61,6 +63,11 @@ function pilula(s: Streaming | null) {
     : `<span class="pilula confirmar">A confirmar</span>`;
 }
 
+const SELO_ALUGAR = "Alugar ou comprar";
+
+/** "Filme" para filmes e "Série · T2 E3" para episódios. */
+const tipoDoTitulo = (detalhe: string) => (/^T\d+ E\d+$/.test(detalhe) ? `Série · ${detalhe}` : detalhe);
+
 function intervaloGrande(semana: Intervalo) {
   const fim = mesCurto(semana.fim);
   const meses = mesCurto(semana.inicio) === fim ? fim : `${mesCurto(semana.inicio)}/${fim}`;
@@ -77,7 +84,7 @@ function capa(d: DadosDasArtes) {
     .map(
       (t) => `<div class="item vidro"><div class="dia"><small>${diaDaSemanaCurto(t.data)}</small><strong>${diaDoMes(t.data)}</strong></div>
 <div class="tit"><strong data-ajustar="20">${esc(t.tituloCapa)}</strong>
-<span><i class="ponto" style="background:${t.streaming?.cor ?? "var(--apoio)"}"></i>${esc(t.streaming?.nome ?? "A confirmar")}</span></div></div>`,
+<span><i class="ponto" style="background:${t.streaming?.cor ?? "var(--apoio)"}"></i>${esc(t.streaming?.nome ?? "A confirmar")}${t.alugarOuComprar ? `<em class="selo">${SELO_ALUGAR}</em>` : ""}</span></div></div>`,
     )
     .join("");
   return `<section class="slide grao capa" data-arquivo="carrossel-01-capa">
@@ -101,7 +108,7 @@ ${imagem ? `<img class="fundo" src="${imagem}">` : fundoRadar("right:-640px;top:
 <div class="base">
 <div class="quando"><small>${diaDaSemanaCurto(t.data)}</small><strong class="num grad">${diaDoMes(t.data)} ${mesCurto(t.data)}</strong></div>
 <h2 data-ajustar="56">${esc(t.titulo)}</h2>
-<div class="meta">${pilula(t.streaming)}<span class="tag">${esc(t.detalhe === "Filme" ? "Filme" : `Série · ${t.detalhe}`)}</span></div>
+<div class="meta">${pilula(t.streaming)}${t.alugarOuComprar ? `<span class="pilula selo">${SELO_ALUGAR}</span>` : ""}<span class="tag">${esc(tipoDoTitulo(t.detalhe))}</span></div>
 </div>
 <div class="rodape">${marca("showradar.com.br")}${imagem ? `<span class="credito">${esc(t.credito)}</span>` : ""}</div>
 </section>`;

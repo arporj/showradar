@@ -88,14 +88,16 @@ async function prepararTitulo(
   const poster = caminhoPoster && (await baixar(caminhoPoster, "w780", path.join(pastaImg, `${base}-poster.jpg`))) ? `img/${base}-poster.jpg` : null;
   if (!fundo && !poster) avisos.push(`${titulo}: sem imagem no TMDb; o slide saiu só com o fundo do ShowRadar`);
 
-  // Regra 2: crédito de divulgação com o streaming ou, no cinema, a produtora.
-  const dono = streaming && streaming.nome !== CINEMAS.nome ? streaming.nome : detalhe.production_companies?.[0]?.name;
+  // Regra 2: crédito de divulgação com o streaming ou, no cinema e no aluguel digital, a produtora.
+  const daProdutora = !streaming || streaming.nome === CINEMAS.nome || item.alugarOuComprar;
+  const dono = daProdutora ? detalhe.production_companies?.[0]?.name : streaming.nome;
   return {
     titulo,
     tituloCapa: item.tituloCurto ?? titulo,
     data,
     detalhe: detalheEp,
     streaming,
+    alugarOuComprar: item.alugarOuComprar ?? false,
     poster,
     fundo,
     credito: dono ? `Imagem: divulgação/${dono}` : "Imagem: divulgação",
@@ -115,7 +117,7 @@ function montarLegendas(selecao: SelecaoSemana, titulos: (ArteDoTitulo & { link:
     bloco("Carrossel \"No radar da semana\"", agenda.domingo, `carrossel-01 a carrossel-${String(titulos.length + 2).padStart(2, "0")}`, selecao.carrossel.legendas),
     "Títulos:",
     "",
-    ...titulos.map((t) => `- ${diaDaSemanaCurto(t.data)} ${diaMes(t.data)} · ${t.titulo} · ${t.detalhe} · ${t.streaming?.nome ?? "streaming a confirmar"} · ${t.link}${t.aConfirmar ? ` · **a confirmar: ${t.aConfirmar}**` : ""}`),
+    ...titulos.map((t) => `- ${diaDaSemanaCurto(t.data)} ${diaMes(t.data)} · ${t.titulo} · ${t.detalhe} · ${t.streaming?.nome ?? "streaming a confirmar"}${t.alugarOuComprar ? " · alugar ou comprar" : ""} · ${t.link}${t.aConfirmar ? ` · **a confirmar: ${t.aConfirmar}**` : ""}`),
     "",
     bloco("Post de quarta", agenda.quarta, "quarta.png", selecao.quarta.legendas),
     bloco("Enquete de sexta", agenda.sexta, "sexta.png (no X, use a enquete nativa, sem imagem)", selecao.sexta.legendas),

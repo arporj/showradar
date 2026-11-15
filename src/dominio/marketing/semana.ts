@@ -259,6 +259,8 @@ export const itemDoCarrosselSchema = z.object({
   data: data.optional(),
   detalhe: z.string().optional(),
   streaming: z.string().optional(),
+  /** Filme só para compra ou aluguel digital, fora da assinatura: ganha o selo nas artes. */
+  alugarOuComprar: z.boolean().optional(),
   /** Data ou streaming não confirmados: aparece na mensagem para o André. */
   aConfirmar: z.string().optional(),
 });

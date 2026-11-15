@@ -35,6 +35,9 @@ body { background: #222; font-family: var(--fonte); color: var(--texto); display
 .pilula.mono { font-family: var(--fonte-mono); font-size: 20px; letter-spacing: .12em; }
 .pilula.veu { background: var(--veu); border: 1px solid rgba(255, 255, 255, .14); backdrop-filter: blur(18px); }
 .pilula.confirmar { background: transparent; border: 2px dashed var(--apoio); color: var(--apoio); }
+/* Selo de filme só para compra ou aluguel digital (contorno, para não parecer um streaming). */
+.pilula.selo { background: var(--veu); border: 2px solid var(--ciano); color: var(--ciano); }
+.capa .selo { font-style: normal; font-size: 16px; font-weight: 700; color: var(--ciano); border: 1.5px solid var(--ciano); border-radius: 999px; padding: 2px 9px; white-space: nowrap; }
 .vidro { background: var(--vidro); border: 1px solid var(--borda); }
 .marca { display: flex; align-items: center; gap: 16px; font-weight: 800; font-size: 30px; letter-spacing: -.01em; }
 .marca svg { width: 60px; height: 60px; }
