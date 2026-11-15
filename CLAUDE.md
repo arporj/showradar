@@ -64,3 +64,17 @@ worker, cache, localStorage e IndexedDB com outros projetos da pasta
   `typescript-eslint`), cuja "correção" sugerida pelo npm é rebaixar o
   `shadcn` para 1.0.0 e o `drizzle-kit` para 0.18.1. Não rodar
   `npm audit fix --force`.
+
+## Agendamento dos posts e selo de aluguel (decisões de 15/11/2026)
+
+- Meta: os posts são programados no Meta Business Suite ("Criar post" para a
+  Página ShowRadar e o Instagram @showradarapp). Story do Facebook desligado
+  no carrossel (o Story mostra só a capa); em teste no post de quarta.
+- X: aceita no máximo 4 imagens por post, então o carrossel vai com a capa e
+  o slide final. O x.com não agenda post com enquete (agendar desativa a
+  enquete e vice-versa): o texto de sexta fica em rascunho e a enquete é
+  postada na hora, na sexta às 19h, junto com o Story de enquete do Instagram.
+- Filme só para compra ou aluguel digital entra no carrossel com
+  `"alugarOuComprar": true` no `selecao.json`: ganha o selo postal redondo
+  ("comprar ou alugar") na capa e no slide, e o crédito da imagem usa a
+  produtora em vez da loja.
