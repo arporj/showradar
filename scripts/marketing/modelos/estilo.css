@@ -35,9 +35,8 @@ body { background: #222; font-family: var(--fonte); color: var(--texto); display
 .pilula.mono { font-family: var(--fonte-mono); font-size: 20px; letter-spacing: .12em; }
 .pilula.veu { background: var(--veu); border: 1px solid rgba(255, 255, 255, .14); backdrop-filter: blur(18px); }
 .pilula.confirmar { background: transparent; border: 2px dashed var(--apoio); color: var(--apoio); }
-/* Selo de filme só para compra ou aluguel digital (contorno, para não parecer um streaming). */
-.pilula.selo { background: var(--veu); border: 2px solid var(--ciano); color: var(--ciano); }
-.capa .selo { font-style: normal; font-size: 16px; font-weight: 700; color: var(--ciano); border: 1.5px solid var(--ciano); border-radius: 999px; padding: 2px 9px; white-space: nowrap; }
+/* Selo postal de filme só para compra ou aluguel digital. Fica na área escura, sem cobrir a imagem do estúdio. */
+.selo-postal { position: absolute; transform: rotate(-12deg); filter: drop-shadow(0 10px 24px rgba(0, 0, 0, .55)); }
 .vidro { background: var(--vidro); border: 1px solid var(--borda); }
 .marca { display: flex; align-items: center; gap: 16px; font-weight: 800; font-size: 30px; letter-spacing: -.01em; }
 .marca svg { width: 60px; height: 60px; }
@@ -62,6 +61,9 @@ body { background: #222; font-family: var(--fonte); color: var(--texto); display
 .capa .item .tit { min-width: 0; flex: 1; }
 .capa .item .tit strong { display: block; font-weight: 700; font-size: 25px; letter-spacing: -.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .capa .item .tit span { margin-top: 4px; font-size: 18px; color: var(--apoio); font-weight: 500; display: flex; align-items: center; gap: 8px; }
+.capa .item.com-selo { position: relative; }
+.capa .item.com-selo .tit { padding-right: 86px; }
+.capa .selo-postal { width: 96px; height: 96px; right: 10px; top: 50%; margin-top: -48px; }
 .capa .ponto { width: 12px; height: 12px; border-radius: 50%; display: inline-block; flex: none; }
 
 /* ---------- Slide de título ---------- */
@@ -72,6 +74,7 @@ body { background: #222; font-family: var(--fonte); color: var(--texto); display
 .titulo .quando small { font-family: var(--fonte-mono); font-weight: 700; font-size: 30px; letter-spacing: .16em; background: var(--ciano); color: var(--tinta); padding: 6px 14px; border-radius: 10px; transform: translateY(-14px); }
 .titulo .quando strong { font-weight: 900; font-size: 168px; letter-spacing: -.05em; line-height: .9; }
 .titulo h2 { font-weight: 900; font-size: 88px; line-height: .95; letter-spacing: -.04em; margin-top: 18px; max-height: 260px; overflow: hidden; text-wrap: balance; }
+.titulo .selo-postal { width: 220px; height: 220px; right: 0; top: -80px; }
 .titulo .meta { margin-top: 26px; display: flex; gap: 16px; align-items: center; }
 .titulo .meta .tag { font-size: 26px; color: var(--apoio); font-weight: 600; }
 .titulo .marca { font-size: 26px; color: var(--texto); }

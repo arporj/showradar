@@ -63,7 +63,27 @@ function pilula(s: Streaming | null) {
     : `<span class="pilula confirmar">A confirmar</span>`;
 }
 
-const SELO_ALUGAR = "Alugar ou comprar";
+// Selo de carimbo postal para filme só de compra ou aluguel digital: anel duplo,
+// "COMPRAR" no arco de cima, "ALUGAR" no de baixo e "ou" no meio. Definido uma
+// vez e reaproveitado com <use> na capa e no slide. O startOffset passa de 50%
+// para compensar o espaçamento que sobra depois da última letra.
+const SELO_ALUGAR_DEF = `<svg width="0" height="0" style="position:absolute"><symbol id="selo-alugar" viewBox="0 0 200 200">
+<circle cx="100" cy="100" r="97" style="fill:var(--fundo)" fill-opacity=".85"/>
+<circle cx="100" cy="100" r="94" fill="none" style="stroke:var(--ciano)" stroke-width="5"/>
+<circle cx="100" cy="100" r="87" fill="none" style="stroke:var(--ciano)" stroke-width="1.5"/>
+<circle cx="100" cy="100" r="57" fill="none" style="stroke:var(--ciano)" stroke-width="2.5"/>
+<path id="selo-arco-cima" d="M 33,100 A 67,67 0 0 1 167,100" fill="none"/>
+<path id="selo-arco-baixo" d="M 15,100 A 85,85 0 0 0 185,100" fill="none"/>
+<text text-anchor="middle" font-family="Geist Mono" font-weight="700" font-size="24" letter-spacing="5" style="fill:var(--ciano)">
+<textPath href="#selo-arco-cima" startOffset="51.2%">COMPRAR</textPath></text>
+<text text-anchor="middle" font-family="Geist Mono" font-weight="700" font-size="24" letter-spacing="5" style="fill:var(--ciano)">
+<textPath href="#selo-arco-baixo" startOffset="51%">ALUGAR</textPath></text>
+<text x="22" y="105" text-anchor="middle" font-size="14" style="fill:var(--ciano)">★</text>
+<text x="178" y="105" text-anchor="middle" font-size="14" style="fill:var(--ciano)">★</text>
+<text x="100" y="117" text-anchor="middle" font-family="Geist" font-weight="900" font-style="italic" font-size="50" style="fill:var(--texto)">ou</text>
+</symbol></svg>`;
+
+const seloAlugar = `<svg class="selo-postal" viewBox="0 0 200 200" role="img" aria-label="Comprar ou alugar"><use href="#selo-alugar"/></svg>`;
 
 /** "Filme" para filmes e "Série · T2 E3" para episódios. */
 const tipoDoTitulo = (detalhe: string) => (/^T\d+ E\d+$/.test(detalhe) ? `Série · ${detalhe}` : detalhe);
@@ -82,9 +102,9 @@ function capa(d: DadosDasArtes) {
     .join("");
   const itens = d.titulos
     .map(
-      (t) => `<div class="item vidro"><div class="dia"><small>${diaDaSemanaCurto(t.data)}</small><strong>${diaDoMes(t.data)}</strong></div>
+      (t) => `<div class="item vidro${t.alugarOuComprar ? " com-selo" : ""}"><div class="dia"><small>${diaDaSemanaCurto(t.data)}</small><strong>${diaDoMes(t.data)}</strong></div>
 <div class="tit"><strong data-ajustar="20">${esc(t.tituloCapa)}</strong>
-<span><i class="ponto" style="background:${t.streaming?.cor ?? "var(--apoio)"}"></i>${esc(t.streaming?.nome ?? "A confirmar")}${t.alugarOuComprar ? `<em class="selo">${SELO_ALUGAR}</em>` : ""}</span></div></div>`,
+<span><i class="ponto" style="background:${t.streaming?.cor ?? "var(--apoio)"}"></i>${esc(t.streaming?.nome ?? "A confirmar")}</span></div>${t.alugarOuComprar ? seloAlugar : ""}</div>`,
     )
     .join("");
   return `<section class="slide grao capa" data-arquivo="carrossel-01-capa">
@@ -108,7 +128,8 @@ ${imagem ? `<img class="fundo" src="${imagem}">` : fundoRadar("right:-640px;top:
 <div class="base">
 <div class="quando"><small>${diaDaSemanaCurto(t.data)}</small><strong class="num grad">${diaDoMes(t.data)} ${mesCurto(t.data)}</strong></div>
 <h2 data-ajustar="56">${esc(t.titulo)}</h2>
-<div class="meta">${pilula(t.streaming)}${t.alugarOuComprar ? `<span class="pilula selo">${SELO_ALUGAR}</span>` : ""}<span class="tag">${esc(tipoDoTitulo(t.detalhe))}</span></div>
+${t.alugarOuComprar ? seloAlugar : ""}
+<div class="meta">${pilula(t.streaming)}<span class="tag">${esc(tipoDoTitulo(t.detalhe))}</span></div>
 </div>
 <div class="rodape">${marca("showradar.com.br")}${imagem ? `<span class="credito">${esc(t.credito)}</span>` : ""}</div>
 </section>`;
@@ -193,7 +214,7 @@ export function montarHtml(d: DadosDasArtes, css: string): string {
   const total = d.titulos.length + 2;
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800;900&family=Geist+Mono:wght@500;700&display=block" rel="stylesheet">
-<style>${css}</style>${AJUSTE}</head><body>${LOGO}
+<style>${css}</style>${AJUSTE}</head><body>${LOGO}${SELO_ALUGAR_DEF}
 ${capa(d)}
 ${d.titulos.map((t, i) => slideDoTitulo(t, i + 2, total)).join("\n")}
 ${slideFinal(total)}
