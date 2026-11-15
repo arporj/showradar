@@ -74,9 +74,10 @@ worker, cache, localStorage e IndexedDB com outros projetos da pasta
   o slide final. O x.com não agenda post com enquete (agendar desativa a
   enquete e vice-versa): o texto de sexta fica em rascunho e a enquete é
   postada na hora, na sexta às 19h, junto com o Story de enquete do Instagram.
-  A tarefa agendada local "Lembrete de sexta: enquete do X e Story
-  (ShowRadar)" avisa toda sexta às 19h05, com a pergunta e as opções lidas do
-  `selecao.json` da semana.
+  Duas tarefas agendadas locais leem a pergunta e as opções do `selecao.json`
+  da semana: "Sexta 10h: vai estar livre às 19h? (ShowRadar)", que mostra como
+  antecipar tudo para o dia quando o André não puder às 19h, e "Lembrete de
+  sexta: enquete do X e Story (ShowRadar)", às 19h05.
 - Filme só para compra ou aluguel digital entra no carrossel com
   `"alugarOuComprar": true` no `selecao.json`: ganha o selo postal redondo
   ("comprar ou alugar") na capa e no slide, e o crédito da imagem usa a
