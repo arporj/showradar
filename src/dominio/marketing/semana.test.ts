@@ -172,6 +172,21 @@ test("seleção barra legenda sem 'link na bio', X sem link e opção de enquete
   assert.ok(caminhos.includes("sexta.opcoes.0"));
 });
 
+test("no máximo 3 títulos com destaque na capa", () => {
+  const comDestaques = (quantos: number) =>
+    selecaoSemanaSchema.safeParse({
+      ...selecaoValida,
+      carrossel: {
+        ...selecaoValida.carrossel,
+        titulos: selecaoValida.carrossel.titulos.map((t, i) => ({ ...t, destaque: i < quantos })),
+      },
+    });
+  assert.equal(comDestaques(3).success, true);
+  const r = comDestaques(4);
+  assert.equal(r.success, false);
+  assert.ok(r.error!.issues.some((i) => i.path.join(".") === "carrossel.titulos"));
+});
+
 test("no máximo 5 interações por dia, dentro da semana", () => {
   const selecao = selecaoSemanaSchema.parse({
     ...selecaoValida,

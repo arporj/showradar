@@ -82,3 +82,12 @@ worker, cache, localStorage e IndexedDB com outros projetos da pasta
   `"alugarOuComprar": true` no `selecao.json`: ganha o selo postal redondo
   ("comprar ou alugar") na capa e no slide, e o crédito da imagem usa a
   produtora em vez da loja.
+
+## Destaques da capa do carrossel (decisão de 22/11/2026)
+
+- Títulos com `"destaque": true` no `selecao.json` vão para a fileira de
+  cima do mosaico da capa, a única visível inteira (o segundo destacado
+  fica no centro). Máximo de 3, validado no `selecaoSemanaSchema`.
+- A rotina de domingo marca sozinha os 3 títulos mais fortes da semana e
+  cita quais foram na mensagem. Sem destaque, o mosaico segue a ordem do
+  carrossel.

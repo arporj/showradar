@@ -270,7 +270,13 @@ export const itemDoCarrosselSchema = z.object({
 export const selecaoSemanaSchema = z.object({
   semana: z.object({ inicio: data, fim: data }),
   carrossel: z.object({
-    titulos: z.array(itemDoCarrosselSchema).min(5).max(6),
+    titulos: z
+      .array(itemDoCarrosselSchema)
+      .min(5)
+      .max(6)
+      .refine((titulos) => titulos.filter((t) => t.destaque).length <= 3, {
+        message: "no máximo 3 títulos com destaque (é o que cabe na fileira de cima da capa)",
+      }),
     legendas,
   }),
   quarta: z.object({
