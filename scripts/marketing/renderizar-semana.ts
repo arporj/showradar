@@ -110,16 +110,20 @@ async function prepararTitulo(
 function montarLegendas(selecao: SelecaoSemana, titulos: (ArteDoTitulo & { link: string; aConfirmar?: string })[], avisos: string[]) {
   const agenda = agendaDePublicacao(selecao.semana);
   const quando = (a: { data: string; hora: string }) => `${diaDaSemanaCurto(a.data)} ${diaMes(a.data)} às ${a.hora}`;
-  const bloco = (nome: string, a: { data: string; hora: string }, arquivos: string, l: { instagram: string; x: string }) =>
-    `## ${nome} — ${quando(a)}\n\nArtes: ${arquivos}\n\n**Instagram, Facebook e Threads**\n\n${l.instagram}\n\n**X**\n\n${l.x}\n`;
-  const linhas = [
-    `# Pacote da semana ${diaMes(selecao.semana.inicio)} a ${diaMes(selecao.semana.fim)}`,
+  // Cada legenda termina numa linha "---", para não se copiar o texto do bloco seguinte junto.
+  const bloco = (nome: string, a: { data: string; hora: string }, arquivos: string, l: { instagram: string; x: string }, consulta = "") =>
+    `## ${nome} — ${quando(a)}\n\nArtes: ${arquivos}\n${consulta}\n**Instagram, Facebook e Threads** (copie até a linha ---)\n\n${l.instagram}\n\n---\n\n**X** (copie até a linha ---)\n\n${l.x}\n\n---\n`;
+  const listaDeTitulos = [
     "",
-    bloco("Carrossel \"No radar da semana\"", agenda.domingo, `carrossel-01 a carrossel-${String(titulos.length + 2).padStart(2, "0")}`, selecao.carrossel.legendas),
-    "Títulos:",
+    "Títulos da semana (só para consulta, não vai no post):",
     "",
     ...titulos.map((t) => `- ${diaDaSemanaCurto(t.data)} ${diaMes(t.data)} · ${t.titulo} · ${t.detalhe} · ${t.streaming?.nome ?? "streaming a confirmar"}${t.alugarOuComprar ? " · alugar ou comprar" : ""} · ${t.link}${t.aConfirmar ? ` · **a confirmar: ${t.aConfirmar}**` : ""}`),
     "",
+  ].join("\n");
+  const linhas = [
+    `# Pacote da semana ${diaMes(selecao.semana.inicio)} a ${diaMes(selecao.semana.fim)}`,
+    "",
+    bloco("Carrossel \"No radar da semana\"", agenda.domingo, `carrossel-01 a carrossel-${String(titulos.length + 2).padStart(2, "0")}`, selecao.carrossel.legendas, listaDeTitulos),
     bloco("Post de quarta", agenda.quarta, "quarta.png", selecao.quarta.legendas),
     bloco("Enquete de sexta", agenda.sexta, "sexta.png (no X, use a enquete nativa, sem imagem)", selecao.sexta.legendas),
     `Opções da enquete: ${selecao.sexta.opcoes.map((o, i) => `${"ABCD"[i]}) ${o}`).join(" · ")}`,
