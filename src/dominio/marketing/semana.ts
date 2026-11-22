@@ -261,6 +261,8 @@ export const itemDoCarrosselSchema = z.object({
   streaming: z.string().optional(),
   /** Filme só para compra ou aluguel digital, fora da assinatura: ganha o selo nas artes. */
   alugarOuComprar: z.boolean().optional(),
+  /** Pôster vai para a fileira de cima do mosaico da capa, a única visível inteira (cabem 3). */
+  destaque: z.boolean().optional(),
   /** Data ou streaming não confirmados: aparece na mensagem para o André. */
   aConfirmar: z.string().optional(),
 });

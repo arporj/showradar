@@ -98,6 +98,7 @@ async function prepararTitulo(
     detalhe: detalheEp,
     streaming,
     alugarOuComprar: item.alugarOuComprar ?? false,
+    destaque: item.destaque ?? false,
     poster,
     fundo,
     credito: dono ? `Imagem: divulgação/${dono}` : "Imagem: divulgação",

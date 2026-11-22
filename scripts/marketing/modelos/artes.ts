@@ -17,6 +17,8 @@ export interface ArteDoTitulo {
   streaming: Streaming | null;
   /** Só para compra ou aluguel digital: mostra o selo na capa e no slide. */
   alugarOuComprar: boolean;
+  /** Pôster na fileira de cima do mosaico da capa. */
+  destaque: boolean;
   /** Caminhos relativos ao HTML; null quando o TMDb não tem a imagem. */
   poster: string | null;
   fundo: string | null;
@@ -95,7 +97,10 @@ function intervaloGrande(semana: Intervalo) {
 }
 
 function capa(d: DadosDasArtes) {
-  const posters = d.titulos.map((t) => t.poster).filter((p): p is string => !!p);
+  // Destaques primeiro: a fileira de cima do mosaico é a única que aparece inteira.
+  const posters = [...d.titulos.filter((t) => t.destaque), ...d.titulos.filter((t) => !t.destaque)]
+    .map((t) => t.poster)
+    .filter((p): p is string => !!p);
   const mural = Array.from({ length: 6 }, (_, i) => posters[i % Math.max(posters.length, 1)])
     .filter(Boolean)
     .map((p) => `<img src="${p}">`)
